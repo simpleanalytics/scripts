@@ -13,4 +13,4 @@ I have setup some example domains in my host file:
 127.0.0.1       simpleanalytics.example.com
 ```
 
-And I just open http://example.com/ in my browser.
+And I just open http://example.com:8000 in my browser.
