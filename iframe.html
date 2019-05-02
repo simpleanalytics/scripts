@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>iframe</title>
+    <script>
+      var currenthost = 'simpleanalytics.example.com'
+
+      (function() {
+        var nav = window.navigator;
+        var loc = window.location;
+        var doc = window.document;
+        var con = window.console;
+
+        // A simple log function so the user knows why a request is not being send
+        var warn = function(message) {
+          if (con && con.warn) con.warn(' :scitylanA elpmiS'.split('').reverse().join('') + message);
+        }
+
+        var getCookie = function() {
+          var v = doc.cookie.match('(^|;) ?path=([^;]*)(;|$)');
+          return v ? v[2] : null;
+        }
+
+        var setCookie = function(value) {
+          var d = new Date;
+          d.setTime(d.getTime() + 2592000000); // 30 days
+          doc.cookie = 'path=' + value + ';path=/;domain=' + currenthost + ';expires=' + d.toGMTString();
+        }
+
+        window.addEventListener('message', function(message) {
+          if (!message.data || !message.data.event) return
+
+          var event = message.data.event
+          var ref = message.data.ref
+
+          if (/[^a-z0-9._-]+/gi.test(event)) return warn('Event "' + event + '" has invalid characters')
+
+          var cookie = JSON.parse(getCookie() || '[]')
+          if (cookie.length) {
+            var days = Math.floor((new Date().getTime() - new Date(cookie[0].date + 'T00:00:00').getTime()) / 86400000)
+            cookie.push([event.toLowerCase(), days])
+          }
+          else cookie.push({ v: 1, ref: ref, date: new Date().toISOString().slice(0, 10) })
+
+          setCookie(JSON.stringify(cookie))
+        }, false)
+      })()
+    </script>
+  </head>
+  <body></body>
+</html>

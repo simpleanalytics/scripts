@@ -1,27 +1,42 @@
-(function(window, hostname, path) {
+var currenthost = 'simpleanalytics.example.com'
+
+;(function(window, hostname, path) {
+  if (!window) return;
+  var nav = window.navigator;
+  var loc = window.location;
+  var doc = window.document;
+  var con = window.console;
+
   try {
-    if (!window) return;
-    var nav = window.navigator;
-    var loc = window.location;
-    var doc = window.document;
-    var con = window.console;
     var userAgent = nav.userAgent;
     var dis = window.dispatchEvent;
     var lastSendUrl;
-    var baseUrl = 'https://' + hostname + path
+    var baseUrl = 'http://localhost/external'
+    // var baseUrl = 'https://' + hostname + path
     var notSending = 'Not sending requests '
 
     var script = doc.querySelector('script[src="' + baseUrl + '.js"]')
     var mode = script ? script.getAttribute('data-mode') : null;
     var skipDNT = script ? script.getAttribute('data-skip-dnt') === 'true' : false;
+    var functionName = script ? script.getAttribute('data-sa-global') : 'sa';
 
     // A simple log function so the user knows why a request is not being send
     var warn = function(message) {
-      if (con && con.warn) con.warn('Simple Analytics: ' + message);
+      if (con && con.warn) con.warn(' :scitylanA elpmiS'.split('').reverse().join('') + message);
     }
+
+    // // Don't track when host is localhost
+    // if (loc.hostname === 'localhost') return warn(notSending + 'from localhost');
 
     // We do advanced bot detection in our API, but this line filters already most bots
     if (userAgent.search(/(bot|spider|crawl)/ig) > -1) return warn(notSending + 'because user agent is a robot');
+
+    var getRef = function() {
+      // From the search we grab the utm_source and ref and save only that
+      var refMatches = loc.search.match(/[?&](utm_source|source|ref)=([^?&]+)/gi);
+      var refs = refMatches ? refMatches.map(function(m) { return m.split('=')[1] }) : [];
+      if (refs && refs[0]) return refs[0]
+    }
 
     var post = function(isPushState) {
       // Obfuscate personal data in URL by dropping the search and hash
@@ -40,16 +55,10 @@
       // Don't track when Do Not Track is set to true
       if (!skipDNT && 'doNotTrack' in nav && nav.doNotTrack === '1') return warn(notSending + 'when doNotTrack is enabled');
 
-      // Don't track when Do Not Track is set to true
-      if (loc.hostname === 'localhost') return warn(notSending + 'from localhost');
-
-      // From the search we grab the utm_source and ref and save only that
-      var refMatches = loc.search.match(/[?&](utm_source|source|ref)=([^?&]+)/gi);
-      var refs = refMatches ? refMatches.map(function(m) { return m.split('=')[1] }) : [];
-
+      var ref = getRef()
       var data = { url: url };
       if (userAgent) data.ua = userAgent;
-      if (refs && refs[0]) data.urlReferrer = refs[0];
+      if (ref) data.urlReferrer = ref;
       if (doc.referrer && !isPushState) data.referrer = doc.referrer;
       if (window.innerWidth) data.width = window.innerWidth;
 
@@ -93,12 +102,41 @@
       window.onhashchange = post
     }
 
-    post();
+    var queue = window[functionName] && window[functionName].q ? window[functionName].q : []
+    window[functionName] = function() {
+      if (!loading) loadIframe()
+      var a = [].slice.call(arguments)
+      queue.push(a)
+    }
+
+    // Create iframe to only put the data on their subdomain, not on the main domain
+    var loading = false
+    var loadIframe = function() {
+      loading = true
+      var iframe = doc.createElement('iframe')
+      iframe.setAttribute('src', '//' + currenthost + '/iframe.html')
+      iframe.setAttribute('scrolling', 'no')
+      iframe.style.width = '1px'
+      iframe.style.heigth = '1px'
+      iframe.style.border = 'none'
+      iframe.onload = function() {
+        if (queue) for (let index = 0; index < queue.length; index++) {
+          const event = queue[index];
+          if (event && event[0]) iframe.contentWindow.postMessage({ event: event[0], ref: getRef() }, '*')
+        }
+        window[functionName] = function(event) {
+          iframe.contentWindow.postMessage({ event: event, ref: getRef() }, '*')
+        }
+      }
+      doc.body.appendChild(iframe)
+    }
+
+    // post();
   } catch (e) {
-    var con = con || window.console;
     if (con && con.error) con.error(e);
     var url = baseUrl + '.gif';
     if (e && e.message) url = url + '?error=' + encodeURIComponent(e.message);
     new Image().src = url;
   }
-})(window, hostname, path);
+})(window, '', '/external');
+// })(window, hostname, path);
