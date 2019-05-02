@@ -1,4 +1,4 @@
-var currenthost = 'simpleanalytics.example.com'
+var currenthost = 'simpleanalytics.example.com:8000'
 
 ;(function(window, hostname, path) {
   if (!window) return;
@@ -131,7 +131,7 @@ var currenthost = 'simpleanalytics.example.com'
       doc.body.appendChild(iframe)
     }
 
-    // post();
+    post();
   } catch (e) {
     if (con && con.error) con.error(e);
     var url = baseUrl + '.gif';

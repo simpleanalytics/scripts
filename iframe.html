@@ -4,9 +4,9 @@
     <meta charset="utf-8">
     <title>iframe</title>
     <script>
-      var currenthost = 'simpleanalytics.example.com'
+      var currenthost = 'simpleanalytics.example.com:8000'
 
-      (function() {
+      ;(function() {
         var nav = window.navigator;
         var loc = window.location;
         var doc = window.document;
@@ -25,7 +25,7 @@
         var setCookie = function(value) {
           var d = new Date;
           d.setTime(d.getTime() + 2592000000); // 30 days
-          doc.cookie = 'path=' + value + ';path=/;domain=' + currenthost + ';expires=' + d.toGMTString();
+          doc.cookie = 'path=' + value + ';path=/;expires=' + d.toGMTString();
         }
 
         window.addEventListener('message', function(message) {
@@ -44,7 +44,18 @@
           else cookie.push({ v: 1, ref: ref, date: new Date().toISOString().slice(0, 10) })
 
           setCookie(JSON.stringify(cookie))
+          post(JSON.stringify(cookie))
         }, false)
+
+        var post = function(data) {
+          var request = new XMLHttpRequest();
+          request.open('POST', '//' + currenthost + '/api', true);
+
+          // We use content type text/plain here because we don't want to send an
+          // pre-flight OPTIONS request
+          request.setRequestHeader('Content-Type', 'text/plain; charset=UTF-8');
+          request.send(data);
+        }
       })()
     </script>
   </head>
