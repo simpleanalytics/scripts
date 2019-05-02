@@ -13,6 +13,7 @@
 
     var script = doc.querySelector('script[src="' + baseUrl + '.js"]')
     var mode = script ? script.getAttribute('data-mode') : null;
+    var skipDNT = script ? script.getAttribute('data-skip-dnt') === 'true' : false;
 
     // A simple log function so the user knows why a request is not being send
     var warn = function(message) {
@@ -37,7 +38,7 @@
       if ('visibilityState' in doc && doc.visibilityState === 'prerender') return warn(notSending + 'when prerender');
 
       // Don't track when Do Not Track is set to true
-      if ('doNotTrack' in nav && nav.doNotTrack === '1') return warn(notSending + 'when doNotTrack is enabled');
+      if (!skipDNT && 'doNotTrack' in nav && nav.doNotTrack === '1') return warn(notSending + 'when doNotTrack is enabled');
 
       // Don't track when Do Not Track is set to true
       if (loc.hostname === 'localhost') return warn(notSending + 'from localhost');
