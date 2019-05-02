@@ -120,8 +120,8 @@ var currenthost = 'simpleanalytics.example.com:8000'
       iframe.style.heigth = '1px'
       iframe.style.border = 'none'
       iframe.onload = function() {
-        if (queue) for (let index = 0; index < queue.length; index++) {
-          const event = queue[index];
+        if (queue) for (var index = 0; index < queue.length; index++) {
+          var event = queue[index];
           if (event && event[0]) iframe.contentWindow.postMessage({ event: event[0], ref: getRef() }, '*')
         }
         window[functionName] = function(event) {
