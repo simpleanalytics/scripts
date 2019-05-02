@@ -1,9 +1,8 @@
-var currenthost = 'simpleanalytics.example.com:8000'
-
-;(function(window, hostname, path) {
+(function(window, hostname) {
   if (!window) return;
   var nav = window.navigator;
   var loc = window.location;
+  var host = loc.hostname;
   var doc = window.document;
   var con = window.console;
 
@@ -15,10 +14,12 @@ var currenthost = 'simpleanalytics.example.com:8000'
     // var baseUrl = 'https://' + hostname + path
     var notSending = 'Not sending requests '
 
-    var script = doc.querySelector('script[src="' + baseUrl + '.js"]')
-    var mode = script ? script.getAttribute('data-mode') : null;
-    var skipDNT = script ? script.getAttribute('data-skip-dnt') === 'true' : false;
-    var functionName = script ? script.getAttribute('data-sa-global') : 'sa';
+    var attr = function(script, attribute) { return script && script.getAttribute('data-' + attribute) }
+
+    var script = doc.querySelector('script[src="' + hostname + '/app.js"]')
+    var mode = attr(script, 'mode')
+    var skipDNT = attr(script, 'skip-dnt') === 'true'
+    var functionName = attr(script, 'sa-global') || 'sa'
 
     // A simple log function so the user knows why a request is not being send
     var warn = function(message) {
@@ -26,7 +27,7 @@ var currenthost = 'simpleanalytics.example.com:8000'
     }
 
     // // Don't track when host is localhost
-    // if (loc.hostname === 'localhost') return warn(notSending + 'from localhost');
+    if (host === 'localhost') return warn(notSending + 'from localhost');
 
     // We do advanced bot detection in our API, but this line filters already most bots
     if (userAgent.search(/(bot|spider|crawl)/ig) > -1) return warn(notSending + 'because user agent is a robot');
@@ -40,7 +41,7 @@ var currenthost = 'simpleanalytics.example.com:8000'
 
     var post = function(isPushState) {
       // Obfuscate personal data in URL by dropping the search and hash
-      var url = loc.protocol + '//' + loc.hostname + loc.pathname;
+      var url = loc.protocol + '//' + host + loc.pathname;
 
       // Add hash to url when script is put in to hash mode
       if (mode === 'hash' && loc.hash) url += loc.hash.split('?')[0];
@@ -69,7 +70,7 @@ var currenthost = 'simpleanalytics.example.com:8000'
       }
 
       var request = new XMLHttpRequest();
-      request.open('POST', baseUrl, true);
+      request.open('POST', hostname, true);
 
       // We use content type text/plain here because we don't want to send an
       // pre-flight OPTIONS request
@@ -114,18 +115,15 @@ var currenthost = 'simpleanalytics.example.com:8000'
     var loadIframe = function() {
       loading = true
       var iframe = doc.createElement('iframe')
-      iframe.setAttribute('src', '//' + currenthost + '/iframe.html')
-      iframe.setAttribute('scrolling', 'no')
-      iframe.style.width = '1px'
-      iframe.style.heigth = '1px'
-      iframe.style.border = 'none'
+      iframe.setAttribute('src', hostname + '/iframe.html')
+      iframe.style.display = 'none'
       iframe.onload = function() {
-        if (queue) for (var index = 0; index < queue.length; index++) {
-          var event = queue[index];
-          if (event && event[0]) iframe.contentWindow.postMessage({ event: event[0], ref: getRef() }, '*')
-        }
+        var contentWindow = iframe.contentWindow
+        try {
+          if (queue) for (var index = 0; index < queue.length; index++) contentWindow.postMessage({ event: queue[index][0], ref: getRef() }, '*')
+        } catch(e) {}
         window[functionName] = function(event) {
-          iframe.contentWindow.postMessage({ event: event, ref: getRef() }, '*')
+          contentWindow.postMessage({ event: event, ref: getRef() }, '*')
         }
       }
       doc.body.appendChild(iframe)
@@ -134,9 +132,8 @@ var currenthost = 'simpleanalytics.example.com:8000'
     post();
   } catch (e) {
     if (con && con.error) con.error(e);
-    var url = baseUrl + '.gif';
+    var url = hostname + '/image.gif';
     if (e && e.message) url = url + '?error=' + encodeURIComponent(e.message);
     new Image().src = url;
   }
-})(window, '', '/external');
-// })(window, hostname, path);
+})(window, 'http://simpleanalytics.example.com:8000');

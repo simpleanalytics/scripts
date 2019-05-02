@@ -31,17 +31,14 @@
         window.addEventListener('message', function(message) {
           if (!message.data || !message.data.event) return
 
-          var event = message.data.event
+          var event = message.data.event.toLowerCase().replace(/[^a-z0-9._-]+/gi, '_').replace(/(^-|-$)/, '_')
           var ref = message.data.ref
 
-          if (/[^a-z0-9._-]+/gi.test(event)) return warn('Event "' + event + '" has invalid characters')
-
           var cookie = JSON.parse(getCookie() || '[]')
-          if (cookie.length) {
-            var days = Math.floor((new Date().getTime() - new Date(cookie[0].date + 'T00:00:00').getTime()) / 86400000)
-            cookie.push([event.toLowerCase(), days])
-          }
-          else cookie.push({ v: 1, ref: ref, date: new Date().toISOString().slice(0, 10) })
+          if (!cookie.length) cookie.push({ v: 1, ref: ref, date: new Date().toISOString().slice(0, 10) })
+
+          var days = Math.floor((new Date().getTime() - new Date(cookie[0].date + 'T00:00:00').getTime()) / 86400000)
+          cookie.push(days ? [event, days] : [event])
 
           setCookie(JSON.stringify(cookie))
           post(JSON.stringify(cookie))
