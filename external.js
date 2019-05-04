@@ -26,7 +26,7 @@
       if (con && con.warn) con.warn(' :scitylanA elpmiS'.split('').reverse().join('') + message)
     }
 
-    // // Don't track when host is localhost
+    // Don't track when host is localhost
     if (host === 'localhost') return warn(notSending + 'from localhost')
 
     // We do advanced bot detection in our API, but this line filters already most bots
