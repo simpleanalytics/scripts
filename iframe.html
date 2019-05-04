@@ -4,34 +4,40 @@
     <meta charset="utf-8">
     <title>iframe</title>
     <script>
-      var currenthost = 'simpleanalytics.example.com:8000'
 
       ;(function() {
-        var nav = window.navigator;
-        var loc = window.location;
-        var doc = window.document;
-        var con = window.console;
-
+        var currenthost = 'store.simpleanalyticscdn.com'
         // A simple log function so the user knows why a request is not being send
         var warn = function(message) {
           if (con && con.warn) con.warn(' :scitylanA elpmiS'.split('').reverse().join('') + message);
         }
 
+        var domain = window.location.href.match(/(&|\?)host=[^&]+/gi)
+        if (domain) domain = domain[0].split('=')[1]
+        if (!domain) return warn('Domain is empty, not sending events')
+        if (domain.indexOf('.') === -1) return warn('Domain is invalid, not sending events: ' + domain)
+        var cookieHost = 'path_' + domain.replace(/[^0-9a-z]+/gi, '_').replace(/(^_|_$)/, '')
+
+        var nav = window.navigator;
+        var loc = window.location;
+        var doc = window.document;
+        var con = window.console;
+
         var getCookie = function() {
-          var v = doc.cookie.match('(^|;) ?path=([^;]*)(;|$)');
+          var v = doc.cookie.match('(^|;) ?'+cookieHost+'=([^;]*)(;|$)');
           return v ? v[2] : null;
         }
 
         var setCookie = function(value) {
           var d = new Date;
           d.setTime(d.getTime() + 2592000000); // 30 days
-          doc.cookie = 'path=' + value + ';path=/;expires=' + d.toGMTString();
+          doc.cookie = ''+cookieHost+'=' + value + ';path=/;expires=' + d.toGMTString();
         }
 
         window.addEventListener('message', function(message) {
           if (!message.data || !message.data.event) return
 
-          var event = message.data.event.toLowerCase().replace(/[^a-z0-9._-]+/gi, '_').replace(/(^-|-$)/, '_')
+          var event = message.data.event.toLowerCase().replace(/[^a-z0-9._-]+/gi, '_').replace(/(^-|-$)/, '')
           var ref = message.data.ref
 
           var cookie = JSON.parse(getCookie() || '[]')

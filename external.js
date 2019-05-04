@@ -12,7 +12,6 @@
     var userAgent = nav.userAgent
     var dis = window.dispatchEvent
     var lastSendUrl
-    var baseUrl = 'http://localhost/external'
     var notSending = 'Not sending requests '
 
     var attr = function(script, attribute) { return script && script.getAttribute('data-' + attribute) }
@@ -71,7 +70,7 @@
       }
 
       var request = new XMLHttpRequest()
-      request.open('POST', hostname, true)
+      request.open('POST', hostname + '/api', true)
 
       // We use content type text/plain here because we don't want to send an
       // pre-flight OPTIONS request
@@ -104,19 +103,20 @@
       window.onhashchange = post
     }
 
+    // Build a simple queue
     var queue = window[functionName] && window[functionName].q ? window[functionName].q : []
-    window[functionName] = function() {
-      if (!loading) loadIframe()
-      var a = [].slice.call(arguments)
-      queue.push(a)
-    }
 
     // Only load the iframe when events are pushed
+    window[functionName] = function() {
+      if (!loading) loadIframe()
+      queue.push([].slice.call(arguments))
+    }
+
     var loading = false
     var loadIframe = function() {
       loading = true
       var iframe = doc.createElement('iframe')
-      iframe.setAttribute('src', hostname + '/iframe.html')
+      iframe.setAttribute('src', hostname + '/iframe.html?s=' + host)
       iframe.style.display = 'none'
       iframe.onload = function() {
         var contentWindow = iframe.contentWindow
@@ -138,4 +138,4 @@
     if (e && e.message) url = url + '?error=' + encodeURIComponent(e.message)
     new Image().src = url
   }
-})(window, 'http://simpleanalytics.example.com:8000')
+})(window, 'https://scripts.simpleanalyticscdn.com')
