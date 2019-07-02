@@ -104,18 +104,15 @@
       window.onhashchange = post
     }
 
+    // Post the page view
+    post()
+
     // Stop when not running on subdomain
     var hostWithoutSubdomain = /\.(.+)/.exec(hostname)[1]
     if (!(host === hostWithoutSubdomain || new RegExp('.' + hostWithoutSubdomain + '$', 'i').test(host))) return warn('Events via this script only work on ' + hostWithoutSubdomain + ' domains')
 
     // Build a simple queue
     var queue = window[functionName] && window[functionName].q ? window[functionName].q : []
-
-    // Only load the iframe when events are pushed
-    window[functionName] = function() {
-      if (!loading) loadIframe()
-      queue.push([].slice.call(arguments))
-    }
 
     var loading = false
     var loadIframe = function() {
@@ -135,8 +132,13 @@
       doc.body.appendChild(iframe)
     }
 
-    // Post the page view
-    post()
+    // Only load the iframe when events are pushed
+    window[functionName] = function() {
+      if (!loading) loadIframe()
+      queue.push([].slice.call(arguments))
+    }
+
+    if (!loading && queue.length) loadIframe()
   } catch (e) {
     if (con && con.error) con.error(e)
     var url = uri + '/image.gif'

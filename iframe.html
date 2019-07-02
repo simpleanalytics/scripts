@@ -1,11 +1,15 @@
 <!DOCTYPE html>
-<meta charset=utf-8>
 <title>Simple Analytics</title>
 <script>
+  var hostname = 'sa.localhost.com'
+</script>
+<script>
   (function(hostname) {
-    var con = window.console
+    var win = window
+    var con = win.console
     var json = JSON
     var stringify = json.stringify
+    var userAgent = win.navigator.userAgent
 
     // A simple log function so the user knows why a request is not being send
     var warn = function(message) {
@@ -41,7 +45,7 @@
       events.push(days ? [event, days] : [event])
 
       saveEvents(events)
-      post(events)
+      post({ e: events, h: /\.(.+)/.exec(hostname)[1], ua: userAgent })
     }, false)
 
     var post = function(data) {
