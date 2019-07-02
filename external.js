@@ -7,6 +7,7 @@
   var host = loc.hostname
   var doc = window.document
   var con = window.console
+  var uri = '//' + hostname
 
   try {
     var userAgent = nav.userAgent
@@ -16,14 +17,14 @@
 
     var attr = function(script, attribute) { return script && script.getAttribute('data-' + attribute) }
 
-    var script = doc.querySelector('script[src="' + hostname + '/app.js"]')
+    var script = doc.querySelector('script[src$="' + uri + '/app.js"]')
     var mode = attr(script, 'mode')
     var skipDNT = attr(script, 'skip-dnt') === 'true'
     var functionName = attr(script, 'sa-global') || 'sa'
 
     // A simple log function so the user knows why a request is not being send
     var warn = function(message) {
-      if (con && con.warn) con.warn(' :scitylanA elpmiS'.split('').reverse().join('') + message)
+      if (con && con.warn) con.warn('Simple Analytics: ' + message)
     }
 
     // Don't track when host is localhost
@@ -70,7 +71,7 @@
       }
 
       var request = new XMLHttpRequest()
-      request.open('POST', hostname + '/api', true)
+      request.open('POST', uri + '/api', true)
 
       // We use content type text/plain here because we don't want to send an
       // pre-flight OPTIONS request
@@ -103,6 +104,10 @@
       window.onhashchange = post
     }
 
+    // Stop when not running on subdomain
+    var hostWithoutSubdomain = /\.(.+)/.exec(hostname)[1]
+    if (!(host === hostWithoutSubdomain || new RegExp('.' + hostWithoutSubdomain + '$', 'i').test(host))) return warn('Events via this script only work on ' + hostWithoutSubdomain + ' domains')
+
     // Build a simple queue
     var queue = window[functionName] && window[functionName].q ? window[functionName].q : []
 
@@ -116,13 +121,13 @@
     var loadIframe = function() {
       loading = true
       var iframe = doc.createElement('iframe')
-      iframe.setAttribute('src', hostname + '/iframe.html?s=' + host)
+      iframe.setAttribute('src', uri + '/iframe.html')
       iframe.style.display = 'none'
       iframe.onload = function() {
         var contentWindow = iframe.contentWindow
         try {
           if (queue) for (var index = 0; index < queue.length; index++) contentWindow.postMessage({ event: queue[index][0], ref: getRef() }, '*')
-        } catch(e) {}
+        } catch(e) { /* Nothing */ }
         window[functionName] = function(event) {
           contentWindow.postMessage({ event: event, ref: getRef() }, '*')
         }
@@ -134,8 +139,8 @@
     post()
   } catch (e) {
     if (con && con.error) con.error(e)
-    var url = hostname + '/image.gif'
+    var url = uri + '/image.gif'
     if (e && e.message) url = url + '?error=' + encodeURIComponent(e.message)
     new Image().src = url
   }
-})(window, 'https://scripts.simpleanalyticscdn.com')
+})(window, 'sa.localhost.com')

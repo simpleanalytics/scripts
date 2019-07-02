@@ -1,66 +1,57 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8">
-    <title>iframe</title>
-    <script>
+<meta charset=utf-8>
+<title>Simple Analytics</title>
+<script>
+  (function(hostname) {
+    var con = window.console
+    var json = JSON
+    var stringify = json.stringify
 
-      ;(function() {
-        var currenthost = 'store.simpleanalyticscdn.com'
-        // A simple log function so the user knows why a request is not being send
-        var warn = function(message) {
-          if (con && con.warn) con.warn(' :scitylanA elpmiS'.split('').reverse().join('') + message);
-        }
+    // A simple log function so the user knows why a request is not being send
+    var warn = function(message) {
+      if (con && con.warn) con.warn('Simple Analytics: ' + message);
+    }
 
-        var domain = window.location.href.match(/(&|\?)host=[^&]+/gi)
-        if (domain) domain = domain[0].split('=')[1]
-        if (!domain) return warn('Domain is empty, not sending events')
-        if (domain.indexOf('.') === -1) return warn('Domain is invalid, not sending events: ' + domain)
-        var cookieHost = 'path_' + domain.replace(/[^0-9a-z]+/gi, '_').replace(/(^_|_$)/, '')
+    // Test for sessionStorage
+    var storage
+    try {
+      var uid = new Date
+      (storage = window.sessionStorage).setItem(uid, uid)
+      var fail = storage.getItem(uid) !== uid
+      storage.removeItem(uid)
+      fail && (storage = false)
+    } catch (e) {}
 
-        var nav = window.navigator;
-        var loc = window.location;
-        var doc = window.document;
-        var con = window.console;
+    // Stop if not supported
+    if (!storage) return
 
-        var getCookie = function() {
-          var v = doc.cookie.match('(^|;) ?'+cookieHost+'=([^;]*)(;|$)');
-          return v ? v[2] : null;
-        }
+    var getEvents = function() { return json.parse(storage.getItem('events') || '[]') }
+    var saveEvents = function(events) { return storage.setItem('events', stringify(events) || '[]') }
 
-        var setCookie = function(value) {
-          var d = new Date;
-          d.setTime(d.getTime() + 2592000000); // 30 days
-          doc.cookie = ''+cookieHost+'=' + value + ';path=/;expires=' + d.toGMTString();
-        }
+    window.addEventListener('message', function(message) {
+      if (!message.data || !message.data.event) return
 
-        window.addEventListener('message', function(message) {
-          if (!message.data || !message.data.event) return
+      var event = message.data.event.toLowerCase().replace(/[^a-z0-9._-]+/gi, '_').replace(/(^-|-$)/, '')
+      var ref = message.data.ref
 
-          var event = message.data.event.toLowerCase().replace(/[^a-z0-9._-]+/gi, '_').replace(/(^-|-$)/, '')
-          var ref = message.data.ref
+      var events = getEvents()
+      if (!events.length) events.push({ v: 1, ref: ref, date: new Date().toISOString().slice(0, 10) })
 
-          var cookie = JSON.parse(getCookie() || '[]')
-          if (!cookie.length) cookie.push({ v: 1, ref: ref, date: new Date().toISOString().slice(0, 10) })
+      var days = Math.floor((new Date().getTime() - new Date(events[0].date + 'T00:00:00').getTime()) / 86400000)
+      events.push(days ? [event, days] : [event])
 
-          var days = Math.floor((new Date().getTime() - new Date(cookie[0].date + 'T00:00:00').getTime()) / 86400000)
-          cookie.push(days ? [event, days] : [event])
+      saveEvents(events)
+      post(events)
+    }, false)
 
-          setCookie(JSON.stringify(cookie))
-          post(JSON.stringify(cookie))
-        }, false)
+    var post = function(data) {
+      var request = new XMLHttpRequest()
+      request.open('POST', '//' + hostname + '/events', true)
 
-        var post = function(data) {
-          var request = new XMLHttpRequest();
-          request.open('POST', '//' + currenthost + '/api', true);
-
-          // We use content type text/plain here because we don't want to send an
-          // pre-flight OPTIONS request
-          request.setRequestHeader('Content-Type', 'text/plain; charset=UTF-8');
-          request.send(data);
-        }
-      })()
-    </script>
-  </head>
-  <body></body>
-</html>
+      // We use content type text/plain here because we don't want to send an
+      // pre-flight OPTIONS request
+      request.setRequestHeader('Content-Type', 'text/plain; charset=UTF-8')
+      request.send(stringify(data))
+    }
+  })(hostname)
+</script>
