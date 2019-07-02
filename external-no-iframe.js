@@ -113,19 +113,6 @@
     // Post the page view
     postVisit()
 
-    // Test for sessionStorage
-    var storage
-    try {
-      var uid = new Date
-      (storage = window.sessionStorage).setItem(uid, uid)
-      var fail = storage.getItem(uid) !== uid
-      storage.removeItem(uid)
-      fail && (storage = false)
-    } catch (e) {}
-
-    // Stop if not supported
-    if (!storage) return
-
     // Build a simple queue
     var queue = window[functionName] && window[functionName].q ? window[functionName].q : []
 
