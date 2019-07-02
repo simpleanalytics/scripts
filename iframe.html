@@ -35,14 +35,15 @@
     window.addEventListener('message', function(message) {
       if (!message.data || !message.data.event) return
 
-      var event = message.data.event.toLowerCase().replace(/[^a-z0-9._-]+/gi, '_').replace(/(^-|-$)/, '')
+      var event = message.data.event.toLowerCase().replace(/[^a-z0-9._-]+/gi, '_').replace(/(^_|_$)/, '') || 'invalid'
       var ref = message.data.ref
 
       var events = getEvents()
       if (!events.length) events.push({ v: 1, ref: ref, date: new Date().toISOString().slice(0, 10) })
 
-      var days = Math.floor((new Date().getTime() - new Date(events[0].date + 'T00:00:00').getTime()) / 86400000)
-      events.push(days ? [event, days] : [event])
+      // var days = Math.floor((new Date().getTime() - new Date(events[0].date + 'T00:00:00').getTime()) / 86400000)
+      // events.push(days ? [event, days] : [event])
+      events.push(event)
 
       saveEvents(events)
       post({ e: events, h: /\.(.+)/.exec(hostname)[1], ua: userAgent })
