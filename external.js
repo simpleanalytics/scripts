@@ -43,6 +43,7 @@
 
     var ref = getParams('utm_source|source|ref')
     var campaign = getParams('utm_campaign|campaign')
+    var cleanRef = doc.referrer.replace(/^https?:\/\/((m|l|w{2,3}([0-9]+)?)\.)?([^?#]+)(.*)$/, '$4').replace(/^([^/]+)\/$/, '$1')
 
     var post = function(isPushState) {
       // Obfuscate personal data in URL by dropping the search and hash
@@ -64,7 +65,7 @@
       var data = { url: url }
       if (userAgent) data.ua = userAgent
       if (ref) data.urlReferrer = ref
-      if (doc.referrer && !isPushState) data.referrer = doc.referrer
+      if (cleanRef && !isPushState) data.referrer = cleanRef
       if (window.innerWidth) data.width = window.innerWidth
 
       try {
@@ -127,7 +128,7 @@
       iframe.style.display = 'none'
       iframe.onload = function() {
         var contentWindow = iframe.contentWindow
-        var refOrDocRef = ref || doc.referrer
+        var refOrDocRef = ref || cleanRef
         try {
           if (queue) for (var index = 0; index < queue.length; index++) contentWindow.postMessage({ event: queue[index][0], ref: refOrDocRef, campaign: campaign }, targetOrigin)
         } catch(e) { /* Nothing */ }
