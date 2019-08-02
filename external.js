@@ -41,8 +41,8 @@
       if (match && match[0]) return match[0]
     }
 
-    var getRef = getParams('utm_source|source|ref')
-    var getCampaign = getParams('utm_campaign|campaign')
+    var ref = getParams('utm_source|source|ref')
+    var campaign = getParams('utm_campaign|campaign')
 
     var post = function(isPushState) {
       // Obfuscate personal data in URL by dropping the search and hash
@@ -61,7 +61,6 @@
       // Don't track when Do Not Track is set to true
       if (!skipDNT && 'doNotTrack' in nav && nav.doNotTrack === '1') return warn(notSending + 'when doNotTrack is enabled')
 
-      var ref = getRef()
       var data = { url: url }
       if (userAgent) data.ua = userAgent
       if (ref) data.urlReferrer = ref
@@ -128,13 +127,12 @@
       iframe.style.display = 'none'
       iframe.onload = function() {
         var contentWindow = iframe.contentWindow
-        var ref = getRef() || doc.referrer
-        var campaign = getCampaign()
+        var refOrDocRef = ref || doc.referrer
         try {
-          if (queue) for (var index = 0; index < queue.length; index++) contentWindow.postMessage({ event: queue[index][0], ref: ref, campaign: campaign }, targetOrigin)
+          if (queue) for (var index = 0; index < queue.length; index++) contentWindow.postMessage({ event: queue[index][0], ref: refOrDocRef, campaign: campaign }, targetOrigin)
         } catch(e) { /* Nothing */ }
         window[functionName] = function(event) {
-          contentWindow.postMessage({ event: event, ref: ref, campaign: campaign }, targetOrigin)
+          contentWindow.postMessage({ event: event, ref: refOrDocRef, campaign: campaign }, targetOrigin)
         }
       }
       doc.body.appendChild(iframe)
