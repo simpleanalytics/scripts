@@ -8,6 +8,7 @@
   var doc = window.document
   var con = window.console
   var uri = '//' + hostname
+  var targetOrigin = 'https://' + hostname
 
   try {
     var userAgent = nav.userAgent
@@ -31,14 +32,17 @@
     if (host === 'localhost') return warn(notSending + 'from localhost')
 
     // We do advanced bot detection in our API, but this line filters already most bots
-    if (userAgent.search(/(bot|spider|crawl)/ig) > -1) return warn(notSending + 'because user agent is a robot')
+    if (/(bot|spider|crawl)/i.test(userAgent)) return warn(notSending + 'because user agent is a robot')
 
-    var getRef = function() {
+    var getParams = function(regex) {
       // From the search we grab the utm_source and ref and save only that
-      var refMatches = loc.search.match(/[?&](utm_source|source|ref)=([^?&]+)/gi)
-      var refs = refMatches ? refMatches.map(function(m) { return m.split('=')[1] }) : []
-      if (refs && refs[0]) return refs[0]
+      var matches = loc.search.match(new RegExp('[?&]('+regex+')=([^?&]+)', 'gi'))
+      var match = matches ? matches.map(function(m) { return m.split('=')[1] }) : []
+      if (match && match[0]) return match[0]
     }
+
+    var getRef = getParams('utm_source|source|ref')
+    var getCampaign = getParams('utm_campaign|campaign')
 
     var post = function(isPushState) {
       // Obfuscate personal data in URL by dropping the search and hash
@@ -109,7 +113,9 @@
 
     // Stop when not running on subdomain
     var hostWithoutSubdomain = /\.(.+)/.exec(hostname)[1]
-    if (!(host === hostWithoutSubdomain || new RegExp('.' + hostWithoutSubdomain + '$', 'i').test(host))) return warn('Events via this script only work on ' + hostWithoutSubdomain + ' domains')
+    if (!(host === hostWithoutSubdomain || new RegExp('.' + hostWithoutSubdomain + '$', 'i').test(host))) {
+      return warn('Events via this script only work on ' + hostWithoutSubdomain + ' domains')
+    }
 
     // Build a simple queue
     var queue = window[functionName] && window[functionName].q ? window[functionName].q : []
@@ -122,11 +128,13 @@
       iframe.style.display = 'none'
       iframe.onload = function() {
         var contentWindow = iframe.contentWindow
+        var ref = getRef() || doc.referrer
+        var campaign = getCampaign()
         try {
-          if (queue) for (var index = 0; index < queue.length; index++) contentWindow.postMessage({ event: queue[index][0], ref: getRef() }, '*')
+          if (queue) for (var index = 0; index < queue.length; index++) contentWindow.postMessage({ event: queue[index][0], ref: ref, campaign: campaign }, targetOrigin)
         } catch(e) { /* Nothing */ }
         window[functionName] = function(event) {
-          contentWindow.postMessage({ event: event, ref: getRef() }, '*')
+          contentWindow.postMessage({ event: event, ref: ref, campaign: campaign }, targetOrigin)
         }
       }
       doc.body.appendChild(iframe)

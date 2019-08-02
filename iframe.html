@@ -37,9 +37,10 @@
 
       var event = message.data.event.toLowerCase().replace(/[^a-z0-9._-]+/gi, '_').replace(/(^_|_$)/, '') || 'invalid'
       var ref = message.data.ref
+      var campaign = message.data.campaign
 
       var events = getEvents()
-      var firstEvent = events[0] || { v: 1, ref: ref, date: new Date().toISOString().slice(0, 10) }
+      var firstEvent = events[0] || { v: 1, ref: ref, campaign: campaign, date: new Date().toISOString().slice(0, 10) }
       if (!events.length) events.push(firstEvent)
 
       // var days = Math.floor((new Date().getTime() - new Date(events[0].date + 'T00:00:00').getTime()) / 86400000)
@@ -47,7 +48,7 @@
       events.push(event)
 
       saveEvents(events)
-      post({ v: firstEvent.v, r: firstEvent.r, d: firstEvent.date, e: events.slice(1), h: /\.(.+)/.exec(hostname)[1], ua: userAgent })
+      post({ v: firstEvent.v, ref: firstEvent.r, date: firstEvent.date, events: events.slice(1), hostname: /\.(.+)/.exec(hostname)[1], ua: userAgent })
     }, false)
 
     var post = function(data) {
