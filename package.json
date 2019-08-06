@@ -1,23 +1,23 @@
 {
   "name": "scripts",
   "version": "1.0.0",
-  "description": "To test this I just run a simple python server in this repo:",
-  "main": "external.js",
+  "description": "Simple Analytics visitor facing scripts",
+  "main": "minify.js",
   "scripts": {
     "watch": "nodemon minify.js --ignore dist",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/adriaanvanrossum/simpleanalytics-scripts.git"
+    "url": "git+https://github.com/simpleanalytics/scripts.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/adriaanvanrossum/simpleanalytics-scripts/issues"
+    "url": "https://github.com/simpleanalytics/scripts/issues"
   },
-  "homepage": "https://github.com/adriaanvanrossum/simpleanalytics-scripts#readme",
+  "homepage": "https://github.com/simpleanalytics/scripts#readme",
   "dependencies": {},
   "devDependencies": {
     "nodemon": "^1.19.1",
