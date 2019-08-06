@@ -12,6 +12,12 @@ const files = {
     prepend: ['/* Simple Analytics - Privacy friend analytics (docs.simpleanalytics.com/script) */', ''],
     append: []
   },
+  embed: {
+    original: `${__dirname}/src/embed.js`,
+    minified: `${__dirname}/dist/embed.js`,
+    prepend: ['/* Simple Analytics - Privacy friend analytics (docs.simpleanalytics.com/embed-graph-on-your-site) */', ''],
+    append: []
+  },
   external: {
     original: `${__dirname}/src/external.js`,
     minified: `${__dirname}/dist/external.js`,
@@ -26,7 +32,7 @@ const files = {
   }
 }
 
-var options = {
+const options = {
   warnings: true,
   ie8: true,
   toplevel: true,
@@ -41,7 +47,7 @@ for (const file in files) {
 
     const contents = fs.readFileSync(original, 'utf8')
     const { code, warnings } = UglifyJS.minify(contents, options)
-    for (const warning of warnings) console.warn(yellow, `[MINIFY][${name}] ${warning}`)
+    for (const warning of (warnings || [])) console.warn(yellow, `[MINIFY][${name}] ${warning}`)
     const nginxCode = code.replace('simpleanalytics.example.com', '<!--# echo var="http_host" default="" -->')
     const lines = [...prepend, nginxCode, ...append]
     fs.writeFileSync(minified, lines.join('\n'))
