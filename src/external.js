@@ -7,8 +7,8 @@
   var host = loc.hostname
   var doc = window.document
   var con = window.console
-  var json = JSON
-  var stringify = json.stringify
+  var uri = '//' + hostname
+  var targetOrigin = 'https://' + hostname
 
   try {
     var userAgent = nav.userAgent
@@ -18,41 +18,34 @@
 
     var attr = function(script, attribute) { return script && script.getAttribute('data-' + attribute) }
 
-    var script = doc.querySelector('script[src="' + hostname + '/app.js"]')
+    var script = doc.querySelector('script[src$="' + uri + '/app.js"]')
     var mode = attr(script, 'mode')
     var skipDNT = attr(script, 'skip-dnt') === 'true'
     var functionName = attr(script, 'sa-global') || 'sa'
 
     // A simple log function so the user knows why a request is not being send
     var warn = function(message) {
-      if (con && con.warn) con.warn(' :scitylanA elpmiS'.split('').reverse().join('') + message)
+      if (con && con.warn) con.warn('Simple Analytics: ' + message)
     }
 
     // Don't track when host is localhost
-    var localhost = 'localhost'
-    if (host === localhost) return warn(notSending + 'from ' + localhost)
+    if (host === 'localhost') return warn(notSending + 'from localhost')
 
     // We do advanced bot detection in our API, but this line filters already most bots
-    if (userAgent.search(/(bot|spider|crawl)/ig) > -1) return warn(notSending + 'because user agent is a robot')
+    if (/(bot|spider|crawl)/i.test(userAgent)) return warn(notSending + 'because user agent is a robot')
 
-    var getRef = function() {
+    var getParams = function(regex) {
       // From the search we grab the utm_source and ref and save only that
-      var refMatches = loc.search.match(/[?&](utm_source|source|ref)=([^?&]+)/gi)
-      var refs = refMatches ? refMatches.map(function(m) { return m.split('=')[1] }) : []
-      if (refs && refs[0]) return refs[0]
+      var matches = loc.search.match(new RegExp('[?&]('+regex+')=([^?&]+)', 'gi'))
+      var match = matches ? matches.map(function(m) { return m.split('=')[1] }) : []
+      if (match && match[0]) return match[0]
     }
 
-    var post = function(data, isJson) {
-      var request = new XMLHttpRequest()
-      request.open('POST', hostname + '/post', true)
+    var ref = getParams('utm_source|source|ref')
+    var campaign = getParams('utm_campaign|campaign')
+    var cleanRef = doc.referrer.replace(/^https?:\/\/((m|l|w{2,3}([0-9]+)?)\.)?([^?#]+)(.*)$/, '$4').replace(/^([^/]+)\/$/, '$1') || null
 
-      // We use content type text/plain here because we don't want to send an
-      // pre-flight OPTIONS request
-      request.setRequestHeader('Content-Type', 'text/plain;charset=UTF-8')
-      request.send(isJson === false ? data : stringify(data))
-    }
-
-    var postVisit = function(isPushState) {
+    var post = function(isPushState) {
       // Obfuscate personal data in URL by dropping the search and hash
       var url = loc.protocol + '//' + host + loc.pathname
 
@@ -63,17 +56,13 @@
       if (lastSendUrl === url) return
       lastSendUrl = url
 
-      // Skip prerender requests
-      if ('visibilityState' in doc && doc.visibilityState === 'prerender') return warn(notSending + 'when prerender')
-
       // Don't track when Do Not Track is set to true
       if (!skipDNT && 'doNotTrack' in nav && nav.doNotTrack === '1') return warn(notSending + 'when doNotTrack is enabled')
 
-      var ref = getRef()
       var data = { url: url }
       if (userAgent) data.ua = userAgent
       if (ref) data.urlReferrer = ref
-      if (doc.referrer && !isPushState) data.referrer = doc.referrer
+      if (cleanRef && !isPushState) data.referrer = cleanRef
       if (window.innerWidth) data.width = window.innerWidth
 
       try {
@@ -82,7 +71,13 @@
         // nothing
       }
 
-      post(data)
+      var request = new XMLHttpRequest()
+      request.open('POST', uri + '/api', true)
+
+      // We use content type text/plain here because we don't want to send an
+      // pre-flight OPTIONS request
+      request.setRequestHeader('Content-Type', 'text/plain; charset=UTF-8')
+      request.send(JSON.stringify(data))
     }
 
     // Thanks to https://gist.github.com/rudiedirkx/fd568b08d7bffd6bd372
@@ -101,63 +96,57 @@
       }
       his.pushState = stateListener('pushState')
       window.addEventListener('pushState', function() {
-        postVisit(true)
+        post(true)
       })
     }
 
     // When in hash mode, we record a pageview based on the onhashchange function
     if (mode === 'hash' && 'onhashchange' in window) {
-      window.onhashchange = postVisit
+      window.onhashchange = post
     }
 
     // Post the page view
-    postVisit()
+    post()
+
+    // Stop when not running on subdomain
+    var hostWithoutSubdomain = /\.(.+)/.exec(hostname)[1]
+    if (!(host === hostWithoutSubdomain || new RegExp('.' + hostWithoutSubdomain + '$', 'i').test(host))) {
+      return warn('Events via this script only work on ' + hostWithoutSubdomain + ' domains')
+    }
 
     // Build a simple queue
     var queue = window[functionName] && window[functionName].q ? window[functionName].q : []
 
-    // Replace queue function
+    var loading = false
+    var loadIframe = function() {
+      loading = true
+      var iframe = doc.createElement('iframe')
+      iframe.setAttribute('src', uri + '/iframe.html')
+      iframe.style.display = 'none'
+      iframe.onload = function() {
+        var contentWindow = iframe.contentWindow
+        var refOrDocRef = ref || cleanRef
+        try {
+          if (queue) for (var index = 0; index < queue.length; index++) contentWindow.postMessage({ event: queue[index][0], ref: refOrDocRef, campaign: campaign }, targetOrigin)
+        } catch(e) { /* Nothing */ }
+        window[functionName] = function(event) {
+          contentWindow.postMessage({ event: event, ref: refOrDocRef, campaign: campaign }, targetOrigin)
+        }
+      }
+      doc.body.appendChild(iframe)
+    }
+
+    // Only load the iframe when events are pushed
     window[functionName] = function() {
+      if (!loading) loadIframe()
       queue.push([].slice.call(arguments))
     }
 
-    // Get previous events
-    var getEvents = function() { return json.parse(storage.getItem('events') || '[]') }
-    var saveEvents = function(events) { return storage.setItem('events', stringify(events) || '[]') }
-
-    var postEvent = function(event, wait) {
-      try {
-        var ref = getRef()
-        var date = new Date().toISOString().slice(0, 10)
-        var events = getEvents()
-
-        if (events && events[0] && events[0].ref === ref) ref = null
-
-        event = event.toLowerCase().replace(/[^a-z0-9._-]+/gi, '_').replace(/(^-|-$)/, '')
-
-        if (!events.length) events.push({ v: 1, ref: ref, date: date })
-
-        var days = Math.floor((new Date().getTime() - new Date(events[0].date + 'T00:00:00').getTime()) / 86400000)
-        events.push(days ? [event, days] : [event])
-
-        saveEvents(events)
-
-        if (!wait) post(events)
-      } catch (error) {
-        /* Do nothing */
-      }
-    }
-
-    if (queue.length) {
-      for (var index = 0; index < queue.length; index++) postEvent(queue[index][0], true)
-      post(storage.getItem('events'), false)
-    }
-
-    window[functionName] = postEvent
+    if (!loading && queue.length) loadIframe()
   } catch (e) {
     if (con && con.error) con.error(e)
-    var url = hostname + '/image.gif'
+    var url = uri + '/image.gif'
     if (e && e.message) url = url + '?error=' + encodeURIComponent(e.message)
     new Image().src = url
   }
-})(window, url)
+})(window, 'simpleanalytics.example.com')
