@@ -7,8 +7,14 @@
   var host = loc.hostname
   var doc = window.document
   var con = window.console
+  var perf = window.performance
   var uri = '//' + hostname
   var targetOrigin = 'https://' + hostname
+
+  // A simple log function so the user knows why a request is not being send
+  var warn = function(message) {
+    if (con && con.warn) con.warn('Simple Analytics: ' + message)
+  }
 
   try {
     var userAgent = nav.userAgent
@@ -22,11 +28,6 @@
     var mode = attr(script, 'mode')
     var skipDNT = attr(script, 'skip-dnt') === 'true'
     var functionName = attr(script, 'sa-global') || 'sa'
-
-    // A simple log function so the user knows why a request is not being send
-    var warn = function(message) {
-      if (con && con.warn) con.warn('Simple Analytics: ' + message)
-    }
 
     // Don't track when host is localhost
     if (host === 'localhost') return warn(notSending + 'from localhost')
@@ -64,6 +65,24 @@
       if (ref) data.urlReferrer = ref
       if (cleanRef && !isPushState) data.referrer = cleanRef
       if (window.innerWidth) data.width = window.innerWidth
+
+      // We put new code always in a try block to prevent huge issues
+      try {
+        // Check if back, forward or reload buttons are being use in modern browsers
+        var backModern = (perf && perf.getEntriesByType && perf.getEntriesByType('navigation')[0] && perf.getEntriesByType('navigation')[0].type)
+          ? ['reload', 'back_forward'].indexOf(perf.getEntriesByType('navigation')[0].type) > -1
+          : null
+
+        // Check if back, forward or reload buttons are being use in older browsers
+        var back = typeof backModern === 'boolean'
+          ? backModern
+          : perf && perf.navigation && perf.navigation.type && [perf.navigation.TYPE_RELOAD, perf.navigation.TYPE_BACK_FORWARD].indexOf(perf.navigation.type) > -1
+
+        // We set unique variable based on pushstate or back navigation, if no match we check the referrer
+        data.unique = isPushState || back ? false : doc.referrer && doc.referrer.split('/')[2] !== loc.hostname;
+      } catch (error) {
+        // nothing
+      }
 
       try {
         data.timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
@@ -144,9 +163,9 @@
 
     if (!loading && queue.length) loadIframe()
   } catch (e) {
-    if (con && con.error) con.error(e)
+    warn(e.message)
     var url = uri + '/image.gif'
-    if (e && e.message) url = url + '?error=' + encodeURIComponent(e.message)
+    if (e.message) url = url + '?error=' + encodeURIComponent(e.message)
     new Image().src = url
   }
 })(window, 'simpleanalytics.example.com')
