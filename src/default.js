@@ -62,25 +62,23 @@
       // We put new code always in a try block to prevent huge issues
       try {
         // Check if back, forward or reload buttons are being use in modern browsers
-        var backModern = (perf && perf.getEntriesByType && perf.getEntriesByType('navigation')[0] && perf.getEntriesByType('navigation')[0].type)
+        var back = (perf && perf.getEntriesByType && perf.getEntriesByType('navigation')[0] && perf.getEntriesByType('navigation')[0].type)
           ? ['reload', 'back_forward'].indexOf(perf.getEntriesByType('navigation')[0].type) > -1
-          : null
-
-        // Check if back, forward or reload buttons are being use in older browsers
-        var back = typeof backModern === 'boolean'
-          ? backModern
-          : perf && perf.navigation && perf.navigation.type && [perf.navigation.TYPE_RELOAD, perf.navigation.TYPE_BACK_FORWARD].indexOf(perf.navigation.type) > -1
+          // Check if back, forward or reload buttons are being use in older browsers
+          // 1: TYPE_RELOAD, 2: TYPE_BACK_FORWARD
+          : perf && perf.navigation && [1, 2].indexOf(perf.navigation.type) > -1
 
         // We set unique variable based on pushstate or back navigation, if no match we check the referrer
         data.unique = isPushState || back ? false : doc.referrer && doc.referrer.split('/')[2] !== loc.hostname;
       } catch (error) {
-        // nothing
+        data.error = error.message
       }
 
+      // This code could error on not having resolvedOptions in the Android Webview, that's why we use try...catch
       try {
-        data.timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+        data.timezone = typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : null
       } catch (error) {
-        // nothing
+        data.error = error.message
       }
 
       var request = new XMLHttpRequest();
@@ -107,14 +105,14 @@
       };
       his.pushState = stateListener('pushState');
       window.addEventListener('pushState', function() {
-        post(true);
+        post(1);
       });
     }
 
     // When in hash mode, we record a pageview based on the onhashchange function
     if (mode === 'hash' && 'onhashchange' in window) {
       window.onhashchange = function() {
-        post(true);
+        post(1);
       }
     }
 
