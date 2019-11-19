@@ -91,7 +91,9 @@
         data.unique =
           isPushState || back
             ? false
-            : doc.referrer && doc.referrer.split("/")[2] !== loc.hostname;
+            : doc.referrer
+            ? doc.referrer.split("/")[2] !== loc.hostname
+            : true;
       } catch (error) {
         data.error = error.message;
       }
