@@ -4,15 +4,15 @@
   if (!window) return;
 
   // Set urls outside try block because they are needed in the catch block
-  var protocol = 'https://';
+  var protocol = "https://";
   var apiUrl = protocol + hostname + path;
-  var cdnUrl = cdn ? protocol + cdn : (apiUrl + '.js');
+  var cdnUrl = cdn ? protocol + cdn : apiUrl + ".js";
   var con = window.console;
 
   // A simple log function so the user knows why a request is not being send
   var warn = function(message) {
-    if (con && con.warn) con.warn('Simple Analytics: ' + message);
-  }
+    if (con && con.warn) con.warn("Simple Analytics: " + message);
+  };
 
   try {
     var nav = window.navigator;
@@ -22,36 +22,47 @@
     var dis = window.dispatchEvent;
     var perf = window.performance;
     var lastSendUrl;
-    var notSending = 'Not sending requests ';
+    var notSending = "Not sending requests ";
 
     var script = doc.querySelector('script[src="' + cdnUrl + '"]');
-    var attr = function(script, attribute) { return script && script.getAttribute('data-' + attribute) }
-    var mode = attr(script, 'mode')
-    var skipDNT = attr(script, 'skip-dnt') === 'true'
+    var attr = function(script, attribute) {
+      return script && script.getAttribute("data-" + attribute);
+    };
+    var mode = attr(script, "mode");
+    var skipDNT = attr(script, "skip-dnt") === "true";
 
     // We do advanced bot detection in our API, but this line filters already most bots
-    if (userAgent.search(/(bot|spider|crawl)/ig) > -1) return warn(notSending + 'because user agent is a robot');
+    if (userAgent.search(/(bot|spider|crawl)/gi) > -1)
+      return warn(notSending + "because user agent is a robot");
 
     var post = function(isPushState) {
       // Obfuscate personal data in URL by dropping the search and hash
-      var url = loc.protocol + '//' + loc.hostname + loc.pathname;
+      var url = loc.protocol + "//" + loc.hostname + loc.pathname;
 
       // Add hash to url when script is put in to hash mode
-      if (mode === 'hash' && loc.hash) url += loc.hash.split('?')[0];
+      if (mode === "hash" && loc.hash) url += loc.hash.split("?")[0];
 
       // Don't send the last URL again (this could happen when pushState is used to change the URL hash or search)
       if (lastSendUrl === url) return;
       lastSendUrl = url;
 
       // Don't track when Do Not Track is set to true
-      if (!skipDNT && 'doNotTrack' in nav && nav.doNotTrack === '1') return warn(notSending + 'when doNotTrack is enabled');
+      if (!skipDNT && "doNotTrack" in nav && nav.doNotTrack === "1")
+        return warn(notSending + "when doNotTrack is enabled");
 
       // Don't track when localhost
-      if (loc.hostname === 'localhost' || loc.protocol === 'file:') return warn(notSending + 'from localhost');
+      if (loc.hostname === "localhost" || loc.protocol === "file:")
+        return warn(notSending + "from localhost");
 
       // From the search we grab the utm_source and ref and save only that
-      var refMatches = loc.search.match(/[?&](utm_source|source|ref)=([^?&]+)/gi);
-      var refs = refMatches ? refMatches.map(function(m) { return m.split('=')[1] }) : [];
+      var refMatches = loc.search.match(
+        /[?&](utm_source|source|ref)=([^?&]+)/gi
+      );
+      var refs = refMatches
+        ? refMatches.map(function(m) {
+            return m.split("=")[1];
+          })
+        : [];
 
       var data = { url: url };
       if (userAgent) data.ua = userAgent;
@@ -62,33 +73,47 @@
       // We put new code always in a try block to prevent huge issues
       try {
         // Check if back, forward or reload buttons are being use in modern browsers
-        var back = (perf && perf.getEntriesByType && perf.getEntriesByType('navigation')[0] && perf.getEntriesByType('navigation')[0].type)
-          ? ['reload', 'back_forward'].indexOf(perf.getEntriesByType('navigation')[0].type) > -1
-          // Check if back, forward or reload buttons are being use in older browsers
-          // 1: TYPE_RELOAD, 2: TYPE_BACK_FORWARD
-          : perf && perf.navigation && [1, 2].indexOf(perf.navigation.type) > -1
+        var back =
+          perf &&
+          perf.getEntriesByType &&
+          perf.getEntriesByType("navigation")[0] &&
+          perf.getEntriesByType("navigation")[0].type
+            ? ["reload", "back_forward"].indexOf(
+                perf.getEntriesByType("navigation")[0].type
+              ) > -1
+            : // Check if back, forward or reload buttons are being use in older browsers
+              // 1: TYPE_RELOAD, 2: TYPE_BACK_FORWARD
+              perf &&
+              perf.navigation &&
+              [1, 2].indexOf(perf.navigation.type) > -1;
 
         // We set unique variable based on pushstate or back navigation, if no match we check the referrer
-        data.unique = isPushState || back ? false : doc.referrer && doc.referrer.split('/')[2] !== loc.hostname;
+        data.unique =
+          isPushState || back
+            ? false
+            : doc.referrer && doc.referrer.split("/")[2] !== loc.hostname;
       } catch (error) {
-        data.error = error.message
+        data.error = error.message;
       }
 
       // This code could error on not having resolvedOptions in the Android Webview, that's why we use try...catch
       try {
-        data.timezone = typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : null
+        data.timezone =
+          typeof Intl !== "undefined"
+            ? Intl.DateTimeFormat().resolvedOptions().timeZone
+            : null;
       } catch (error) {
-        data.error = error.message
+        data.error = error.message;
       }
 
       var request = new XMLHttpRequest();
-      request.open('POST', apiUrl, true);
+      request.open("POST", apiUrl, true);
 
       // We use content type text/plain here because we don't want to send an
       // pre-flight OPTIONS request
-      request.setRequestHeader('Content-Type', 'text/plain; charset=UTF-8');
+      request.setRequestHeader("Content-Type", "text/plain; charset=UTF-8");
       request.send(JSON.stringify(data));
-    }
+    };
 
     var his = window.history;
     var hisPushState = his ? his.pushState : null;
@@ -103,24 +128,29 @@
           return rv;
         };
       };
-      his.pushState = stateListener('pushState');
-      window.addEventListener('pushState', function() {
+      his.pushState = stateListener("pushState");
+      window.addEventListener("pushState", function() {
         post(1);
       });
     }
 
     // When in hash mode, we record a pageview based on the onhashchange function
-    if (mode === 'hash' && 'onhashchange' in window) {
+    if (mode === "hash" && "onhashchange" in window) {
       window.onhashchange = function() {
         post(1);
-      }
+      };
     }
 
     post();
   } catch (e) {
     warn(e.message);
-    var url = apiUrl + '.gif';
-    if (e.message) url = url + '?error=' + encodeURIComponent(e.message);
+    var url = apiUrl + ".gif";
+    if (e.message) url = url + "?error=" + encodeURIComponent(e.message);
     new Image().src = url;
   }
-})(window, 'api.simpleanalytics.io', '/post', 'cdn.simpleanalytics.io/hello.js');
+})(
+  window,
+  "api.simpleanalytics.io",
+  "/post",
+  "cdn.simpleanalytics.io/hello.js"
+);
