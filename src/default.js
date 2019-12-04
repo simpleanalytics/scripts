@@ -90,7 +90,7 @@
       );
 
     var scriptElement = doc.querySelector(
-      'script[src="' + protocol + scriptUrl + '"]'
+      'script[src="' + protocol + script + '"]'
     );
     var attr = function(scriptElement, attribute) {
       return scriptElement && scriptElement.getAttribute("data-" + attribute);
