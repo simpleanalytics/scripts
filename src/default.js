@@ -56,6 +56,7 @@
   };
 
   try {
+    var sendBeacon = "sendBeacon";
     var userAgent = nav.userAgent;
     var addEventListenerFunc = window.addEventListener;
     var stringify = JSON.stringify;
@@ -64,7 +65,7 @@
 
     // Safari on iOS < 13 has some issues with the Beacon API
     var useSendBeacon =
-      "sendBeacon" in window.navigator &&
+      sendBeacon in window.navigator &&
       /ip(hone|ad)(.*)os\s([1-9]|1[0-2])_/i.test(userAgent) === false;
 
     if (useSendBeacon)
@@ -84,7 +85,7 @@
 
           if (timezone) payload.timezone = timezone;
           payload.currentTime = Date.now();
-          navigator.sendBeacon(apiUrl + "post", stringify(payload));
+          navigator[sendBeacon](apiUrl + "post", stringify(payload));
         },
         false
       );
@@ -97,12 +98,14 @@
     };
 
     /** if scroll **/
+    var scroll = "scroll";
     var body = doc.body;
     var documentElement = doc.documentElement;
     var position = function() {
-      var scrollHeight = "scrollHeight";
-      var offsetHeight = "offsetHeight";
-      var clientHeight = "clientHeight";
+      var Height = "Height";
+      var scrollHeight = scroll + Height;
+      var offsetHeight = "offset" + Height;
+      var clientHeight = "client" + Height;
       var height = Math.max(
         body[scrollHeight],
         body[offsetHeight],
@@ -122,7 +125,7 @@
 
     addEventListenerFunc("load", function() {
       scrolled = position();
-      addEventListenerFunc("scroll", function() {
+      addEventListenerFunc(scroll, function() {
         if (scrolled < position()) scrolled = position();
       });
     });
@@ -136,8 +139,12 @@
     if (!userAgent || userAgent.search(/(bot|spider|crawl)/gi) > -1)
       return warn(notSending + "because bot detected");
 
-    var ref = getParams("utm_source|source|ref");
-    var campaign = getParams("utm_campaign|campaign");
+    var utmRegexPrefix = "(utm_)?";
+    var ref = getParams(utmRegexPrefix + "source|ref");
+    var medium = getParams(utmRegexPrefix + "medium");
+    var campaign = getParams(utmRegexPrefix + "campaign");
+
+    // We don't want to end up with sensitive data so we clean the referrer URL
     var cleanRef =
       (doc.referrer || "")
         .replace(/^https?:\/\/((m|l|w{2,3}([0-9]+)?)\.)?([^?#]+)(.*)$/, "$4")
@@ -291,7 +298,8 @@
       post(events, {
         event: event,
         ref: refOrDocRef,
-        campaign: campaign
+        campaign: campaign,
+        medium: medium
       });
     };
 
@@ -299,7 +307,8 @@
       post(events, {
         event: queue[index][0],
         ref: refOrDocRef,
-        campaign: campaign
+        campaign: campaign,
+        medium: medium
       });
     /** endif **/
   } catch (e) {
