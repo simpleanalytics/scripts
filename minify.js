@@ -1,100 +1,182 @@
+const Handlebars = require("handlebars");
 const UglifyJS = require("uglify-js");
 const fs = require("fs");
 const esprima = require("esprima");
+const path = require("path");
 
-const green = "\x1b[32m%s\x1b[0m";
-const yellow = "\x1b[33m%s\x1b[0m";
-const red = "\x1b[31m%s\x1b[0m";
+const GREEN = "\x1b[32m%s\x1b[0m";
+const YELLOW = "\x1b[33m%s\x1b[0m";
+const RED = "\x1b[31m%s\x1b[0m";
 
-const files = {
-  default: {
+const MINIFY_OPTIONS = {
+  warnings: false,
+  ie8: true,
+  toplevel: true,
+  mangle: {
+    reserved: ["sa"]
+  },
+  nameCache: null
+};
+
+const DEFAULTS = {
+  duration: true,
+  events: true,
+  hash: true,
+  scroll: true,
+  spa: true,
+  uniques: true
+};
+const DEFAULT_PREPEND = [
+  "/* Simple Analytics - Privacy friend analytics (docs.simpleanalytics.com/script) */",
+  ""
+];
+
+const files = [
+  {
     type: "js",
-    original: `${__dirname}/src/default.js`,
-    minified: `${__dirname}/dist/default.js`,
+    input: `${__dirname}/src/default.js`,
+    output: `full.js`,
+    variables: {
+      ...DEFAULTS,
+      version: 2,
+      script: "scripts.simpleanalyticscdn.com/latest.js",
+      hostname: "api.simpleanalyticscdn.com/v2/"
+    },
+    prepend: DEFAULT_PREPEND,
+    append: []
+  },
+  {
+    type: "js",
+    input: `${__dirname}/src/default.js`,
+    output: `custom-domain-full.js`,
+    variables: {
+      ...DEFAULTS,
+      version: 2,
+      script: new Handlebars.SafeString(
+        '<!--# echo var="http_host" default="" -->/app.js'
+      ),
+      hostname: new Handlebars.SafeString(
+        '<!--# echo var="http_host" default="" -->'
+      )
+    },
+    prepend: DEFAULT_PREPEND,
+    append: []
+  },
+  {
+    type: "js",
+    input: `${__dirname}/src/default.js`,
+    output: `light.js`,
+    variables: {
+      ...DEFAULTS,
+      script: "scripts.simpleanalyticscdn.com/light.js",
+      hostname: "api.simpleanalyticscdn.com/v2/",
+      version: 2,
+      duration: false,
+      events: false,
+      scroll: false,
+      uniques: false
+    },
     prepend: [
       "/* Simple Analytics - Privacy friend analytics (docs.simpleanalytics.com/script) */",
       ""
     ],
     append: []
   },
-  embed: {
+  {
     type: "js",
-    original: `${__dirname}/src/embed.js`,
-    minified: `${__dirname}/dist/embed.js`,
+    input: `${__dirname}/src/default.js`,
+    output: `custom-domain-light.js`,
+    variables: {
+      ...DEFAULTS,
+      script: new Handlebars.SafeString(
+        '<!--# echo var="http_host" default="" -->/light.js'
+      ),
+      hostname: new Handlebars.SafeString(
+        '<!--# echo var="http_host" default="" -->'
+      ),
+      version: 2,
+      duration: false,
+      events: false,
+      scroll: false,
+      uniques: false
+    },
+    prepend: DEFAULT_PREPEND,
+    append: []
+  },
+  {
+    type: "js",
+    input: `${__dirname}/src/embed.js`,
+    output: `embed.js`,
+    variables: {
+      version: 1
+    },
     prepend: [
       "/* Simple Analytics - Privacy friend analytics (docs.simpleanalytics.com/embed-graph-on-your-site) */",
       ""
     ],
     append: []
-  },
-  external: {
-    type: "js",
-    original: `${__dirname}/src/external.js`,
-    minified: `${__dirname}/dist/external.js`,
-    prepend: [
-      "/* Simple Analytics - Privacy friend analytics (docs.simpleanalytics.com/script) */",
-      ""
-    ],
-    append: []
-  },
-  iframe: {
-    type: "html",
-    original: `${__dirname}/src/iframe.js`,
-    minified: `${__dirname}/dist/iframe.html`,
-    prepend: ["<!DOCTYPE html>", "<title>SA</title>", "<script>"],
-    append: ["</script>"]
   }
-};
+];
 
-const options = {
-  warnings: true,
-  ie8: true,
-  toplevel: true,
-  mangle: { reserved: ["sa"] },
-  nameCache: null
-};
+for (const file of files) {
+  const { variables, input, output, prepend, append } = file;
+  const name = output.toUpperCase();
+  const versionFile = `${__dirname}/dist/v${variables.version}/${output}`;
+  const latestFile = `${__dirname}/dist/latest/${output}`;
 
-for (const file in files) {
-  if (files.hasOwnProperty(file)) {
-    const { type, original, minified, prepend, append } = files[file];
-    const name = file.toUpperCase();
+  const contents = fs
+    .readFileSync(input, "utf8")
+    .replace(/\"\{\{\s?version\s?\}\}"/g, variables.version)
+    .replace(/\/\*\*\s?/g, "{{")
+    .replace(/\s?\*\*\//g, "}}")
+    .replace(/{{endif/g, "{{/if")
+    .replace(/{{if/g, "{{#if");
 
-    const contents = fs.readFileSync(original, "utf8");
-    const { code, warnings } = UglifyJS.minify(contents, options);
-    for (const warning of warnings || [])
-      console.warn(yellow, `[MINIFY][${name}] ${warning}`);
-    const nginxCode = code.replace(
-      "simpleanalytics.example.com",
-      '<!--# echo var="http_host" default="" -->'
-    );
-    const lines = [...prepend, nginxCode, ...append].join("\n");
+  const template = Handlebars.compile(contents);
+  const { code: codeTemplate, warnings } = UglifyJS.minify(
+    template({ ...variables, hostname: "{{hostname}}", script: "{{script}}" }),
+    MINIFY_OPTIONS
+  );
 
-    const validate =
-      type === "js"
-        ? lines.replace('<!--# echo var="http_host" default="" -->', "")
-        : code;
+  const code = codeTemplate
+    .replace(/\{\{\s?hostname\s?\}\}/g, variables.hostname)
+    .replace(/\{\{\s?script\s?\}\}/g, variables.script);
 
-    try {
-      esprima.parseScript(validate);
-    } catch (error) {
-      const { index, lineNumber, description } = error;
-      console.log(
-        red,
-        `[MINIFY][${name}][ERROR] ${original
-          .split("/")
-          .pop()} ${description} at line ${lineNumber} position ${index}`
-      );
-      continue;
-    }
+  for (const warning of warnings || [])
+    console.warn(YELLOW, `[MINIFY][${name}] ${warning}`);
 
-    fs.writeFileSync(minified, lines);
-    const bytes = new TextEncoder("utf-8").encode(lines).length;
+  const lines = [...prepend, code, ...append].join("\n");
 
+  const validate = template({
+    ...variables,
+    hostname: "sa.example.com",
+    script: "sa.example.com/app.js"
+  });
+
+  try {
+    esprima.parseScript(validate);
+  } catch (error) {
+    const { index, lineNumber, description } = error;
     console.log(
-      green,
-      `[MINIFY][${name}] Minified ${original
+      RED,
+      `[MINIFY][${name}][ERROR] ${input
         .split("/")
-        .pop()} into ${bytes} bytes`
+        .pop()} ${description} at line ${lineNumber} position ${index}`
     );
+    continue;
   }
+
+  fs.mkdirSync(path.dirname(versionFile), { recursive: true });
+  fs.mkdirSync(path.dirname(latestFile), { recursive: true });
+
+  fs.writeFileSync(versionFile, lines);
+  fs.writeFileSync(latestFile, lines);
+
+  const bytes = new TextEncoder("utf-8").encode(lines).length;
+
+  console.log(
+    `[MINIFY][${name}] Minified ${input.split("/").pop()} into ${bytes} bytes`
+  );
 }
+
+console.log(GREEN, `[MINIFY] Done minifying all files`);

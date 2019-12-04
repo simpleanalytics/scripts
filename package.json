@@ -18,10 +18,10 @@
     "url": "https://github.com/simpleanalytics/scripts/issues"
   },
   "homepage": "https://github.com/simpleanalytics/scripts#readme",
-  "dependencies": {
-    "esprima": "^4.0.1"
-  },
+  "dependencies": {},
   "devDependencies": {
+    "esprima": "^4.0.1",
+    "handlebars": "^4.5.3",
     "nodemon": "^1.19.1",
     "uglify-js": "^3.6.0"
   }

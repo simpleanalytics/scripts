@@ -6,7 +6,7 @@ All our visitor facing scripts are public and open source. We minify our scripts
 
 ### Run this locally
 
-Just run `npm run watch` and every file will be minified on save.
+Just run `npm run watch` and every file will be validated and minified on save.
 
 ### Contact
 

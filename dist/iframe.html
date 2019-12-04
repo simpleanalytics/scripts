@@ -1,5 +1,0 @@
-<!DOCTYPE html>
-<title>SA</title>
-<script>
-!function(r){var o,e=window,v=(e.console,JSON),c=v.stringify,d=e.navigator.userAgent;try{var t=new Date(o=window.sessionStorage).setItem(t,t),a=o.getItem(t)!==t;o.removeItem(t),a&&(o=!1)}catch(n){}if(o){window.addEventListener("message",function(e){if(e.data&&e.data.event){var t=e.data.event.toLowerCase().replace(/[^a-z0-9._-]+/gi,"_").replace(/(^_|_$)/,"")||"invalid",a=e.data.ref,n=e.data.campaign,s=v.parse(o.getItem("events")||"[]"),i=s[0]||{v:1,ref:a,campaign:n,date:(new Date).toISOString().slice(0,10)};s.length||s.push(i),s.push(t),function(e){o.setItem("events",c(e)||"[]")}(s),m({v:i.v,ref:i.r,date:i.date,events:s.slice(1),hostname:/\.(.+)/.exec(r)[1],ua:d})}},!1);var m=function(e){var t=new XMLHttpRequest;t.open("POST","//"+r+"/events",!0),t.setRequestHeader("Content-Type","text/plain; charset=UTF-8"),t.send(c(e))}}}("<!--# echo var="http_host" default="" -->");
-</script>
