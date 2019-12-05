@@ -324,12 +324,10 @@
     pageview();
 
     /** if events **/
-    var queue =
-      window[functionName] && window[functionName].q
-        ? window[functionName].q
-        : [];
+    var eventFunc = window[functionName];
+    var queue = eventFunc && eventFunc.q ? eventFunc.q : [];
 
-    window[functionName] = function(event) {
+    eventFunc = function(event) {
       post(events, event);
     };
 
