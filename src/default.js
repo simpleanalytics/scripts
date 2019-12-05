@@ -17,6 +17,7 @@
   var doc = window.document;
   var hostname = loc.hostname;
   var notSending = "Not sending requests ";
+  var localhost = "localhost";
   var thousand = 1000;
 
   /** if spa **/
@@ -54,8 +55,8 @@
     return warn(notSending + "when " + doNotTrack + " is enabled");
 
   // Don't track when localhost
-  if (hostname === "localhost" || loc.protocol === "file:")
-    return warn(notSending + "from localhost");
+  if (hostname === localhost || loc.protocol === "file:")
+    return warn(notSending + "from " + localhost);
 
   // We do advanced bot detection in our API, but this line filters already most bots
   if (!userAgent || userAgent.search(/(bot|spider|crawl)/gi) > -1)
@@ -119,11 +120,8 @@
     );
     /** endif **/
 
-    var secondsSince = function(since) {
-      return Math.round((Date.now() - since) / thousand);
-    };
-    var seconds = function() {
-      return Math.round(Date.now() / thousand);
+    var seconds = function(since) {
+      return Math.round((Date.now() - (since || 0)) / thousand);
     };
 
     var sendBeacon = "sendBeacon";
@@ -143,7 +141,7 @@
           var last = payload[pageviews][payload[pageviews].length - 1];
 
           /** if duration **/
-          last[duration] = secondsSince(start + msHidden);
+          last[duration] = seconds(start + msHidden);
           msHidden = 0;
           /** endif **/
 
@@ -197,7 +195,7 @@
       var payloadType = payload[type];
       if (payloadType.length) {
         /** if duration **/
-        payloadType[payloadType.length - 1].duration = secondsSince(
+        payloadType[payloadType.length - 1].duration = seconds(
           start + msHidden
         );
         /** endif **/
@@ -240,8 +238,10 @@
       // Obfuscate personal data in URL by dropping the search and hash
       var url = loc.pathname;
 
+      /** if hash **/
       // Add hash to url when script is put in to hash mode
       if (mode === "hash" && loc.hash) url += loc.hash.split("?")[0];
+      /** endif **/
 
       // Don't send the last URL again (this could happen when pushState is used to change the URL hash or search)
       if (lastSendUrl === url) return;
