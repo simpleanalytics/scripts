@@ -40,6 +40,7 @@ const files = [
       ...DEFAULTS,
       version: 2,
       script: "scripts.simpleanalyticscdn.com/latest.js",
+      // hostname: "enrxx8l0rnrh.x.pipedream.net/"
       hostname: "api.simpleanalyticscdn.com/v2/"
     },
     prepend: DEFAULT_PREPEND,

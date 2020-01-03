@@ -4,7 +4,8 @@
   if (!window) return;
 
   // Set urls outside try block because they are needed in the catch block
-  var protocol = "https://";
+  var https = "https:";
+  var protocol = https + "//";
   var apiUrl = protocol + endpoint;
   var con = window.console;
   var doNotTrack = "doNotTrack";
@@ -87,6 +88,7 @@
     var payload = {
       version: version,
       hostname: hostname,
+      https: loc.protocol === https,
       timezone: timezone,
       width: window.innerWidth,
       source: {
