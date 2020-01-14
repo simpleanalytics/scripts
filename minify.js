@@ -40,8 +40,7 @@ const files = [
       ...DEFAULTS,
       version: 2,
       script: "scripts.simpleanalyticscdn.com/latest.js",
-      // hostname: "enrxx8l0rnrh.x.pipedream.net/"
-      hostname: "api.simpleanalyticscdn.com/v2/"
+      hostname: "queue.simpleanalyticscdn.com/v2/"
     },
     prepend: DEFAULT_PREPEND,
     append: []
@@ -70,7 +69,7 @@ const files = [
     variables: {
       ...DEFAULTS,
       script: "scripts.simpleanalyticscdn.com/light.js",
-      hostname: "api.simpleanalyticscdn.com/v2/",
+      hostname: "queue.simpleanalyticscdn.com/v2/",
       version: 2,
       duration: false,
       events: false,

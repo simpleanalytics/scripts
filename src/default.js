@@ -81,7 +81,9 @@
     var timezone;
     try {
       timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    } catch (e) {}
+    } catch (e) {
+      /* Do nothing */
+    }
 
     // We don't want to end up with sensitive data so we clean the referrer URL
     var utmRegexPrefix = "(utm_)?";
@@ -129,7 +131,7 @@
     var sendBeacon = "sendBeacon";
     var addEventListenerFunc = window.addEventListener;
     var stringify = JSON.stringify;
-    var lastSendUrl;
+    var lastSendPath;
 
     // Safari on iOS < 13 has some issues with the Beacon API
     var useSendBeacon =
@@ -238,20 +240,20 @@
 
     var pageview = function(isPushState) {
       // Obfuscate personal data in URL by dropping the search and hash
-      var url = loc.pathname;
+      var path = loc.pathname;
 
       /** if hash **/
-      // Add hash to url when script is put in to hash mode
-      if (mode === "hash" && loc.hash) url += loc.hash.split("?")[0];
+      // Add hash to path when script is put in to hash mode
+      if (mode === "hash" && loc.hash) path += loc.hash.split("?")[0];
       /** endif **/
 
-      // Don't send the last URL again (this could happen when pushState is used to change the URL hash or search)
-      if (lastSendUrl === url) return;
+      // Don't send the last path again (this could happen when pushState is used to change the path hash or search)
+      if (lastSendPath === path) return;
 
-      lastSendUrl = url;
+      lastSendPath = path;
 
       var data = {
-        url: url,
+        path: path,
         added: seconds()
       };
 
@@ -326,13 +328,22 @@
     pageview();
 
     /** if events **/
-    var eventFunc = window[functionName];
-    var queue = eventFunc && eventFunc.q ? eventFunc.q : [];
-
-    eventFunc = function(event) {
+    var defaultEventFunc = function(event) {
       post(events, event);
     };
 
+    // Set default function if user didn't define a function
+    if (!window[functionName]) window[functionName] = defaultEventFunc;
+
+    var eventFunc = window[functionName];
+
+    // Read queue of the user defined function
+    var queue = eventFunc && eventFunc.q ? eventFunc.q : [];
+
+    // Overwrite user defined function
+    window[functionName] = defaultEventFunc;
+
+    // Post events from the queue of the user defined function
     for (var event in queue) post(events, queue[event]);
     /** endif **/
   } catch (e) {
