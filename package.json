@@ -4,6 +4,7 @@
   "description": "Simple Analytics visitor facing scripts",
   "main": "minify.js",
   "scripts": {
+    "minify": "minify.js",
     "watch": "nodemon minify.js --ignore dist",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

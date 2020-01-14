@@ -56,7 +56,7 @@ const files = [
         '<!--# echo var="http_host" default="" -->/app.js'
       ),
       hostname: new Handlebars.SafeString(
-        '<!--# echo var="http_host" default="" -->'
+        '<!--# echo var="http_host" default="" -->/v2/'
       )
     },
     prepend: DEFAULT_PREPEND,
@@ -92,7 +92,7 @@ const files = [
         '<!--# echo var="http_host" default="" -->/light.js'
       ),
       hostname: new Handlebars.SafeString(
-        '<!--# echo var="http_host" default="" -->'
+        '<!--# echo var="http_host" default="" -->/v2/'
       ),
       version: 2,
       duration: false,

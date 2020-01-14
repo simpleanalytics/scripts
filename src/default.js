@@ -94,7 +94,7 @@
       timezone: timezone,
       width: window.innerWidth,
       source: {
-        source: getParams(utmRegexPrefix + "source|ref"),
+        source: getParams(utmRegexPrefix + "source|source|ref"),
         medium: getParams(utmRegexPrefix + "medium"),
         campaign: getParams(utmRegexPrefix + "campaign"),
         referrer:
@@ -105,8 +105,7 @@
             )
             .replace(/^([^/]+)\/$/, "$1") || undefined
       },
-      pageviews: [],
-      events: []
+      pageviews: []
     };
 
     // We don't put msHidden in if duration block, because it's used outside of that functionality
@@ -196,19 +195,27 @@
     /** endif **/
 
     var post = function(type, data, isPushState) {
-      var payloadType = payload[type];
-      if (payloadType.length) {
-        /** if duration **/
-        payloadType[payloadType.length - 1].duration = seconds(
-          start + msHidden
-        );
-        /** endif **/
+      var payloadPageviews = payload[pageviews];
+      var payloadPageviewsLength = payloadPageviews.length;
+      var payloadPageviewLast = payloadPageviewsLength
+        ? payloadPageviews[payloadPageviewsLength - 1]
+        : null;
+      if (type === pageviews) {
+        if (payloadPageviewsLength) {
+          /** if duration **/
+          payloadPageviewLast.duration = seconds(start + msHidden);
+          /** endif **/
 
-        /** if scroll **/
-        payloadType[payloadType.length - 1].scrolled = scrolled;
-        /** endif **/
+          /** if scroll **/
+          payloadPageviewLast.scrolled = scrolled;
+          /** endif **/
+        }
+        payloadPageviews.push(data);
+      } else if (payloadPageviewLast) {
+        payloadPageviewLast[events] = payloadPageviewLast[events]
+          ? payloadPageviewLast[events].push(data)
+          : [data];
       }
-      payloadType.push(data);
 
       if (useSendBeacon) {
         /** if duration **/
@@ -217,7 +224,7 @@
         /** endif **/
 
         /** if scroll **/
-        scrolled = window.setTimeout(position, 100);
+        scrolled = window.setTimeout(position, 500);
         /** endif **/
 
         return;
