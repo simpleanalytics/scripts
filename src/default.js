@@ -213,9 +213,8 @@
         }
         payloadPageviews.push(data);
       } else if (payloadPageviewLast) {
-        payloadPageviewLast[events] = payloadPageviewLast[events]
-          ? payloadPageviewLast[events].push(data)
-          : [data];
+        if (payloadPageviewLast[events]) payloadPageviewLast[events].push(data);
+        else payloadPageviewLast[events] = [data];
       }
 
       if (useSendBeacon) {
