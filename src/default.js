@@ -215,6 +215,7 @@
       } else if (payloadPageviewLast) {
         if (payloadPageviewLast[events]) payloadPageviewLast[events].push(data);
         else payloadPageviewLast[events] = [data];
+        return;
       }
 
       if (useSendBeacon) {
