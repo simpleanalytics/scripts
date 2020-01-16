@@ -120,10 +120,23 @@ for (const file of files) {
     .replace(/{{endif/g, "{{/if")
     .replace(/{{if/g, "{{#if");
 
+  const finalFileName = (typeof variables.script !== "string"
+    ? variables.script.toString()
+    : variables.script
+  )
+    .split("/")
+    .pop();
+
   const template = Handlebars.compile(contents);
-  const { code: codeTemplate, warnings } = UglifyJS.minify(
+  const { code: codeTemplate, map, warnings } = UglifyJS.minify(
     template({ ...variables, hostname: "{{hostname}}", script: "{{script}}" }),
-    MINIFY_OPTIONS
+    {
+      ...MINIFY_OPTIONS,
+      sourceMap: {
+        filename: finalFileName,
+        url: `${finalFileName}.map`
+      }
+    }
   );
 
   const code = codeTemplate
@@ -167,6 +180,8 @@ for (const file of files) {
 
   fs.writeFileSync(versionFile, lines);
   fs.writeFileSync(latestFile, lines);
+  fs.writeFileSync(`${versionFile}.map`, map);
+  fs.writeFileSync(`${latestFile}.map`, map);
 
   const bytes = new TextEncoder("utf-8").encode(lines).length;
 

@@ -21,6 +21,7 @@
   "homepage": "https://github.com/simpleanalytics/scripts#readme",
   "dependencies": {},
   "devDependencies": {
+    "crypto": "^1.0.1",
     "eslint": "^6.7.2",
     "esprima": "^4.0.1",
     "handlebars": "^4.5.3",
