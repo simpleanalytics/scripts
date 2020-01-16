@@ -205,19 +205,19 @@
 
       if (type === events) {
         /** if events **/
-        var events = "" + data;
+        var event = "" + data;
         if (payloadPageviewLast) {
           if (payloadPageviewLast[events])
-            payloadPageviewLast[events].push(events);
-          else payloadPageviewLast[events] = [events];
-        } else {
-          warn("Couldn't save event '" + events + "'");
+            payloadPageviewLast[events].push(event);
+          else payloadPageviewLast[events] = [event];
+        } else if (useSendBeacon) {
+          warn("Couldn't save event '" + event + "'");
         }
 
         if (useSendBeacon) return;
         else {
           delete payload[pageviews];
-          payload[events] = [events];
+          payload[events] = [event];
         }
         /** endif **/
       } else {
