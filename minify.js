@@ -8,6 +8,8 @@ const GREEN = "\x1b[32m%s\x1b[0m";
 const YELLOW = "\x1b[33m%s\x1b[0m";
 const RED = "\x1b[31m%s\x1b[0m";
 
+const date = new Date().toISOString().slice(0, 10);
+
 const MINIFY_OPTIONS = {
   warnings: false,
   ie8: true,
@@ -27,7 +29,7 @@ const DEFAULTS = {
   uniques: true
 };
 const DEFAULT_PREPEND = [
-  "/* Simple Analytics - Privacy friend analytics (docs.simpleanalytics.com/script) */",
+  `/* Simple Analytics - Privacy friend analytics (docs.simpleanalytics.com/script) ${date} */`,
   ""
 ];
 
@@ -77,7 +79,7 @@ const files = [
       uniques: false
     },
     prepend: [
-      "/* Simple Analytics - Privacy friend analytics (docs.simpleanalytics.com/script) */",
+      `/* Simple Analytics - Privacy friend analytics (docs.simpleanalytics.com/script) ${date} */`,
       ""
     ],
     append: []
@@ -111,7 +113,7 @@ const files = [
       version: 1
     },
     prepend: [
-      "/* Simple Analytics - Privacy friend analytics (docs.simpleanalytics.com/embed-graph-on-your-site) */",
+      `/* Simple Analytics - Privacy friend analytics (docs.simpleanalytics.com/embed-graph-on-your-site) ${date} */`,
       ""
     ],
     append: []

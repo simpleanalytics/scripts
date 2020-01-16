@@ -200,6 +200,7 @@
       var payloadPageviewLast = payloadPageviewsLength
         ? payloadPageviews[payloadPageviewsLength - 1]
         : null;
+
       if (type === pageviews) {
         if (payloadPageviewsLength) {
           /** if duration **/
