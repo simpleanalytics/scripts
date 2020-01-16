@@ -196,51 +196,59 @@
 
     var post = function(type, data, isPushState) {
       var payloadPageviews = payload[pageviews];
-      var payloadPageviewsLength = payloadPageviews.length;
+      var payloadPageviewsLength = payloadPageviews
+        ? payloadPageviews.length
+        : 0;
       var payloadPageviewLast = payloadPageviewsLength
         ? payloadPageviews[payloadPageviewsLength - 1]
         : null;
 
       if (type === events) {
+        /** if events **/
+        var events = "" + data;
         if (payloadPageviewLast) {
           if (payloadPageviewLast[events])
-            payloadPageviewLast[events].push(data);
-          else payloadPageviewLast[events] = [data];
+            payloadPageviewLast[events].push(events);
+          else payloadPageviewLast[events] = [events];
         } else {
-          warn(
-            "Couldn't save event '" + data + "' because no page view was found"
-          );
+          warn("Couldn't save event '" + events + "'");
         }
-        return;
-      }
 
-      // Continue when type is pageviews
-      if (payloadPageviewsLength) {
-        /** if duration **/
-        payloadPageviewLast.duration = seconds(start + msHidden);
+        if (useSendBeacon) return;
+        else {
+          delete payload[pageviews];
+          payload[events] = [events];
+        }
         /** endif **/
+      } else {
+        // Continue when type is pageviews
+        if (payloadPageviewsLength) {
+          /** if duration **/
+          payloadPageviewLast.duration = seconds(start + msHidden);
+          /** endif **/
 
-        /** if scroll **/
-        payloadPageviewLast.scrolled = scrolled;
-        /** endif **/
-      }
-      payloadPageviews.push(data);
+          /** if scroll **/
+          payloadPageviewLast.scrolled = scrolled;
+          /** endif **/
+        }
+        payloadPageviews.push(data);
 
-      if (useSendBeacon) {
-        /** if duration **/
-        start = Date.now();
-        msHidden = 0;
-        /** endif **/
+        if (useSendBeacon) {
+          /** if duration **/
+          start = Date.now();
+          msHidden = 0;
+          /** endif **/
 
-        /** if scroll **/
-        scrolled = window.setTimeout(position, 500);
-        /** endif **/
+          /** if scroll **/
+          scrolled = window.setTimeout(position, 500);
+          /** endif **/
 
-        return;
+          return;
+        }
       }
 
       var request = new XMLHttpRequest();
-      request.open("POST", apiUrl + type, true);
+      request.open("POST", apiUrl, true);
 
       if (isPushState) {
         delete payload.source;
@@ -252,6 +260,9 @@
       // pre-flight OPTIONS request
       request.setRequestHeader("Content-Type", "text/plain; charset=UTF-8");
       request.send(stringify(payload));
+
+      delete payload[pageviews];
+      delete payload[events];
     };
 
     var pageview = function(isPushState) {
