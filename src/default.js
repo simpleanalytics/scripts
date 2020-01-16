@@ -201,22 +201,30 @@
         ? payloadPageviews[payloadPageviewsLength - 1]
         : null;
 
-      if (type === pageviews) {
-        if (payloadPageviewsLength) {
-          /** if duration **/
-          payloadPageviewLast.duration = seconds(start + msHidden);
-          /** endif **/
-
-          /** if scroll **/
-          payloadPageviewLast.scrolled = scrolled;
-          /** endif **/
+      if (type === events) {
+        if (payloadPageviewLast) {
+          if (payloadPageviewLast[events])
+            payloadPageviewLast[events].push(data);
+          else payloadPageviewLast[events] = [data];
+        } else {
+          warn(
+            "Couldn't save event '" + data + "' because no page view was found"
+          );
         }
-        payloadPageviews.push(data);
-      } else if (payloadPageviewLast) {
-        if (payloadPageviewLast[events]) payloadPageviewLast[events].push(data);
-        else payloadPageviewLast[events] = [data];
         return;
       }
+
+      // Continue when type is pageviews
+      if (payloadPageviewsLength) {
+        /** if duration **/
+        payloadPageviewLast.duration = seconds(start + msHidden);
+        /** endif **/
+
+        /** if scroll **/
+        payloadPageviewLast.scrolled = scrolled;
+        /** endif **/
+      }
+      payloadPageviews.push(data);
 
       if (useSendBeacon) {
         /** if duration **/
