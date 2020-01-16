@@ -140,7 +140,7 @@ for (const file of files) {
     .digest("hex")
     .slice(0, 4);
 
-  const prepend = `/* Simple Analytics - Privacy friendly analytics (url: docs.simpleanalytics.com/script generated: ${date} hash: ${hash}) */`;
+  const prepend = `/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; ${date}; ${hash}) */`;
   const lines = [prepend, "", code].join("\n");
 
   const validate = template({
