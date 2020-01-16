@@ -155,7 +155,7 @@
 
           payload.time = seconds();
 
-          nav[sendBeacon](apiUrl + "post", stringify(payload));
+          nav[sendBeacon](apiUrl, stringify(payload));
         },
         false
       );
