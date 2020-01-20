@@ -20,6 +20,7 @@
   var notSending = "Not sending requests ";
   var localhost = "localhost";
   var thousand = 1000;
+  var addEventListenerFunc = window.addEventListener;
 
   /** if spa **/
   var pushState = "pushState";
@@ -128,7 +129,6 @@
     };
 
     var sendBeacon = "sendBeacon";
-    var addEventListenerFunc = window.addEventListener;
     var stringify = JSON.stringify;
     var lastSendPath;
 
@@ -188,9 +188,13 @@
 
     addEventListenerFunc("load", function() {
       scrolled = position();
-      addEventListenerFunc(scroll, function() {
-        if (scrolled < position()) scrolled = position();
-      });
+      addEventListenerFunc(
+        scroll,
+        function() {
+          if (scrolled < position()) scrolled = position();
+        },
+        false
+      );
     });
     /** endif **/
 
@@ -334,21 +338,33 @@
         };
       };
       his.pushState = stateListener(pushState);
-      addEventListenerFunc(pushState, function() {
-        pageview(1);
-      });
-      window.onpopstate = function() {
-        pageview(1);
-      };
+      addEventListenerFunc(
+        pushState,
+        function() {
+          pageview(1);
+        },
+        false
+      );
+      addEventListenerFunc(
+        "popstate",
+        function() {
+          pageview(1);
+        },
+        false
+      );
     }
     /** endif **/
 
     /** if hash **/
     // When in hash mode, we record a pageview based on the onhashchange function
     if (mode === "hash" && "onhashchange" in window) {
-      window.onhashchange = function() {
-        pageview(1);
-      };
+      addEventListenerFunc(
+        "hashchange",
+        function() {
+          pageview(1);
+        },
+        false
+      );
     }
     /** endif **/
 
