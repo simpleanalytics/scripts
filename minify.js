@@ -65,7 +65,7 @@ const files = [
     variables: {
       ...DEFAULTS,
       script: "scripts.simpleanalyticscdn.com/light.js",
-      hostname: "queue.simpleanalyticscdn.com/v2/",
+      hostname: `queue.simpleanalyticscdn.com${API_PATH}`,
       version: 2,
       duration: false,
       events: false,
