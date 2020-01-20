@@ -8,8 +8,6 @@ const GREEN = "\x1b[32m%s\x1b[0m";
 const YELLOW = "\x1b[33m%s\x1b[0m";
 const RED = "\x1b[31m%s\x1b[0m";
 
-const API_PATH = "/v2/post";
-
 const MINIFY_OPTIONS = {
   warnings: false,
   ie8: true,
@@ -26,35 +24,49 @@ const DEFAULTS = {
   hash: true,
   scroll: true,
   spa: true,
-  uniques: true
+  uniques: true,
+  online: true
 };
 
 const files = [
   {
     type: "js",
     input: `${__dirname}/src/default.js`,
-    output: `full.js`,
+    output: `latest.js`,
     variables: {
       ...DEFAULTS,
       version: 2,
-      script: "scripts.simpleanalyticscdn.com/latest.js",
-      hostname: `queue.simpleanalyticscdn.com${API_PATH}`,
+      baseUrl: "simpleanalyticscdn.com",
+      apiUrlPrefix: "queue.",
+      apiUrlSuffix: "/v2/post",
+      onlineUrlPrefix: "online.",
+      onlineUrlSuffix: "/v1/online",
       url: "docs.simpleanalytics.com/script"
     }
   },
   {
     type: "js",
     input: `${__dirname}/src/default.js`,
-    output: `custom-domain-full.js`,
+    output: `custom/app.js`,
     variables: {
       ...DEFAULTS,
       version: 2,
-      script: new Handlebars.SafeString(
-        '<!--# echo var="http_host" default="" -->/app.js'
-      ),
-      hostname: new Handlebars.SafeString(
-        `<!--# echo var="http_host" default="" -->${API_PATH}`
-      ),
+      baseUrl: "{{nginxHost}}",
+      apiUrlSuffix: "/v2/post",
+      onlineUrlSuffix: "/v1/online",
+      url: "docs.simpleanalytics.com/script"
+    }
+  },
+  {
+    type: "js",
+    input: `${__dirname}/src/default.js`,
+    output: `custom/latest.js`,
+    variables: {
+      ...DEFAULTS,
+      version: 2,
+      baseUrl: "{{nginxHost}}",
+      apiUrlSuffix: "/v2/post",
+      onlineUrlSuffix: "/v1/online",
       url: "docs.simpleanalytics.com/script"
     }
   },
@@ -64,33 +76,31 @@ const files = [
     output: `light.js`,
     variables: {
       ...DEFAULTS,
-      script: "scripts.simpleanalyticscdn.com/light.js",
-      hostname: `queue.simpleanalyticscdn.com${API_PATH}`,
       version: 2,
+      baseUrl: "{{nginxHost}}",
+      apiUrlSuffix: "/v2/post",
       duration: false,
       events: false,
       scroll: false,
       uniques: false,
+      online: false,
       url: "docs.simpleanalytics.com/script"
     }
   },
   {
     type: "js",
     input: `${__dirname}/src/default.js`,
-    output: `custom-domain-light.js`,
+    output: `custom/light.js`,
     variables: {
       ...DEFAULTS,
-      script: new Handlebars.SafeString(
-        '<!--# echo var="http_host" default="" -->/light.js'
-      ),
-      hostname: new Handlebars.SafeString(
-        `<!--# echo var="http_host" default="" -->${API_PATH}`
-      ),
+      baseUrl: "{{nginxHost}}",
+      apiUrlSuffix: "/v2/post",
       version: 2,
       duration: false,
       events: false,
       scroll: false,
       uniques: false,
+      online: false,
       url: "docs.simpleanalytics.com/script"
     }
   },
@@ -122,16 +132,23 @@ for (const file of files) {
 
   const template = Handlebars.compile(contents);
   const { code: codeTemplate, warnings } = UglifyJS.minify(
-    template({ ...variables, hostname: "{{hostname}}", script: "{{script}}" }),
+    template(variables),
     MINIFY_OPTIONS
   );
 
-  const code = codeTemplate
-    .replace(/\{\{\s?hostname\s?\}\}/g, variables.hostname)
-    .replace(/\{\{\s?script\s?\}\}/g, variables.script);
+  // console.log(template(variables));
+
+  if (!codeTemplate)
+    console.warn(RED, `[MINIFY][${name}] codeTemplate is undefined`);
+  if (!template) console.warn(RED, `[MINIFY][${name}] template is undefined`);
 
   for (const warning of warnings || [])
     console.warn(YELLOW, `[MINIFY][${name}] ${warning}`);
+
+  const code = codeTemplate.replace(
+    /\{\{\s?nginxHost\s?\}\}/gi,
+    '<!--# echo var="http_host" default="" -->'
+  );
 
   const date = new Date().toISOString().slice(0, 10);
   const hash = require("crypto")

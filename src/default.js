@@ -1,12 +1,28 @@
 /* eslint-env browser */
 
-(function(window, version, script, endpoint) {
+(function(
+  window,
+  baseUrl,
+  apiUrlPrefix,
+  apiUrlSuffix,
+  onlineUrlPrefix,
+  onlineUrlSuffix,
+  version
+) {
   if (!window) return;
 
-  // Set urls outside try block because they are needed in the catch block
   var https = "https:";
   var protocol = https + "//";
-  var apiUrl = protocol + endpoint;
+
+  // Generate the needed URLs, this seems like a lot of repetition, but it
+  // makes our script availble for multple destination which prevents us to
+  // need multiple scripts. The minified version stays small.
+  var fullApiUrl = protocol + apiUrlPrefix + baseUrl + apiUrlSuffix;
+  /** if online **/
+  var fullOnlineUrl = protocol + onlineUrlPrefix + baseUrl + onlineUrlSuffix;
+  /** endif **/
+
+  // Set urls outside try block because they are needed in the catch block
   var con = window.console;
   var doNotTrack = "doNotTrack";
   var pageviews = "pageviews";
@@ -16,9 +32,14 @@
   var userAgent = nav.userAgent;
   var loc = window.location;
   var doc = window.document;
-  var hostname = loc.hostname;
+  var locationHostname = loc.hostname;
   var notSending = "Not sending requests ";
   var localhost = "localhost";
+  var contentTypeText = "Content-Type";
+
+  // We use content type text/plain here because we don't want to send an
+  // pre-flight OPTIONS request
+  var contentTypeTextPlain = "text/plain; charset=UTF-8";
   var thousand = 1000;
   var addEventListenerFunc = window.addEventListener;
 
@@ -41,9 +62,7 @@
     if (con && con.warn) con.warn("Simple Analytics: " + message);
   };
 
-  var scriptElement = doc.querySelector(
-    'script[src="' + protocol + script + '"]'
-  );
+  var scriptElement = doc.querySelector('script[src*="' + baseUrl + '"]');
   var attr = function(scriptElement, attribute) {
     return scriptElement && scriptElement.getAttribute("data-" + attribute);
   };
@@ -57,7 +76,7 @@
     return warn(notSending + "when " + doNotTrack + " is enabled");
 
   // Don't track when localhost
-  if (hostname === localhost || loc.protocol === "file:")
+  if (locationHostname === localhost || loc.protocol === "file:")
     return warn(notSending + "from " + localhost);
 
   // We do advanced bot detection in our API, but this line filters already most bots
@@ -90,7 +109,7 @@
     var utmRegexPrefix = "(utm_)?";
     var payload = {
       version: version,
-      hostname: hostname,
+      hostname: locationHostname,
       https: loc.protocol === https,
       timezone: timezone,
       width: window.innerWidth,
@@ -155,7 +174,7 @@
 
           payload.time = seconds();
 
-          nav[sendBeacon](apiUrl, stringify(payload));
+          nav[sendBeacon](fullApiUrl, stringify(payload));
         },
         false
       );
@@ -237,6 +256,23 @@
         }
         payloadPageviews.push(data);
 
+        /** if online **/
+        try {
+          var requestCounter = new XMLHttpRequest();
+          // fullOnlineUrl || fullOnlineUrl is a hack to make the minifier believe
+          // this variable is used multiple times. It does not result in extra
+          // bytes.
+          requestCounter.open("POST", fullOnlineUrl || fullOnlineUrl, true);
+          requestCounter.setRequestHeader(
+            contentTypeText,
+            contentTypeTextPlain
+          );
+          requestCounter.send(stringify(payload));
+        } catch (error) {
+          // Do nothing
+        }
+        /** endif **/
+
         if (useSendBeacon) {
           /** if duration **/
           start = Date.now();
@@ -252,7 +288,7 @@
       }
 
       var request = new XMLHttpRequest();
-      request.open("POST", apiUrl, true);
+      request.open("POST", fullApiUrl, true);
 
       if (isPushState) {
         delete payload.source;
@@ -260,9 +296,7 @@
 
       payload.time = seconds();
 
-      // We use content type text/plain here because we don't want to send an
-      // pre-flight OPTIONS request
-      request.setRequestHeader("Content-Type", "text/plain; charset=UTF-8");
+      request.setRequestHeader(contentTypeText, contentTypeTextPlain);
       request.send(stringify(payload));
 
       delete payload[pageviews];
@@ -313,7 +347,7 @@
           isPushState || back
             ? false
             : doc.referrer
-            ? doc.referrer.split(slash)[2] !== hostname
+            ? doc.referrer.split(slash)[2] !== locationHostname
             : true;
       } catch (error) {
         data.error = error.message;
@@ -391,8 +425,16 @@
     /** endif **/
   } catch (e) {
     warn(e.message);
-    var url = apiUrl + "image.gif";
+    var url = fullApiUrl + "image.gif";
     if (e.message) url = url + "?error=" + encodeURIComponent(e.message);
     new Image().src = url;
   }
-})(window, "{{version}}", "{{script}}", "{{hostname}}");
+})(
+  window,
+  "{{baseUrl}}",
+  "{{apiUrlPrefix}}",
+  "{{apiUrlSuffix}}",
+  "{{onlineUrlPrefix}}",
+  "{{onlineUrlSuffix}}",
+  "{{version}}"
+);
