@@ -25,10 +25,24 @@ const DEFAULTS = {
   scroll: true,
   spa: true,
   uniques: true,
-  online: true
+  online: true,
+  url: "docs.simpleanalytics.com/script"
 };
 
 const files = [
+  {
+    type: "js",
+    input: `${__dirname}/src/default.js`,
+    output: `hello.js`,
+    variables: {
+      ...DEFAULTS,
+      baseUrl: "simpleanalyticscdn.com",
+      apiUrlPrefix: "queue.",
+      apiUrlSuffix: "/v2/post",
+      onlineUrlPrefix: "online.",
+      onlineUrlSuffix: "/v1/visit"
+    }
+  },
   {
     type: "js",
     input: `${__dirname}/src/default.js`,
@@ -40,8 +54,7 @@ const files = [
       apiUrlPrefix: "queue.",
       apiUrlSuffix: "/v2/post",
       onlineUrlPrefix: "online.",
-      onlineUrlSuffix: "/v1/visit",
-      url: "docs.simpleanalytics.com/script"
+      onlineUrlSuffix: "/v1/visit"
     }
   },
   {
@@ -53,8 +66,7 @@ const files = [
       version: 2,
       baseUrl: "{{nginxHost}}",
       apiUrlSuffix: "/v2/post",
-      onlineUrlSuffix: "/v1/visit",
-      url: "docs.simpleanalytics.com/script"
+      onlineUrlSuffix: "/v1/visit"
     }
   },
   {
@@ -66,8 +78,7 @@ const files = [
       version: 2,
       baseUrl: "{{nginxHost}}",
       apiUrlSuffix: "/v2/post",
-      onlineUrlSuffix: "/v1/visit",
-      url: "docs.simpleanalytics.com/script"
+      onlineUrlSuffix: "/v1/visit"
     }
   },
   {
@@ -83,8 +94,7 @@ const files = [
       events: false,
       scroll: false,
       uniques: false,
-      online: false,
-      url: "docs.simpleanalytics.com/script"
+      online: false
     }
   },
   {
@@ -100,8 +110,7 @@ const files = [
       events: false,
       scroll: false,
       uniques: false,
-      online: false,
-      url: "docs.simpleanalytics.com/script"
+      online: false
     }
   },
   {
@@ -177,10 +186,11 @@ for (const file of files) {
     continue;
   }
 
-  fs.mkdirSync(path.dirname(versionFile), { recursive: true });
+  if (variables.version)
+    fs.mkdirSync(path.dirname(versionFile), { recursive: true });
   fs.mkdirSync(path.dirname(latestFile), { recursive: true });
 
-  fs.writeFileSync(versionFile, lines);
+  if (variables.version) fs.writeFileSync(versionFile, lines);
   fs.writeFileSync(latestFile, lines);
 
   const bytes = new TextEncoder("utf-8").encode(lines).length;
