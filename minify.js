@@ -40,7 +40,7 @@ const files = [
       apiUrlPrefix: "queue.",
       apiUrlSuffix: "/v2/post",
       onlineUrlPrefix: "online.",
-      onlineUrlSuffix: "/v1/online",
+      onlineUrlSuffix: "/v1/visit",
       url: "docs.simpleanalytics.com/script"
     }
   },
@@ -53,7 +53,7 @@ const files = [
       version: 2,
       baseUrl: "{{nginxHost}}",
       apiUrlSuffix: "/v2/post",
-      onlineUrlSuffix: "/v1/online",
+      onlineUrlSuffix: "/v1/visit",
       url: "docs.simpleanalytics.com/script"
     }
   },
@@ -66,7 +66,7 @@ const files = [
       version: 2,
       baseUrl: "{{nginxHost}}",
       apiUrlSuffix: "/v2/post",
-      onlineUrlSuffix: "/v1/online",
+      onlineUrlSuffix: "/v1/visit",
       url: "docs.simpleanalytics.com/script"
     }
   },
@@ -135,8 +135,6 @@ for (const file of files) {
     template(variables),
     MINIFY_OPTIONS
   );
-
-  // console.log(template(variables));
 
   if (!codeTemplate)
     console.warn(RED, `[MINIFY][${name}] codeTemplate is undefined`);
