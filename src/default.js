@@ -181,24 +181,25 @@
 
     /** if scroll **/
     var scroll = "scroll";
-    var body = doc.body;
-    var documentElement = doc.documentElement;
+    var body = doc.body || {};
+    var documentElement = doc.documentElement || {};
     var position = function() {
       var Height = "Height";
       var scrollHeight = scroll + Height;
       var offsetHeight = "offset" + Height;
       var clientHeight = "client" + Height;
+      var documentClientHeight = documentElement[clientHeight] || 0;
       var height = Math.max(
-        body[scrollHeight],
-        body[offsetHeight],
-        documentElement[clientHeight],
-        documentElement[scrollHeight],
-        documentElement[offsetHeight]
+        body[scrollHeight] || 0,
+        body[offsetHeight] || 0,
+        documentElement[clientHeight] || 0,
+        documentElement[scrollHeight] || 0,
+        documentElement[offsetHeight] || 0
       );
       return Math.min(
         100,
         Math.round(
-          (100 * (documentElement.scrollTop + documentElement[clientHeight])) /
+          (100 * ((documentElement.scrollTop || 0) + documentClientHeight)) /
             height /
             5
         ) * 5
