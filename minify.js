@@ -133,7 +133,7 @@ for (const file of files) {
 
   const contents = fs
     .readFileSync(input, "utf8")
-    .replace(/\"\{\{\s?version\s?\}\}"/g, variables.version)
+    .replace(/\"\{\{\s?version\s?\}\}"/g, variables.version || 0)
     .replace(/\/\*\*\s?/g, "{{")
     .replace(/\s?\*\*\//g, "}}")
     .replace(/{{endif/g, "{{/if")
