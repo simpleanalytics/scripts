@@ -51,6 +51,7 @@
     if (con && con.warn) con.warn("Simple Analytics: " + message);
   };
 
+  // Send error via image so we bypass failing XHR requests
   function sendError(message) {
     warn(message);
     new Image().src =
@@ -62,6 +63,8 @@
       encodeURIComponentFunc(locationHostname + loc.pathname);
   }
 
+  // We listen for the error events and only send errors that are
+  // from our script (checked by filename) to our server.
   addEventListenerFunc(
     "error",
     function(event) {
