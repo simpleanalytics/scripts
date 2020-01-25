@@ -218,7 +218,7 @@
     });
     /** endif **/
 
-    var post = function(type, data, isPushState) {
+    var post = function(type, data, deleteSourceInfo) {
       var payloadPageviews = payload[pageviews];
       var payloadPageviewsLength = payloadPageviews
         ? payloadPageviews.length
@@ -257,6 +257,12 @@
         }
         payloadPageviews.push(data);
 
+        // Delete source when refreshing the page and only when it's the first page view.
+        // It's zero here because the length is retrieved before adding it to the array.
+        if (deleteSourceInfo && payloadPageviewsLength === 0) {
+          delete payload.source;
+        }
+
         /** if online **/
         try {
           var requestCounter = new XMLHttpRequest();
@@ -288,12 +294,12 @@
         }
       }
 
-      var request = new XMLHttpRequest();
-      request.open("POST", fullApiUrl, true);
-
-      if (isPushState) {
+      if (deleteSourceInfo) {
         delete payload.source;
       }
+
+      var request = new XMLHttpRequest();
+      request.open("POST", fullApiUrl, true);
 
       payload.time = seconds();
 
@@ -323,39 +329,36 @@
         added: seconds()
       };
 
-      /** if uniques **/
-      // We put new code always in a try block to prevent huge issues
-      try {
-        var perf = window.performance;
-        var navigation = "navigation";
-        // Check if back, forward or reload buttons are being use in modern browsers
-        var back =
-          perf &&
-          perf.getEntriesByType &&
-          perf.getEntriesByType(navigation)[0] &&
-          perf.getEntriesByType(navigation)[0].type
-            ? ["reload", "back_forward"].indexOf(
-                perf.getEntriesByType(navigation)[0].type
-              ) > -1
-            : // Check if back, forward or reload buttons are being use in older browsers
-              // 1: TYPE_RELOAD, 2: TYPE_BACK_FORWARD
-              perf &&
-              perf[navigation] &&
-              [1, 2].indexOf(perf[navigation].type) > -1;
+      // If a user does refresh we need to delete the referrer because otherwise it count double
+      var perf = window.performance;
+      var navigation = "navigation";
 
-        // We set unique variable based on pushstate or back navigation, if no match we check the referrer
-        data.unique =
-          isPushState || back
-            ? false
-            : doc.referrer
-            ? doc.referrer.split(slash)[2] !== locationHostname
-            : true;
-      } catch (error) {
-        data.error = error.message;
-      }
+      // Check if back, forward or reload buttons are being used in modern browsers
+      var userNavigated =
+        perf &&
+        perf.getEntriesByType &&
+        perf.getEntriesByType(navigation)[0] &&
+        perf.getEntriesByType(navigation)[0].type
+          ? ["reload", "back_forward"].indexOf(
+              perf.getEntriesByType(navigation)[0].type
+            ) > -1
+          : // Check if back, forward or reload buttons are being use in older browsers
+            // 1: TYPE_RELOAD, 2: TYPE_BACK_FORWARD
+            perf &&
+            perf[navigation] &&
+            [1, 2].indexOf(perf[navigation].type) > -1;
+
+      /** if uniques **/
+      // We set unique variable based on pushstate or back navigation, if no match we check the referrer
+      data.unique =
+        isPushState || userNavigated
+          ? false
+          : doc.referrer
+          ? doc.referrer.split(slash)[2] !== locationHostname
+          : true;
       /** endif **/
 
-      post(pageviews, data, isPushState);
+      post(pageviews, data, isPushState || userNavigated);
     };
 
     /** if spa **/
