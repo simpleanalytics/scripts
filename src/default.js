@@ -18,6 +18,7 @@
   // makes our script availble for multple destination which prevents us to
   // need multiple scripts. The minified version stays small.
   var fullApiUrl = protocol + apiUrlPrefix + baseUrl + apiUrlSuffix;
+  var fullErrorUrl = protocol + apiUrlPrefix + baseUrl;
   /** if online **/
   var fullOnlineUrl = protocol + onlineUrlPrefix + baseUrl + onlineUrlSuffix;
   /** endif **/
@@ -37,12 +38,39 @@
   var localhost = "localhost";
   var contentTypeText = "Content-Type";
   var nullVar = null;
+  var encodeURIComponentFunc = encodeURIComponent;
 
   // We use content type text/plain here because we don't want to send an
   // pre-flight OPTIONS request
   var contentTypeTextPlain = "text/plain; charset=UTF-8";
   var thousand = 1000;
   var addEventListenerFunc = window.addEventListener;
+
+  // A simple log function so the user knows why a request is not being send
+  var warn = function(message) {
+    if (con && con.warn) con.warn("Simple Analytics: " + message);
+  };
+
+  function sendError(message) {
+    warn(message);
+    new Image().src =
+      fullErrorUrl +
+      "/error.gif" +
+      "?error=" +
+      encodeURIComponentFunc(message) +
+      "&url=" +
+      encodeURIComponentFunc(locationHostname + loc.pathname);
+  }
+
+  addEventListenerFunc(
+    "error",
+    function(event) {
+      if (event.filename && event.filename.indexOf(baseUrl) > -1) {
+        sendError(event.message);
+      }
+    },
+    false
+  );
 
   /** if spa **/
   var pushState = "pushState";
@@ -57,11 +85,6 @@
   /** if scroll **/
   var scrolled = 0;
   /** endif **/
-
-  // A simple log function so the user knows why a request is not being send
-  var warn = function(message) {
-    if (con && con.warn) con.warn("Simple Analytics: " + message);
-  };
 
   var scriptElement = doc.querySelector('script[src*="' + baseUrl + '"]');
   var attr = function(scriptElement, attribute) {
@@ -429,10 +452,7 @@
     for (var event in queue) post(events, queue[event]);
     /** endif **/
   } catch (e) {
-    warn(e.message);
-    var url = fullApiUrl + "image.gif";
-    if (e.message) url = url + "?error=" + encodeURIComponent(e.message);
-    new Image().src = url;
+    sendError(e.message);
   }
 })(
   window,
