@@ -36,6 +36,7 @@
   var notSending = "Not sending requests ";
   var localhost = "localhost";
   var contentTypeText = "Content-Type";
+  var nullVar = null;
 
   // We use content type text/plain here because we don't want to send an
   // pre-flight OPTIONS request
@@ -123,7 +124,7 @@
               /^https?:\/\/((m|l|w{2,3}([0-9]+)?)\.)?([^?#]+)(.*)$/,
               "$4"
             )
-            .replace(/^([^/]+)\/$/, "$1") || undefined
+            .replace(/^([^/]+)\/$/, "$1") || nullVar
       },
       pageviews: []
     };
@@ -132,7 +133,7 @@
     var msHidden = 0;
 
     /** if duration **/
-    var hiddenStart = null;
+    var hiddenStart = nullVar;
     window.addEventListener(
       "visibilitychange",
       function() {
@@ -225,7 +226,7 @@
         : 0;
       var payloadPageviewLast = payloadPageviewsLength
         ? payloadPageviews[payloadPageviewsLength - 1]
-        : null;
+        : nullVar;
 
       if (type === events) {
         /** if events **/
@@ -363,7 +364,7 @@
 
     /** if spa **/
     var his = window.history;
-    var hisPushState = his ? his.pushState : null;
+    var hisPushState = his ? his.pushState : nullVar;
     if (hisPushState && Event && dis) {
       var stateListener = function(type) {
         var orig = his[type];
