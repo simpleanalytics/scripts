@@ -52,13 +52,14 @@
   };
 
   // Send error via image so we bypass failing XHR requests
-  function sendError(message) {
-    warn(message);
+  function sendError(errorOrMessage) {
+    errorOrMessage = errorOrMessage.message || errorOrMessage;
+    warn(errorOrMessage);
     new Image().src =
       fullErrorUrl +
       "/error.gif" +
       "?error=" +
-      encodeURIComponentFunc(message) +
+      encodeURIComponentFunc(errorOrMessage) +
       "&url=" +
       encodeURIComponentFunc(locationHostname + loc.pathname);
   }
@@ -187,21 +188,25 @@
       addEventListenerFunc(
         "unload",
         function() {
-          var last = payload[pageviews][payload[pageviews].length - 1];
+          try {
+            var last = payload[pageviews][payload[pageviews].length - 1];
 
-          /** if duration **/
-          last[duration] = seconds(start + msHidden);
-          msHidden = 0;
-          /** endif **/
+            /** if duration **/
+            last[duration] = seconds(start + msHidden);
+            msHidden = 0;
+            /** endif **/
 
-          /** if scroll **/
-          var currentScroll = Math.max(0, scrolled, position());
-          if (currentScroll) last.scrolled = currentScroll;
-          /** endif **/
+            /** if scroll **/
+            var currentScroll = Math.max(0, scrolled, position());
+            if (currentScroll) last.scrolled = currentScroll;
+            /** endif **/
 
-          payload.time = seconds();
+            payload.time = seconds();
 
-          nav[sendBeacon](fullApiUrl, stringify(payload));
+            nav[sendBeacon](fullApiUrl, stringify(payload));
+          } catch (error) {
+            sendError(error);
+          }
         },
         false
       );
@@ -211,26 +216,31 @@
     var body = doc.body || {};
     var documentElement = doc.documentElement || {};
     var position = function() {
-      var Height = "Height";
-      var scrollHeight = scroll + Height;
-      var offsetHeight = "offset" + Height;
-      var clientHeight = "client" + Height;
-      var documentClientHeight = documentElement[clientHeight] || 0;
-      var height = Math.max(
-        body[scrollHeight] || 0,
-        body[offsetHeight] || 0,
-        documentElement[clientHeight] || 0,
-        documentElement[scrollHeight] || 0,
-        documentElement[offsetHeight] || 0
-      );
-      return Math.min(
-        100,
-        Math.round(
-          (100 * ((documentElement.scrollTop || 0) + documentClientHeight)) /
-            height /
-            5
-        ) * 5
-      );
+      try {
+        var Height = "Height";
+        var scrollHeight = scroll + Height;
+        var offsetHeight = "offset" + Height;
+        var clientHeight = "client" + Height;
+        var documentClientHeight = documentElement[clientHeight] || 0;
+        var height = Math.max(
+          body[scrollHeight] || 0,
+          body[offsetHeight] || 0,
+          documentElement[clientHeight] || 0,
+          documentElement[scrollHeight] || 0,
+          documentElement[offsetHeight] || 0
+        );
+        return Math.min(
+          100,
+          Math.round(
+            (100 * ((documentElement.scrollTop || 0) + documentClientHeight)) /
+              height /
+              5
+          ) * 5
+        );
+      } catch (error) {
+        sendError(error);
+        return 0;
+      }
     };
 
     addEventListenerFunc("load", function() {
@@ -246,95 +256,101 @@
     /** endif **/
 
     var post = function(type, data, deleteSourceInfo) {
-      var payloadPageviews = payload[pageviews];
-      var payloadPageviewsLength = payloadPageviews
-        ? payloadPageviews.length
-        : 0;
-      var payloadPageviewLast = payloadPageviewsLength
-        ? payloadPageviews[payloadPageviewsLength - 1]
-        : nullVar;
+      try {
+        var payloadPageviews = payload[pageviews];
+        var payloadPageviewsLength = payloadPageviews
+          ? payloadPageviews.length
+          : 0;
+        var payloadPageviewLast = payloadPageviewsLength
+          ? payloadPageviews[payloadPageviewsLength - 1]
+          : nullVar;
 
-      if (type === events) {
-        /** if events **/
-        var event = "" + data;
-        if (payloadPageviewLast) {
-          if (payloadPageviewLast[events])
-            payloadPageviewLast[events].push(event);
-          else payloadPageviewLast[events] = [event];
-        } else if (useSendBeacon) {
-          warn("Couldn't save event '" + event + "'");
-        }
+        if (type === events) {
+          /** if events **/
+          var event = "" + (data instanceof Function ? data() : data);
+          if (payloadPageviewLast) {
+            if (payloadPageviewLast[events])
+              payloadPageviewLast[events].push(event);
+            else payloadPageviewLast[events] = [event];
+          } else if (useSendBeacon) {
+            warn("Couldn't save event '" + event + "'");
+          }
 
-        if (useSendBeacon) return;
-        else {
-          delete payload[pageviews];
-          payload[events] = [event];
-        }
-        /** endif **/
-      } else {
-        // Continue when type is pageviews
-        if (payloadPageviewsLength) {
-          /** if duration **/
-          payloadPageviewLast.duration = seconds(start + msHidden);
+          if (useSendBeacon) return;
+          else {
+            delete payload[pageviews];
+            payload[events] = [event];
+          }
+          /** endif **/
+        } else {
+          // Continue when type is pageviews
+          if (payloadPageviewsLength) {
+            /** if duration **/
+            payloadPageviewLast.duration = seconds(start + msHidden);
+            /** endif **/
+
+            /** if scroll **/
+            payloadPageviewLast.scrolled = scrolled;
+            /** endif **/
+          }
+
+          if (payload[pageviews]) payload[pageviews].push(data);
+          else payload[pageviews] = [data];
+
+          // Delete source when refreshing the page and only when it's the first page view.
+          // It's zero here because the length is retrieved before adding it to the array.
+          if (deleteSourceInfo && payloadPageviewsLength === 0) {
+            delete payload.source;
+          }
+
+          /** if online **/
+          try {
+            var requestCounter = new XMLHttpRequest();
+            // fullOnlineUrl || fullOnlineUrl is a hack to make the minifier believe
+            // this variable is used multiple times. It does not result in extra
+            // bytes.
+            requestCounter.open("POST", fullOnlineUrl || fullOnlineUrl, true);
+            requestCounter.setRequestHeader(
+              contentTypeText,
+              contentTypeTextPlain
+            );
+            requestCounter.send(stringify(payload));
+          } catch (error) {
+            // Do nothing
+          }
           /** endif **/
 
-          /** if scroll **/
-          payloadPageviewLast.scrolled = scrolled;
-          /** endif **/
-        }
-        payloadPageviews.push(data);
+          if (useSendBeacon) {
+            /** if duration **/
+            start = Date.now();
+            msHidden = 0;
+            /** endif **/
 
-        // Delete source when refreshing the page and only when it's the first page view.
-        // It's zero here because the length is retrieved before adding it to the array.
-        if (deleteSourceInfo && payloadPageviewsLength === 0) {
+            /** if scroll **/
+            scrolled = window.setTimeout(position, 500);
+            /** endif **/
+
+            return;
+          }
+        }
+
+        if (deleteSourceInfo) {
           delete payload.source;
         }
 
-        /** if online **/
-        try {
-          var requestCounter = new XMLHttpRequest();
-          // fullOnlineUrl || fullOnlineUrl is a hack to make the minifier believe
-          // this variable is used multiple times. It does not result in extra
-          // bytes.
-          requestCounter.open("POST", fullOnlineUrl || fullOnlineUrl, true);
-          requestCounter.setRequestHeader(
-            contentTypeText,
-            contentTypeTextPlain
-          );
-          requestCounter.send(stringify(payload));
-        } catch (error) {
-          // Do nothing
-        }
-        /** endif **/
+        var request = new XMLHttpRequest();
+        request.open("POST", fullApiUrl, true);
 
-        if (useSendBeacon) {
-          /** if duration **/
-          start = Date.now();
-          msHidden = 0;
-          /** endif **/
+        payload.time = seconds();
 
-          /** if scroll **/
-          scrolled = window.setTimeout(position, 500);
-          /** endif **/
+        request.setRequestHeader(contentTypeText, contentTypeTextPlain);
+        request.send(stringify(payload));
 
-          return;
-        }
+        delete payload[pageviews];
+        delete payload[events];
+      } catch (error) {
+        sendError(error);
       }
-
-      if (deleteSourceInfo) {
-        delete payload.source;
-      }
-
-      var request = new XMLHttpRequest();
-      request.open("POST", fullApiUrl, true);
-
-      payload.time = seconds();
-
-      request.setRequestHeader(contentTypeText, contentTypeTextPlain);
-      request.send(stringify(payload));
-
-      delete payload[pageviews];
-      delete payload[events];
     };
 
     var pageview = function(isPushState) {
@@ -455,7 +471,7 @@
     for (var event in queue) post(events, queue[event]);
     /** endif **/
   } catch (e) {
-    sendError(e.message);
+    sendError(e);
   }
 })(
   window,
