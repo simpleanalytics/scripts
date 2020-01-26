@@ -257,6 +257,7 @@
 
     var post = function(type, data, deleteSourceInfo) {
       try {
+        var event;
         var payloadPageviews = payload[pageviews];
         var payloadPageviewsLength = payloadPageviews
           ? payloadPageviews.length
@@ -267,7 +268,13 @@
 
         if (type === events) {
           /** if events **/
-          var event = "" + (data instanceof Function ? data() : data);
+          try {
+            event = "" + (data instanceof Function ? data() : data);
+          } catch (error) {
+            warn("in your event function: " + error.message);
+            event = "event_errored";
+          }
+
           if (payloadPageviewLast) {
             if (payloadPageviewLast[events])
               payloadPageviewLast[events].push(event);
