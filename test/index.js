@@ -15,12 +15,17 @@ const {
 } = require("./constants/browserstack");
 const server = require("./helpers/server");
 
-const LOG_PREFIX = "=> Test:";
+const log = (...messages) => console.log("=> Test:", ...messages);
+
+if (!BS_USERNAME || !BS_KEY || !BS_BUILD_ID) {
+  log("BS_USERNAME, BS_KEY, nor BS_BUILD_ID are not defined.");
+  process.exit(1);
+}
 
 let driver;
 
 (async () => {
-  console.log(LOG_PREFIX, "Starting");
+  log("Starting");
   try {
     const { done } = await server({ script: "/latest/hello.js" });
 
@@ -29,7 +34,7 @@ let driver;
     const stop = promisify(BrowserStackLocal.stop).bind(BrowserStackLocal);
 
     await start(BS_LOCAL_OPTIONS);
-    console.log(LOG_PREFIX, "Is running?", BrowserStackLocal.isRunning());
+    log("Is running?", BrowserStackLocal.isRunning());
 
     driver = new webdriver.Builder()
       .usingServer("http://hub-cloud.browserstack.com/wd/hub")
@@ -37,7 +42,7 @@ let driver;
       .build();
 
     const { id_: sessionId } = await driver.session_;
-    console.log(LOG_PREFIX, "Session", sessionId);
+    log("Session", sessionId);
 
     await driver.get(`http://localhost:${PORT}/latest/hello`);
 
@@ -63,7 +68,7 @@ let driver;
     });
 
     if (!body || !body.log || !body.log.entries)
-      return console.error(LOG_PREFIX, "No log file available");
+      return log("No log file available");
 
     const {
       log: { entries }
@@ -74,21 +79,17 @@ let driver;
     });
 
     if (!postEntry) {
-      console.log(
-        LOG_PREFIX,
+      log(
         "Files",
         entries.map(({ request }) => request.url)
       );
-      return console.error(LOG_PREFIX, "Our post request was not found");
+      return log("Our post request was not found");
     } else if (postEntry.response.status !== 201)
-      return console.error(
-        LOG_PREFIX,
-        "Our post request did not return 201 created"
-      );
+      return log("Our post request did not return 201 created");
 
-    return console.log(LOG_PREFIX, "Our post request was found");
-  } catch (error) {
-    console.error(LOG_PREFIX, error);
+    return log("Our post request was found");
+  } catch ({ message }) {
+    log(message);
     await driver.quit();
   }
 })();
