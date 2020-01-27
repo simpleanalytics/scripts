@@ -18,7 +18,11 @@ const MINIFY_OPTIONS = {
   nameCache: null
 };
 
+const IS_TESTING = process.argv[2] === "testing";
+if (IS_TESTING) console.log(YELLOW, "Running the scripts as testing");
+
 const DEFAULTS = {
+  testing: IS_TESTING,
   duration: true,
   events: true,
   hash: true,
@@ -136,8 +140,8 @@ for (const file of files) {
     .replace(/\"\{\{\s?version\s?\}\}"/g, variables.version || 0)
     .replace(/\/\*\*\s?/g, "{{")
     .replace(/\s?\*\*\//g, "}}")
-    .replace(/{{endif/g, "{{/if")
-    .replace(/{{if/g, "{{#if");
+    .replace(/{{end(if|unless)/g, "{{/$1")
+    .replace(/{{(if|unless)/g, "{{#$1");
 
   const template = Handlebars.compile(contents);
   const { code: codeTemplate, warnings } = UglifyJS.minify(
