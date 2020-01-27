@@ -4,9 +4,11 @@
   "description": "Simple Analytics visitor facing scripts",
   "main": "minify.js",
   "scripts": {
-    "minify": "minify.js",
+    "minify": "node minify.js",
     "watch": "nodemon minify.js --ignore dist",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "pretest": "npm run minify -- testing",
+    "test": "node test/index.js",
+    "posttest": "npm run minify"
   },
   "repository": {
     "type": "git",
@@ -21,10 +23,13 @@
   "homepage": "https://github.com/simpleanalytics/scripts#readme",
   "dependencies": {},
   "devDependencies": {
+    "browserstack-local": "^1.4.5",
     "eslint": "^6.7.2",
     "esprima": "^4.0.1",
     "handlebars": "^4.5.3",
     "nodemon": "^1.19.1",
+    "request": "^2.88.0",
+    "selenium-webdriver": "^4.0.0-alpha.5",
     "uglify-js": "^3.6.0"
   }
 }

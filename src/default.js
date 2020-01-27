@@ -33,12 +33,13 @@
   var userAgent = nav.userAgent;
   var loc = window.location;
   var doc = window.document;
-  var locationHostname = loc.hostname;
+  var hostname = loc.hostname;
   var notSending = "Not sending requests ";
   var localhost = "localhost";
   var contentTypeText = "Content-Type";
   var nullVar = null;
   var encodeURIComponentFunc = encodeURIComponent;
+  var decodeURIComponentFunc = decodeURIComponent;
 
   // We use content type text/plain here because we don't want to send an
   // pre-flight OPTIONS request
@@ -61,7 +62,7 @@
       "?error=" +
       encodeURIComponentFunc(errorOrMessage) +
       "&url=" +
-      encodeURIComponentFunc(locationHostname + loc.pathname);
+      encodeURIComponentFunc(hostname + loc.pathname);
   }
 
   // We listen for the error events and only send errors that are
@@ -104,8 +105,10 @@
     return warn(notSending + "when " + doNotTrack + " is enabled");
 
   // Don't track when localhost
-  if (locationHostname === localhost || loc.protocol === "file:")
+  /** unless testing **/
+  if (hostname.indexOf(".") === -1)
     return warn(notSending + "from " + localhost);
+  /** endunless **/
 
   // We do advanced bot detection in our API, but this line filters already most bots
   if (!userAgent || userAgent.search(/(bot|spider|crawl)/gi) > -1)
@@ -137,7 +140,7 @@
     var utmRegexPrefix = "(utm_)?";
     var payload = {
       version: version,
-      hostname: locationHostname,
+      hostname: hostname,
       https: loc.protocol === https,
       timezone: timezone,
       width: window.innerWidth,
@@ -362,7 +365,7 @@
 
     var pageview = function(isPushState) {
       // Obfuscate personal data in URL by dropping the search and hash
-      var path = loc.pathname;
+      var path = decodeURIComponentFunc(loc.pathname);
 
       /** if hash **/
       // Add hash to path when script is put in to hash mode
@@ -404,7 +407,7 @@
         isPushState || userNavigated
           ? false
           : doc.referrer
-          ? doc.referrer.split(slash)[2] !== locationHostname
+          ? doc.referrer.split(slash)[2] !== hostname
           : true;
       /** endif **/
 
