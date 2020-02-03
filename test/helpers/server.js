@@ -1,7 +1,7 @@
 const url = require("url");
 const http = require("http");
 const { readFileSync } = require("fs");
-const { PORT } = require("../constants");
+const { SERVER_PORT } = require("../constants");
 
 const LOG_PREFIX = "=> Node server:";
 
@@ -42,8 +42,8 @@ const route = (req, res) => {
 
 module.exports = () =>
   new Promise(resolve => {
-    const server = http.createServer(route).listen(PORT, () => {
-      console.log(LOG_PREFIX, `Started on port ${PORT}`);
+    const server = http.createServer(route).listen(SERVER_PORT, () => {
+      console.log(LOG_PREFIX, `Started on port ${SERVER_PORT}`);
       resolve({
         done: () =>
           new Promise(resolve => {

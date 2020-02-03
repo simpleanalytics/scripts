@@ -1,1 +1,2 @@
-module.exports.PORT = 65236;
+module.exports.SERVER_PORT = 65235;
+module.exports.PROXY_PORT = 65236;

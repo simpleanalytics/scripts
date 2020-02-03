@@ -13,7 +13,9 @@ const {
   BS_KEY,
   BS_BUILD_ID
 } = require("./constants/browserstack");
+
 const server = require("./helpers/server");
+const proxy = require("./helpers/proxy");
 
 const log = (...messages) => console.log("=> Test:", ...messages);
 
@@ -26,9 +28,13 @@ let driver;
 
 (async () => {
   log("Starting");
-  try {
-    const { done } = await server({ script: "/latest/hello.js" });
 
+  await proxy();
+
+  const { done } = await server();
+
+  try {
+    log("start with bs", BS_LOCAL_OPTIONS);
     const BrowserStackLocal = new browserstack.Local();
     const start = promisify(BrowserStackLocal.start).bind(BrowserStackLocal);
     const stop = promisify(BrowserStackLocal.stop).bind(BrowserStackLocal);
@@ -89,7 +95,9 @@ let driver;
 
     return log("Our post request was found");
   } catch ({ message }) {
-    log(message);
-    await driver.quit();
+    log("Error:", message);
+    if (driver) await driver.quit();
+
+    process.exit(1);
   }
 })();
