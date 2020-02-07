@@ -2,39 +2,63 @@ const url = require("url");
 const http = require("http");
 const { readFileSync } = require("fs");
 const { SERVER_PORT } = require("../constants");
+const { getJSONBody } = require("./request");
 
-const LOG_PREFIX = "=> Node server:";
+const log = (...messages) => console.log("=> Node server:", ...messages);
+const requests = [];
 
-const route = (req, res) => {
-  const { pathname } = url.parse(req.url);
+const route = async (req, res) => {
+  const { pathname, query } = url.parse(req.url, true);
+  const { push, script } = query;
 
-  if (pathname === "/") {
-    res.writeHead(200, { "Content-Type": "text/html" });
-    res.write("<!DOCTYPE html><html><body><h1>Hi test</h1></body></html>");
-    return res.end();
-  }
   if (pathname === "/favicon.ico") {
     res.writeHead(404);
     return res.end();
   }
 
+  log(
+    `${req.method} request to ${pathname} with query ${JSON.stringify(query)}`
+  );
+
+  const json = req.method === "POST" ? await getJSONBody(req) : null;
+
+  requests.push({
+    method: req.method,
+    pathname,
+    body: json
+  });
+
   let body = "";
-  if (pathname.endsWith(".js")) {
+  if (pathname === "/script.js" && script) {
     res.writeHead(200, { "Content-Type": "text/javascript" });
-    body = readFileSync(`./dist${pathname}`, "utf8");
-  } else {
-    res.writeHead(200, { "Content-Type": "text/html" });
-    body = "<!DOCTYPE html><html><body>";
-    body += `<h1>Page <code>${pathname}</code></h1>`;
-    body += `<p>Embedded with <code>${pathname}.js</code> script</p>`;
-    body += `<script async defer src="${pathname}.js"></script>`;
-    body += `</body></html>`;
+    body = readFileSync(`./dist${script}`, "utf8");
+    body = body
+      .replace(/"https:"/gi, `"http:"`)
+      .replace(/simpleanalyticscdn\.com/gi, `localhost:${SERVER_PORT}`)
+      .replace(/"(queue|online)\."/gi, `""`);
+    res.write(body);
+    return res.end();
   }
 
-  console.log(
-    LOG_PREFIX,
-    `${req.method} request to ${pathname} with length of ${body.length}`
-  );
+  res.writeHead(200, { "Content-Type": "text/html" });
+  body = "<!DOCTYPE html><html><body>";
+
+  if (push === "true") {
+    body += `<script>
+    window.onload = function() {
+      const state = { "page_id": 2 };
+      const title = "Page 2";
+      const url = "/page/2";
+      if (window.history && window.history.pushState) window.history.pushState(state, title, url);
+      else window.location.href = url;
+    };
+    </script>`;
+  }
+
+  if (script)
+    body += `<script async defer src="/script.js?script=${script}"></script>`;
+
+  body += `</body></html>`;
 
   res.write(body);
   res.end();
@@ -43,11 +67,12 @@ const route = (req, res) => {
 module.exports = () =>
   new Promise(resolve => {
     const server = http.createServer(route).listen(SERVER_PORT, () => {
-      console.log(LOG_PREFIX, `Started on port ${SERVER_PORT}`);
+      log(`Started on port ${SERVER_PORT}`);
       resolve({
+        requests,
         done: () =>
           new Promise(resolve => {
-            console.log(LOG_PREFIX, "Closing...");
+            log("Closing...");
             server.close(resolve);
           })
       });
