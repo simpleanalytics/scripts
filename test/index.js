@@ -1,10 +1,10 @@
 const browserstack = require("browserstack-local");
 const webdriver = require("selenium-webdriver");
 const { promisify } = require("util");
-const request = require("request");
-const requestPromise = promisify(request);
+// const request = require("request");
+// const requestPromise = promisify(request);
 const sleep = promisify(setTimeout);
-const { PORT } = require("./constants");
+const { SERVER_PORT } = require("./constants");
 
 const {
   BS_CAPABILITIES,
@@ -15,7 +15,7 @@ const {
 } = require("./constants/browserstack");
 
 const server = require("./helpers/server");
-const proxy = require("./helpers/proxy");
+// const proxy = require("./helpers/proxy");
 
 const log = (...messages) => console.log("=> Test:", ...messages);
 
@@ -29,9 +29,9 @@ let driver;
 (async () => {
   log("Starting");
 
-  await proxy();
+  // await proxy();
 
-  const { done } = await server();
+  const { done, requests } = await server();
 
   try {
     log("start with bs", BS_LOCAL_OPTIONS);
@@ -50,7 +50,12 @@ let driver;
     const { id_: sessionId } = await driver.session_;
     log("Session", sessionId);
 
-    await driver.get(`http://localhost:${PORT}/latest/hello`);
+    const script = "/latest/hello.js";
+    const page = `http://localhost:${SERVER_PORT}/?script=${encodeURIComponent(
+      script
+    )}&push=true`;
+
+    await driver.get(page);
 
     await sleep(2000);
     await driver.close();
@@ -60,40 +65,24 @@ let driver;
     await done();
     await stop();
 
-    const networkLogsUrl =
-      `https://${BS_USERNAME}:${BS_KEY}@api.browserstack.com` +
-      `/automate/builds/${BS_BUILD_ID}/sessions/${sessionId}/networklogs`;
+    const foundScript =
+      requests.find(({ pathname } = {}) => pathname === "/script.js") !==
+      undefined;
 
-    // Wait for the network log files to be written
-    await sleep(3000);
+    const twoPageViews =
+      requests.find(
+        ({ method, pathname, body } = {}) =>
+          method === "POST" &&
+          pathname === "/v2/post" &&
+          body &&
+          body.pageviews &&
+          body.pageviews.length === 2
+      ) !== undefined;
 
-    const { body } = await requestPromise({
-      method: "GET",
-      json: true,
-      url: networkLogsUrl
-    });
+    // log("Requests", requests);
 
-    if (!body || !body.log || !body.log.entries)
-      return log("No log file available");
-
-    const {
-      log: { entries }
-    } = body;
-
-    const postEntry = entries.find(({ request }) => {
-      return request.url === "https://queue.simpleanalyticscdn.com/v2/post";
-    });
-
-    if (!postEntry) {
-      log(
-        "Files",
-        entries.map(({ request }) => request.url)
-      );
-      return log("Our post request was not found");
-    } else if (postEntry.response.status !== 201)
-      return log("Our post request did not return 201 created");
-
-    return log("Our post request was found");
+    log("Found script", foundScript);
+    log("Has two page views (beacon)", twoPageViews);
   } catch ({ message }) {
     log("Error:", message);
     if (driver) await driver.quit();
