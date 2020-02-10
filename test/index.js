@@ -4,7 +4,7 @@ const browserstack = require("browserstack-local");
 const { Builder } = require("selenium-webdriver");
 const { promisify } = require("util");
 const sleep = promisify(setTimeout);
-const { SERVER_PORT } = require("./constants");
+const { SERVER_PORT, DEBUG } = require("./constants");
 
 const {
   BS_CAPABILITIES,
@@ -16,7 +16,7 @@ const {
 
 const server = require("./helpers/server");
 
-const log = (...messages) => console.log("    => Test:", ...messages);
+const log = (...messages) => DEBUG && console.log("    => Test:", ...messages);
 
 if (!BS_USERNAME || !BS_KEY || !BS_BUILD_ID) {
   log("BS_USERNAME, BS_KEY, nor BS_BUILD_ID are not defined.");
@@ -40,9 +40,6 @@ const navigate = async ({ driver, script }) => {
     script
   )}&push=true`;
 
-  // When iOS and no valid ssl:
-  // await driver.executeScript('browserstack_executor: {"action": "acceptSsl"}');
-
   await driver.get(page);
   await sleep(2000);
   await driver.get(`http://localhost:${SERVER_PORT}/empty`);
@@ -50,6 +47,25 @@ const navigate = async ({ driver, script }) => {
   await driver.close();
   await sleep(500);
 };
+
+const browsers = [
+  {
+    name: "Edge",
+    browserName: "Edge",
+    browser_version: "18.0",
+    os: "Windows",
+    os_version: "10",
+    "browserstack.selenium_version": "4.0.0-alpha-2"
+  },
+  {
+    name: "Internet Explorer",
+    os: "Windows",
+    os_version: "10",
+    browserName: "IE",
+    browser_version: "11.0",
+    "browserstack.selenium_version": "4.0.0-alpha-2"
+  }
+];
 
 describe("Collect data", () => {
   let driver, stopServer, startLocal, stopLocal, requests;
@@ -65,67 +81,94 @@ describe("Collect data", () => {
 
     await startLocal(BS_LOCAL_OPTIONS);
     log("Is running?", BrowserStackLocal.isRunning());
-
-    driver = await new Builder()
-      .usingServer("http://hub-cloud.browserstack.com/wd/hub")
-      .withCapabilities(BS_CAPABILITIES)
-      .build();
   });
 
-  it("should collect page views via pushState", async () => {
-    await navigate({ driver, script: "/latest/hello.js" });
+  for (const browser of browsers) {
+    it(`should collect page views in ${browser.name}`, async () => {
+      // Reset requests
+      requests = [];
 
-    console.log(JSON.stringify(requests, null, 2));
+      // Create driver
+      driver = await new Builder()
+        .usingServer("http://hub-cloud.browserstack.com/wd/hub")
+        .withCapabilities({ ...BS_CAPABILITIES, ...browser })
+        .build();
 
-    expect(
-      requests,
-      "There should be requests recorded"
-    ).to.have.lengthOf.at.least(2);
+      // Run steps in the browser
+      await navigate({ driver, script: "/latest/hello.js" });
 
-    const postRequest = getRequest(requests, { pathname: "/v2/post" });
+      // console.log(JSON.stringify(requests, null, 2));
 
-    expect(
-      postRequest.body,
-      "All required keys should be present"
-    ).to.include.all.keys(
-      // "timezone",
-      "version",
-      "hostname",
-      "https",
-      "width",
-      "source",
-      "pageviews",
-      "time"
-    );
+      expect(
+        requests,
+        "There should be requests recorded"
+      ).to.have.lengthOf.at.least(2);
 
-    expect(
-      postRequest.body.pageviews.length,
-      "There should be 2 page views"
-    ).to.equal(2);
+      const postRequest = getRequest(requests, { pathname: "/v2/post" });
 
-    expect(
-      postRequest.body.pageviews[0],
-      "The first visit should be unique"
-    ).to.have.property("unique", true);
+      expect(
+        postRequest,
+        "There is no /v2/post request found"
+      ).to.have.property("body");
 
-    expect(
-      postRequest.body.pageviews[1],
-      "The second visit should not be unique"
-    ).to.have.property("unique", false);
+      expect(
+        postRequest.body,
+        "All required keys should be present"
+      ).to.include.all.keys(
+        // "timezone",
+        "version",
+        "hostname",
+        "https",
+        "width",
+        "source",
+        "pageviews",
+        "time"
+      );
 
-    expect(
-      postRequest.body.pageviews[1].duration,
-      "Duration should be 2 seconds"
-    ).to.equal(2);
+      expect(
+        postRequest.body.pageviews.length,
+        "There should be 2 page views"
+      ).to.equal(2);
 
-    expect(
-      postRequest.body.time - postRequest.body.pageviews[1].added,
-      "Time between page view and request should be ~2 seconds"
-    ).to.be.within(
-      postRequest.body.pageviews[1].duration - 1,
-      postRequest.body.pageviews[1].duration + 1
-    );
-  });
+      expect(postRequest.body.version, "Version should be a number").to.be.a(
+        "number"
+      );
+
+      expect(postRequest.body.https, "HTTPS should be a boolean").to.be.a(
+        "boolean"
+      );
+
+      expect(postRequest.body.time, "Time should be a number").to.be.a(
+        "number"
+      );
+
+      expect(
+        postRequest.body.pageviews[0],
+        "The first visit should be unique"
+      ).to.have.property("unique", true);
+
+      expect(
+        postRequest.body.pageviews[1],
+        "The second visit should not be unique"
+      ).to.have.property("unique", false);
+
+      expect(
+        postRequest.body.pageviews[1].duration,
+        "Duration should be 2 seconds"
+      ).to.be.within(
+        postRequest.body.pageviews[1].duration - 1,
+        postRequest.body.pageviews[1].duration + 1
+      );
+
+      expect(
+        postRequest.body.time - postRequest.body.pageviews[1].added,
+        "Time between page view and request should be ~2 seconds"
+      ).to.be.within(
+        postRequest.body.pageviews[1].duration - 1,
+        postRequest.body.pageviews[1].duration + 1
+      );
+    });
+  }
 
   after(async () => {
     await driver.quit();
