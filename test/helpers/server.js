@@ -1,10 +1,11 @@
 const url = require("url");
 const http = require("http");
 const { readFileSync } = require("fs");
-const { SERVER_PORT } = require("../constants");
+const { SERVER_PORT, DEBUG } = require("../constants");
 const { getJSONBody } = require("./request");
 
-const log = (...messages) => console.log("    => Node server:", ...messages);
+const log = (...messages) =>
+  DEBUG && console.log("    => Node server:", ...messages);
 const requests = [];
 
 const route = async (req, res) => {
