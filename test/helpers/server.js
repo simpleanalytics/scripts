@@ -4,7 +4,7 @@ const { readFileSync } = require("fs");
 const { SERVER_PORT } = require("../constants");
 const { getJSONBody } = require("./request");
 
-const log = (...messages) => console.log("=> Node server:", ...messages);
+const log = (...messages) => console.log("    => Node server:", ...messages);
 const requests = [];
 
 const route = async (req, res) => {
@@ -13,6 +13,11 @@ const route = async (req, res) => {
 
   if (pathname === "/favicon.ico") {
     res.writeHead(404);
+    return res.end();
+  }
+
+  if (pathname === "/empty") {
+    res.writeHead(200);
     return res.end();
   }
 

@@ -1,4 +1,3 @@
-const { PROXY_PORT } = require("./");
 const LOCAL_IDENTIFIER = "testing";
 
 module.exports.BS_USERNAME = process.env.BS_USERNAME;
@@ -9,47 +8,83 @@ module.exports.BS_LOCAL_OPTIONS = {
   key: this.BS_KEY,
   // forceLocal: "true",
   localIdentifier: LOCAL_IDENTIFIER
-  // proxyHost: "localhost",
-  // proxyPort: "" + PROXY_PORT
-  // f: "/Users/adriaan/Developer/simpleanalytics/scripts/dist"
 };
 
 module.exports.BS_CAPABILITIES = {
-  // name: "iPhone SE",
+  // name: "Samsung Galaxy S9 Plus Android 9",
+  // browserName: "Android",
+  // os_version: "9.0",
+  // device: "Samsung Galaxy S9 Plus",
+  // real_mobile: "true",
+  // "browserstack.appium_version": "1.15.0",
+
+  name: "OS X Catalina Safari 13",
+  os: "OS X",
+  os_version: "Catalina",
+  browserName: "Safari",
+  browser_version: "13.0",
+  "browserstack.selenium_version": "4.0.0-alpha-2",
+
+  // name: "iPhone 6S iOS 12",
+  // os_version: "12",
+  // device: "iPhone 6S",
+  // real_mobile: "true",
+  // "browserstack.appium_version": "1.16.0",
+  // browserName: "iPhone",
+
+  // name: "iPhone XS iOS 13",
+  // os_version: "13",
+  // device: "iPhone XS",
+  // real_mobile: "true",
+  // browserName: "iPhone",
+  // "browserstack.appium_version": "1.14.0",
+
+  // name: "iPhone SE iOS 12",
+  // browserName: "iPhone",
+  // device: "iPhone XS",
+  // realMobile: "true",
+  // os_version: "12",
+  // "browserstack.appium_version": "1.15.0",
+
+  // name: "iPhone SE iOS 11",
   // browserName: "iPhone",
   // device: "iPhone SE",
   // realMobile: "true",
   // os_version: "11",
+  // "browserstack.appium_version": "1.15.0",
 
-  name: "Chrome 78",
-  browserName: "Chrome",
-  browser_version: "78.0",
-  os: "Windows",
-  os_version: "10",
+  // name: "Chrome 78",
+  // browserName: "Chrome",
+  // browser_version: "78.0",
+  // os: "Windows",
+  // os_version: "10",
+  // "browserstack.selenium_version": "4.0.0-alpha-2",
 
   // name: "Edge",
   // browserName: "Edge",
   // browser_version: "18.0",
   // os: "Windows",
   // os_version: "10",
+  // "browserstack.selenium_version": "4.0.0-alpha-2",
 
   // name: "Internet Explorer",
   // os: "Windows",
   // os_version: "10",
   // browserName: "IE",
   // browser_version: "11.0",
+  // "browserstack.selenium_version": "4.0.0-alpha-2",
 
-  resolution: "1024x768",
+  // resolution: "1024x768",
   project: "Simple Analytics",
   build: "Tracking Scripts",
   "browserstack.local": "true",
   "browserstack.localIdentifier": LOCAL_IDENTIFIER,
   "browserstack.debug": "true",
-  "browserstack.console": "verbose",
+  "browserstack.console": "errors",
   "browserstack.networkLogs": "true",
   "browserstack.timezone": "Europe/Amsterdam",
-  "browserstack.selenium_version": "4.0.0-alpha-2",
   "browserstack.ie.noFlash": "true",
   "browserstack.user": this.BS_USERNAME,
-  "browserstack.key": this.BS_KEY
+  "browserstack.key": this.BS_KEY,
+  acceptSslCerts: "true"
 };
