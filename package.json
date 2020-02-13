@@ -7,7 +7,7 @@
     "minify": "node minify.js",
     "watch": "node_modules/.bin/nodemon minify.js --ignore dist",
     "pretest": "npm run minify -- testing",
-    "test": "if [ ! $BS_USERNAME ]; then node -r dotenv/config node_modules/.bin/mocha test/index.js --timeout 0; else node_modules/.bin/mocha test/index.js --timeout 0; fi",
+    "test": "if [ ! $BROWSERSTACK_USERNAME ]; then node -r dotenv/config node_modules/.bin/mocha test/index.js --timeout 0; else node_modules/.bin/mocha test/index.js --timeout 0; fi",
     "posttest": "npm run minify"
   },
   "repository": {

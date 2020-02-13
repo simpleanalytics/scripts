@@ -1,2 +1,2 @@
 module.exports.SERVER_PORT = 3000;
-module.exports.DEBUG = true;
+module.exports.DEBUG = process.env.DEBUG === "true";

@@ -2,6 +2,7 @@ const url = require("url");
 const http = require("http");
 const { readFileSync } = require("fs");
 const { SERVER_PORT, DEBUG } = require("../constants");
+const { getIPv4 } = require("./");
 const { getJSONBody } = require("./request");
 
 const log = (...messages) =>
@@ -10,7 +11,7 @@ const requests = [];
 
 const route = async (req, res) => {
   const { pathname, query } = url.parse(req.url, true);
-  const { push, script } = query;
+  const { script } = query;
 
   if (pathname === "/favicon.ico") {
     res.writeHead(404);
@@ -36,30 +37,38 @@ const route = async (req, res) => {
 
   let body = "";
   if (pathname === "/script.js" && script) {
+    const localhost = await getIPv4();
     res.writeHead(200, { "Content-Type": "text/javascript" });
     body = readFileSync(`./dist${script}`, "utf8");
     body = body
       .replace(/"https:"/gi, `"http:"`)
-      .replace(/simpleanalyticscdn\.com/gi, `localhost:${SERVER_PORT}`)
+      .replace(/simpleanalyticscdn\.com/gi, `${localhost}:${SERVER_PORT}`)
       .replace(/"(queue|online)\."/gi, `""`);
     res.write(body);
     return res.end();
   }
 
   res.writeHead(200, { "Content-Type": "text/html" });
-  body = "<!DOCTYPE html><html><body>";
+  body = `<!DOCTYPE html>
+    <html>
+      <head>
+        <title>Simple Analytics Test</title>
+      </head>
+    <body>`;
 
-  if (push === "true") {
-    body += `<script>
+  body += `<script>
     window.onload = function() {
       const state = { "page_id": 2 };
       const title = "Page 2";
       const url = "/page/2";
-      if (window.history && window.history.pushState) window.history.pushState(state, title, url);
-      else window.location.href = url;
+      if (window.history && window.history.pushState) {
+        window.history.pushState(state, title, url);
+      }
+      else {
+        window.location.href = url;
+      }
     };
     </script>`;
-  }
 
   if (script)
     body += `<script async defer src="/script.js?script=${script}"></script>`;
