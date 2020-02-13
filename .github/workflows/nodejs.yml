@@ -45,7 +45,10 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
 
-      - name: npm install, and test
+      - name: Run npm ci
+        run: npm ci
+
+      - name: Run npm test with BrowserStack Local
         uses: ianwalter/bsl@v2.1.1
         with:
           args: npm test
