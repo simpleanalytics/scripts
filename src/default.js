@@ -337,7 +337,9 @@
             /** endif **/
 
             /** if scroll **/
-            scrolled = window.setTimeout(position, 500);
+            window.setTimeout(function() {
+              scrolled = position();
+            }, 500);
             /** endif **/
 
             return;
