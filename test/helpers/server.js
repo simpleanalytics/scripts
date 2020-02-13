@@ -80,11 +80,9 @@ const route = async (req, res) => {
 
 module.exports = () =>
   new Promise(resolve => {
-    let requests = [];
     const server = http.createServer(route).listen(SERVER_PORT, () => {
       log(`Started on port ${SERVER_PORT}`);
       resolve({
-        requests,
         done: () =>
           new Promise(resolve => {
             log("Closing...");
