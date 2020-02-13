@@ -46,7 +46,7 @@ jobs:
           node-version: ${{ matrix.node-version }}
 
       - name: npm install, and test
-        uses: ianwalter/bsl@v2.1.0
+        uses: ianwalter/bsl
         with:
           args: npm test
         env:
