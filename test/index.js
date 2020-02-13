@@ -48,23 +48,26 @@ const navigate = async ({ browser, driver, script }) => {
   await sleep(500);
   await driver.close();
   await sleep(500);
+  await driver.quit();
 };
 
 const browsers = [
-  // {
-  //   name: "iPhone XS iOS 12",
-  //   browserName: "iPhone",
-  //   os_version: "12",
-  //   device: "iPhone XS",
-  //   real_mobile: "true"
-  // },
+  {
+    name: "iPhone XS iOS 12",
+    browserName: "iPhone",
+    os_version: "12",
+    device: "iPhone XS",
+    real_mobile: "true",
+    beacon: false
+  },
   {
     name: "Chrome 78",
     browserName: "Chrome",
     browser_version: "78.0",
     os: "Windows",
     os_version: "10",
-    "browserstack.selenium_version": "4.0.0-alpha-2"
+    "browserstack.selenium_version": "4.0.0-alpha-2",
+    beacon: true
   }
   // {
   //   name: "Edge",
@@ -100,15 +103,20 @@ describe("Collect data", () => {
   });
 
   for (const browser of browsers) {
-    const { browserName, browser_version, os, device, os_version } = browser;
+    const {
+      browserName,
+      browser_version,
+      os,
+      device,
+      os_version,
+      beacon
+    } = browser;
 
     const name = device
       ? `${device} ${os_version}`
       : `${os} ${os_version} ${browserName} ${browser_version}`;
 
-    it(`should collect page views in ${name}`, async () => {
-      if (s.requests.length) s.requests.splice(s.requests.length);
-
+    it(`Should collect page views in ${name}`, async () => {
       log("BS new Builder (can take a while)");
 
       // Create driver
@@ -122,28 +130,21 @@ describe("Collect data", () => {
       // Run steps in the browser
       await navigate({ browser, driver, script: "/latest/hello.js" });
 
-      // console.log(JSON.stringify(requests, null, 2));
-
       expect(
-        s.requests,
+        global.REQUESTS,
         "There should be requests recorded"
       ).to.have.lengthOf.at.least(3);
 
-      const postRequests = getRequests(s.requests, { pathname: "/v2/post" });
-      const hasSendBeacon = postRequests.length === 1;
-      const requiredPageViews = hasSendBeacon ? 2 : 1;
-
-      log(
-        "hasSendBeacon",
-        hasSendBeacon,
-        "requiredPageViews",
-        requiredPageViews
-      );
+      const postRequests = getRequests(global.REQUESTS, {
+        pathname: "/v2/post"
+      });
+      const hasSendBeacon = beacon;
+      const pageViewsInOneRequest = hasSendBeacon ? 2 : 1;
 
       expect(
         postRequests,
         "There are no /v2/post requests found"
-      ).to.have.lengthOf.at.least(1);
+      ).to.have.lengthOf.at.least(hasSendBeacon ? 1 : 2);
 
       postRequests.map((postRequest, index) => {
         expect(
@@ -165,8 +166,8 @@ describe("Collect data", () => {
 
         expect(
           postRequest.body.pageviews,
-          `There should be ${requiredPageViews} page views`
-        ).to.have.lengthOf(requiredPageViews);
+          `There should be ${pageViewsInOneRequest} page views`
+        ).to.have.lengthOf(pageViewsInOneRequest);
 
         expect(postRequest.body.version, "Version should be a number").to.be.a(
           "number"
@@ -218,13 +219,13 @@ describe("Collect data", () => {
     });
   }
 
-  // afterEach(() => {
-  //   // Reset requests
-  //   s.requests.splice(s.requests.length);
-  // });
+  afterEach(() => {
+    // Reset requests
+    global.REQUESTS = [];
+  });
 
   after(async () => {
-    await driver.quit();
+    // await driver.quit();
     await stopLocal();
     await stopServer();
   });
