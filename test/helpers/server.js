@@ -7,7 +7,6 @@ const { getJSONBody } = require("./request");
 
 const log = (...messages) =>
   DEBUG && console.log("    => Node server:", ...messages);
-const requests = [];
 
 const route = async (req, res) => {
   const { pathname, query } = url.parse(req.url, true);
@@ -29,7 +28,7 @@ const route = async (req, res) => {
 
   const json = req.method === "POST" ? await getJSONBody(req) : null;
 
-  requests.push({
+  global.REQUESTS.push({
     method: req.method,
     pathname,
     body: json
@@ -81,6 +80,7 @@ const route = async (req, res) => {
 
 module.exports = () =>
   new Promise(resolve => {
+    let requests = [];
     const server = http.createServer(route).listen(SERVER_PORT, () => {
       log(`Started on port ${SERVER_PORT}`);
       resolve({

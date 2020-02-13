@@ -2,6 +2,8 @@ const { generateRandomString } = require("../helpers");
 
 const localIdentifier = `testing-${generateRandomString()}`;
 
+global.REQUESTS = [];
+
 module.exports.BROWSERSTACK_USERNAME = process.env.BROWSERSTACK_USERNAME;
 module.exports.BROWSERSTACK_ACCESS_KEY = process.env.BROWSERSTACK_ACCESS_KEY;
 
