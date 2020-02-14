@@ -7,6 +7,8 @@ global.REQUESTS = [];
 module.exports.BROWSERSTACK_USERNAME = process.env.BROWSERSTACK_USERNAME;
 module.exports.BROWSERSTACK_ACCESS_KEY = process.env.BROWSERSTACK_ACCESS_KEY;
 
+module.exports.STOP_ON_FAIL = process.env.STOP_ON_FAIL !== "false";
+
 module.exports.BS_LOCAL_OPTIONS = {
   key: this.BROWSERSTACK_ACCESS_KEY,
   localIdentifier,
