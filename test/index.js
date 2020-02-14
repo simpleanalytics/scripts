@@ -1,19 +1,20 @@
-const { expect } = require("chai");
+const Mocha = require("mocha");
 
 const browserstack = require("browserstack-local");
 const { Builder } = require("selenium-webdriver");
 const { promisify } = require("util");
-const sleep = promisify(setTimeout);
 const { DEBUG } = require("./constants");
+const { version, navigate } = require("./helpers");
+const getBrowsers = require("./helpers/get-browsers");
 
 const {
   BS_CAPABILITIES,
   BS_LOCAL_OPTIONS,
+  STOP_ON_FAIL,
   BROWSERSTACK_USERNAME,
   BROWSERSTACK_ACCESS_KEY
 } = require("./constants/browserstack");
 
-const { getLocalhost } = require("./helpers");
 const server = require("./helpers/server");
 
 const log = (...messages) => DEBUG && console.log("    => Test:", ...messages);
@@ -23,210 +24,103 @@ if (!BROWSERSTACK_USERNAME || !BROWSERSTACK_ACCESS_KEY) {
   process.exit(1);
 }
 
-const getRequests = (allRequests, params) => {
-  params = { method: "POST", ...params };
-  const keys = Object.keys(params);
-  return allRequests.filter(request => {
-    const foundKeys = keys.filter(key => {
-      return params[key] === request[key];
-    });
-    return foundKeys.length === keys.length;
-  });
-};
+const getDeviceName = ({
+  browser,
+  browser_version,
+  os,
+  device,
+  os_version
+} = {}) =>
+  device
+    ? `${device} ${
+        os === "ios"
+          ? `with iOS ${os_version}`
+          : `with ${browser} ${os_version}`
+      }`
+    : `${os} ${os_version} with ${browser} ${browser_version}`;
 
-const navigate = async ({ browser, driver, script }) => {
-  const localhost = await getLocalhost({
-    localhost: !browser || browser.browserName !== "iPhone"
-  });
-  const page = `http://${localhost}/?script=${encodeURIComponent(script)}`;
+(async () => {
+  const BrowserStackLocal = new browserstack.Local();
+  const startLocal = promisify(BrowserStackLocal.start).bind(BrowserStackLocal);
+  const stopLocal = promisify(BrowserStackLocal.stop).bind(BrowserStackLocal);
 
-  log("page", page);
+  const stopServer = (await server()).done;
+  await startLocal(BS_LOCAL_OPTIONS);
+  log("Is running?", BrowserStackLocal.isRunning());
+  const browsers = (await getBrowsers()).filter(br => br.browser !== "safari");
 
-  await driver.get(page);
-  await sleep(2000);
-  await driver.get(`http://${localhost}/empty`);
-  await sleep(500);
-  await driver.close();
-  await sleep(500);
-  await driver.quit();
-};
+  const mochaInstance = new Mocha();
+  mochaInstance.timeout(0);
 
-const browsers = [
-  {
-    name: "iPhone XS iOS 12",
-    browserName: "iPhone",
-    os_version: "12",
-    device: "iPhone XS",
-    real_mobile: "true",
-    beacon: false
-  },
-  {
-    name: "Chrome 78",
-    browserName: "Chrome",
-    browser_version: "78.0",
-    os: "Windows",
-    os_version: "10",
-    "browserstack.selenium_version": "4.0.0-alpha-2",
-    beacon: true
-  }
-  // {
-  //   name: "Edge",
-  //   browserName: "Edge",
-  //   browser_version: "18.0",
-  //   os: "Windows",
-  //   os_version: "10",
-  //   "browserstack.selenium_version": "4.0.0-alpha-2"
-  // }
-  // {
-  //   name: "Internet Explorer",
-  //   os: "Windows",
-  //   os_version: "10",
-  //   browserName: "IE",
-  //   browser_version: "11.0",
-  //   "browserstack.selenium_version": "4.0.0-alpha-2"
-  // }
-];
-
-describe("Collect data", () => {
-  let driver, stopServer, startLocal, stopLocal, s;
-
-  before(async () => {
-    const BrowserStackLocal = new browserstack.Local();
-    startLocal = promisify(BrowserStackLocal.start).bind(BrowserStackLocal);
-    stopLocal = promisify(BrowserStackLocal.stop).bind(BrowserStackLocal);
-
-    s = await server();
-    stopServer = s.done;
-
-    await startLocal(BS_LOCAL_OPTIONS);
-    log("Is running?", BrowserStackLocal.isRunning());
-  });
+  const suiteInstance = Mocha.Suite.create(
+    mochaInstance.suite,
+    "Public Script Test Suite"
+  );
 
   for (const browser of browsers) {
-    const {
-      browserName,
-      browser_version,
-      os,
-      device,
-      os_version,
-      beacon
-    } = browser;
+    const name = getDeviceName(browser);
+    browser.name = name;
+    browser.browserName = browser.browser;
 
-    const name = device
-      ? `${device} ${os_version}`
-      : `${os} ${os_version} ${browserName} ${browser_version}`;
+    suiteInstance.addTest(
+      new Mocha.Test(`Testing ${name}`, async function() {
+        const isMobile = ["ios", "android"].indexOf(browser.os) > -1;
+        if (!isMobile)
+          browser["browserstack.selenium_version"] = "4.0.0-alpha-2";
 
-    it(`Should collect page views in ${name}`, async () => {
-      log("BS new Builder (can take a while)");
+        browser.supportsSendBeacon =
+          (browser.os === "ios" && version(browser.os_version) <= 12) ||
+          browser.browser === "ie"
+            ? false
+            : true;
 
-      // Create driver
-      driver = await new Builder()
-        .usingServer("http://hub-cloud.browserstack.com/wd/hub")
-        .withCapabilities({ ...BS_CAPABILITIES, name, ...browser })
-        .build();
+        browser.useLocalIp = browser.os === "ios";
 
-      log("Start navigate");
+        const driver = await new Builder()
+          .usingServer("http://hub-cloud.browserstack.com/wd/hub")
+          .withCapabilities({
+            ...BS_CAPABILITIES,
+            ...browser
+          })
+          .build();
 
-      // Run steps in the browser
-      await navigate({ browser, driver, script: "/latest/hello.js" });
+        const commands = browser.supportsSendBeacon
+          ? [
+              { script: "/latest/hello.js" },
+              { wait: "/script.js", amount: 1 },
+              { sleep: 2000 },
+              { visit: `/empty` },
+              { wait: "/v2/post", amount: 1 },
+              { wait: "/v1/visit", amount: 2 },
+              { close: true }
+            ]
+          : [
+              { script: "/latest/hello.js" },
+              { wait: "/v2/post", amount: 1 },
+              { sleep: 500 },
+              { wait: "/v2/post", amount: 2 },
+              { wait: "/v1/visit", amount: 2 },
+              { close: true }
+            ];
 
-      expect(
-        global.REQUESTS,
-        "There should be requests recorded"
-      ).to.have.lengthOf.at.least(3);
+        await navigate({
+          ...browser,
+          commands,
+          driver
+        });
 
-      const postRequests = getRequests(global.REQUESTS, {
-        pathname: "/v2/post"
-      });
-      const hasSendBeacon = beacon;
-      const pageViewsInOneRequest = hasSendBeacon ? 2 : 1;
+        await require("./beacon")(browser);
 
-      expect(
-        postRequests,
-        "There are no /v2/post requests found"
-      ).to.have.lengthOf.at.least(hasSendBeacon ? 1 : 2);
+        await driver.quit();
 
-      postRequests.map((postRequest, index) => {
-        expect(
-          postRequest,
-          "There is no /v2/post request with body found"
-        ).to.have.property("body");
-
-        expect(
-          postRequest.body,
-          "All required keys should be present"
-        ).to.include.all.keys([
-          "version",
-          "hostname",
-          "https",
-          "width",
-          "pageviews",
-          "time"
-        ]);
-
-        expect(
-          postRequest.body.pageviews,
-          `There should be ${pageViewsInOneRequest} page views`
-        ).to.have.lengthOf(pageViewsInOneRequest);
-
-        expect(postRequest.body.version, "Version should be a number").to.be.a(
-          "number"
-        );
-
-        expect(postRequest.body.https, "HTTPS should be a boolean").to.be.a(
-          "boolean"
-        );
-
-        expect(postRequest.body.time, "Time should be a number").to.be.a(
-          "number"
-        );
-
-        if (hasSendBeacon) {
-          expect(
-            postRequest.body.pageviews[0],
-            "The first visit should be unique"
-          ).to.have.property("unique", true);
-
-          expect(
-            postRequest.body.pageviews[1],
-            "The second visit should not be unique"
-          ).to.have.property("unique", false);
-
-          expect(
-            postRequest.body.pageviews[1].duration,
-            "Duration should be 2 seconds"
-          ).to.be.within(
-            postRequest.body.pageviews[1].duration - 1,
-            postRequest.body.pageviews[1].duration + 1
-          );
-
-          expect(
-            postRequest.body.time - postRequest.body.pageviews[1].added,
-            "Time between page view and request should be ~2 seconds"
-          ).to.be.within(
-            postRequest.body.pageviews[1].duration - 1,
-            postRequest.body.pageviews[1].duration + 1
-          );
-        } else {
-          expect(
-            postRequest.body.pageviews[0],
-            index === 0
-              ? "The first visit should be unique"
-              : "The second visit should not be unique"
-          ).to.have.property("unique", index === 0 ? true : false);
-        }
-      });
-    });
+        global.REQUESTS = [];
+      })
+    );
   }
 
-  afterEach(() => {
-    // Reset requests
-    global.REQUESTS = [];
+  mochaInstance.run(amountFailures => {
+    stopLocal();
+    stopServer();
+    process.exitCode = STOP_ON_FAIL ? amountFailures > 0 : false;
   });
-
-  after(async () => {
-    // await driver.quit();
-    await stopLocal();
-    await stopServer();
-  });
-});
+})();
