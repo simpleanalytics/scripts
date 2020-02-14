@@ -7,8 +7,7 @@
     "minify": "node minify.js",
     "watch": "node_modules/.bin/nodemon minify.js --ignore dist",
     "pretest": "npm run minify -- testing",
-    "ci_test": "test/index.js",
-    "test": "if [ ! $BROWSERSTACK_USERNAME ]; then node -r dotenv/config test/index.js; else test/index.js; fi",
+    "test": "if [ ! $BROWSERSTACK_USERNAME ]; then node -r dotenv/config ./test/index.js; else node ./test/index.js; fi",
     "posttest": "npm run minify"
   },
   "repository": {
