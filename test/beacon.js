@@ -1,17 +1,7 @@
 const { expect } = require("chai");
+const { getRequests } = require("./helpers");
 
-const getRequests = (allRequests, params) => {
-  params = { method: "POST", ...params };
-  const keys = Object.keys(params);
-  return allRequests.filter(request => {
-    const foundKeys = keys.filter(key => {
-      return params[key] === request[key];
-    });
-    return foundKeys.length === keys.length;
-  });
-};
-
-module.exports = async ({ supportsSendBeacon }) => {
+module.exports = async ({ browser, supportsSendBeacon }) => {
   expect(
     global.REQUESTS,
     "There should be requests recorded"
@@ -20,6 +10,8 @@ module.exports = async ({ supportsSendBeacon }) => {
   const postRequests = getRequests(global.REQUESTS, {
     pathname: "/v2/post"
   });
+
+  // console.log(JSON.stringify(global.REQUESTS, null, 2));
 
   const pageViewsInOneRequest = supportsSendBeacon ? 2 : 1;
 

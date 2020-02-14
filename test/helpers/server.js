@@ -55,11 +55,12 @@ const route = async (req, res) => {
       </head>
     <body>`;
 
+  // As this code will run in older browsers, don't try to be smart with ES6
   body += `<script>
     window.onload = function() {
-      const state = { "page_id": 2 };
-      const title = "Page 2";
-      const url = "/page/2";
+      var state = { "page_id": 2 };
+      var title = "Page 2";
+      var url = "/page/2";
       if (window.history && window.history.pushState) {
         window.history.pushState(state, title, url);
       }
