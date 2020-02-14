@@ -76,6 +76,8 @@ const getDeviceName = ({
 
         browser.useLocalIp = browser.os === "ios";
 
+        log(`Waiting to get ${name}...`);
+
         const driver = await new Builder()
           .usingServer("http://hub-cloud.browserstack.com/wd/hub")
           .withCapabilities({
@@ -96,8 +98,7 @@ const getDeviceName = ({
             ]
           : [
               { script: "/latest/hello.js" },
-              { wait: "/v2/post", amount: 1 },
-              { sleep: 500 },
+              { wait: "/script.js", amount: 1 },
               { wait: "/v2/post", amount: 2 },
               { wait: "/v1/visit", amount: 2 },
               { close: true }
