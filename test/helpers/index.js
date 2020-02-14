@@ -135,3 +135,14 @@ module.exports.waitForRequest = ({
       await sleep(100);
     }
   });
+
+module.exports.getRequests = (allRequests, params) => {
+  params = { method: "POST", ...params };
+  const keys = Object.keys(params);
+  return allRequests.filter(request => {
+    const foundKeys = keys.filter(key => {
+      return params[key] === request[key];
+    });
+    return foundKeys.length === keys.length;
+  });
+};

@@ -46,8 +46,19 @@ const getDeviceName = ({
 
   const stopServer = (await server()).done;
   await startLocal(BS_LOCAL_OPTIONS);
-  log("Is running?", BrowserStackLocal.isRunning());
-  const browsers = (await getBrowsers()).filter(br => br.browser !== "safari");
+  log("Is BrowserStack Local running?", BrowserStackLocal.isRunning());
+  const browsers = (await getBrowsers())
+    .filter(br => br.browser === "ie")
+    .slice(0, 1);
+
+  log("Testing", browsers.length, "browsers:");
+  browsers.map(browser => {
+    const name = getDeviceName(browser);
+    browser.name = name;
+    browser.browserName = browser.browser;
+    log(` - ${name}`);
+    return browser;
+  });
 
   const mochaInstance = new Mocha();
   mochaInstance.timeout(0);
@@ -58,12 +69,8 @@ const getDeviceName = ({
   );
 
   for (const browser of browsers) {
-    const name = getDeviceName(browser);
-    browser.name = name;
-    browser.browserName = browser.browser;
-
     suiteInstance.addTest(
-      new Mocha.Test(`Testing ${name}`, async function() {
+      new Mocha.Test(`Testing ${browser.name}`, async function() {
         const isMobile = ["ios", "android"].indexOf(browser.os) > -1;
         if (!isMobile)
           browser["browserstack.selenium_version"] = "4.0.0-alpha-2";
@@ -76,7 +83,7 @@ const getDeviceName = ({
 
         browser.useLocalIp = browser.os === "ios";
 
-        log(`Waiting to get ${name}...`);
+        log(`Waiting to get ${browser.name}...`);
 
         const driver = await new Builder()
           .usingServer("http://hub-cloud.browserstack.com/wd/hub")
@@ -85,6 +92,8 @@ const getDeviceName = ({
             ...browser
           })
           .build();
+
+        // log("browser", browser);
 
         const commands = browser.supportsSendBeacon
           ? [
