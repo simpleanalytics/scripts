@@ -10,6 +10,12 @@ As our public scripts are very important in our mission to privacy we decided to
 
 Just run `npm run watch` and every file will be validated and minified on save. We minify our scripts with [UglifyJS](http://lisperator.net/uglifyjs/), a well known JavaScript minifier.
 
+## Sponsored by BrowserStack
+
+We get amazing sponsoring from [BrowserStack](https://www.browserstack.com/). Thanks!
+
+<img src="https://mijnimpact-adriaan-io.s3.amazonaws.com/1581763646555-browserstack-logo.png" width="300px" alt="BrowserStack Logo" />
+
 ## Contact
 
 Feel free to drop any issues you have with our open source scripts. If you want to contact us you can also use our contact form or email listed here: [simpleanalytics.com/contact](https://simpleanalytics.com/contact).
