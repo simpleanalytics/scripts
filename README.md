@@ -10,9 +10,9 @@ As our public scripts are very important in our mission to privacy we decided to
 
 Just run `npm run watch` and every file will be validated and minified on save. We minify our scripts with [UglifyJS](http://lisperator.net/uglifyjs/), a well known JavaScript minifier.
 
-## Sponsored by BrowserStack
+## Device testing is sponsored by BrowserStack
 
-We get amazing sponsoring from [BrowserStack](https://www.browserstack.com/). Thanks!
+We get amazing sponsoring from [BrowserStack](https://www.browserstack.com/). Thanks BrowserStack!
 
 <img src="https://mijnimpact-adriaan-io.s3.amazonaws.com/1581763646555-browserstack-logo.png" width="300px" alt="BrowserStack Logo" />
 
