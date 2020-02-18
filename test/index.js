@@ -49,7 +49,7 @@ const getDeviceName = ({
   log("Is BrowserStack Local running?", BrowserStackLocal.isRunning());
   const browsers = (await getBrowsers())
     .filter(br => br.browser === "ie")
-    .slice(0, 1);
+    .slice(1, 2);
 
   log("Testing", browsers.length, "browsers:");
   browsers.map(browser => {

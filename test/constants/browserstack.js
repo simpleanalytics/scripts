@@ -1,4 +1,5 @@
 const { generateRandomString } = require("../helpers");
+const { SERVER_PORT } = require("./");
 
 const localIdentifier = `testing-${generateRandomString()}`;
 
@@ -12,12 +13,16 @@ module.exports.STOP_ON_FAIL = process.env.STOP_ON_FAIL !== "false";
 module.exports.BS_LOCAL_OPTIONS = {
   key: this.BROWSERSTACK_ACCESS_KEY,
   localIdentifier,
-  forceLocal: "true"
+  forceLocal: "true",
+  forceProxy: "true",
+  "local-proxy-host": "localhost",
+  "local-proxy-port": SERVER_PORT
 };
 
 module.exports.BS_CAPABILITIES = {
   project: "Simple Analytics",
   build: "Tracking Scripts",
+
   "browserstack.local": "true",
   "browserstack.localIdentifier": localIdentifier,
   "browserstack.debug": "true",
