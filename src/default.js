@@ -424,7 +424,14 @@
         var orig = his[type];
         return function() {
           var rv = orig.apply(this, arguments);
-          var event = new Event(type);
+          var event;
+          if (typeof Event === "function") {
+            event = new Event(type);
+          } else {
+            // Fix for IE
+            event = document.createEvent("Event");
+            event.initEvent(type, true, true);
+          }
           event.arguments = arguments;
           dis(event);
           return rv;

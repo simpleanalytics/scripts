@@ -36,13 +36,9 @@ const route = async (req, res) => {
 
   let body = "";
   if (pathname === "/script.js" && script) {
-    const localhost = await getIPv4();
     res.writeHead(200, { "Content-Type": "text/javascript" });
     body = readFileSync(`./dist${script}`, "utf8");
-    body = body
-      .replace(/"https:"/gi, `"http:"`)
-      .replace(/simpleanalyticscdn\.com/gi, `${localhost}:${SERVER_PORT}`)
-      .replace(/"(queue|online)\."/gi, `""`);
+    body = body.replace(/"https:"/gi, `"http:"`);
     res.write(body);
     return res.end();
   }

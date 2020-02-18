@@ -2,7 +2,7 @@ const crypto = require("crypto");
 const { networkInterfaces: getNetworkInterfaces } = require("os");
 const { promisify } = require("util");
 const sleep = promisify(setTimeout);
-const { SERVER_PORT, DEBUG } = require("../constants");
+const { DEBUG } = require("../constants");
 
 const log = (...messages) =>
   DEBUG && console.log("    => Helpers:", ...messages);
@@ -23,7 +23,7 @@ module.exports.getIPv4 = () =>
   });
 
 module.exports.getLocalhost = async ({ useLocalIp = false } = {}) =>
-  `${useLocalIp ? await this.getIPv4() : "localhost"}:${SERVER_PORT}`;
+  `${useLocalIp ? await this.getIPv4() : "localhost"}`;
 
 module.exports.generateRandomString = (length = 30) =>
   crypto.randomBytes(Math.ceil(length / 2)).toString("hex");
