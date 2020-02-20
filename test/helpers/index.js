@@ -1,11 +1,12 @@
 const crypto = require("crypto");
 const { networkInterfaces: getNetworkInterfaces } = require("os");
-const { promisify } = require("util");
-const sleep = promisify(setTimeout);
 const { DEBUG } = require("../constants");
+const { promisify } = require("util");
 
 const log = (...messages) =>
   DEBUG && console.log("    => Helpers:", ...messages);
+
+module.exports.sleep = promisify(setTimeout);
 
 module.exports.getIPv4 = () =>
   new Promise((resolve, reject) => {
@@ -65,7 +66,7 @@ module.exports.navigate = async ({ name, useLocalIp, driver, commands }) => {
   } of commands) {
     if (sleepMs) {
       log(`sleep (${name})`, sleepMs);
-      await sleep(sleepMs);
+      await this.sleep(sleepMs);
     } else if (close) {
       log(`close (${name})`, close);
       await driver.close();
@@ -95,46 +96,39 @@ module.exports.navigate = async ({ name, useLocalIp, driver, commands }) => {
   }
 };
 
-module.exports.waitForRequest = ({
+module.exports.waitForRequest = async ({
   pathname,
   amount = 1,
   timeout = 5000
-} = {}) =>
-  new Promise(async resolve => {
-    if (!pathname) {
-      log("waitForRequest: No pathname defined");
-      return resolve(false);
+} = {}) => {
+  if (!pathname) {
+    log("waitForRequest: No pathname defined");
+    return false;
+  }
+
+  let searching = true;
+  let start = Date.now();
+
+  while (searching) {
+    const foundRequests = global.REQUESTS.filter(
+      ({ pathname: requestPathname }) => {
+        return pathname === requestPathname;
+      }
+    );
+
+    if (foundRequests.length === amount) {
+      searching = false;
+      return Date.now() - start;
     }
 
-    let searching = true;
-    let start = Date.now();
-
-    while (searching) {
-      const foundRequests = global.REQUESTS.filter(
-        ({ pathname: requestPathname }) => {
-          return pathname === requestPathname;
-        }
-      );
-
-      // log(
-      //   "waitForRequest",
-      //   pathname,
-      //   timeout,
-      //   !!foundRequest,
-      //   JSON.stringify(global.REQUESTS.map(lala => lala.pathname))
-      // );
-
-      if (foundRequests.length === amount) {
-        searching = false;
-        return resolve(Date.now() - start);
-      }
-      if (Date.now() - start > timeout) {
-        searching = false;
-        return resolve(false);
-      }
-      await sleep(100);
+    if (Date.now() - start > timeout) {
+      searching = false;
+      return false;
     }
-  });
+
+    await this.sleep(100);
+  }
+};
 
 module.exports.getRequests = (allRequests, params) => {
   params = { method: "POST", ...params };

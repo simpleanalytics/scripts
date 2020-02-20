@@ -121,6 +121,7 @@ module.exports = async () => {
     all
       .filter(({ browser, browser_version }) => {
         return (
+          version(browser_version) > 12.15 &&
           browser === "opera" &&
           !browser_version.includes("beta") &&
           !browser_version.includes("preview")

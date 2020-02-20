@@ -1,4 +1,5 @@
 const Mocha = require("mocha");
+const { expect } = require("chai");
 
 const browserstack = require("browserstack-local");
 const { Builder } = require("selenium-webdriver");
@@ -6,6 +7,7 @@ const { promisify } = require("util");
 const { DEBUG, CI } = require("./constants");
 const { version, navigate } = require("./helpers");
 const getBrowsers = require("./helpers/get-browsers");
+const server = require("./helpers/server");
 
 const {
   BS_CAPABILITIES,
@@ -15,7 +17,27 @@ const {
   BROWSERSTACK_ACCESS_KEY
 } = require("./constants/browserstack");
 
-const server = require("./helpers/server");
+// 1080000 ms = 10 minutes
+const getDriverWithTimeout = (capabilities, timeout = 1080000) =>
+  new Promise(resolve => {
+    const start = Date.now();
+    let responded = false;
+
+    const response = () => {
+      if (responded) return;
+      responded = true;
+      return Date.now() - start < timeout ? resolve(driver) : resolve();
+    };
+
+    const driver = new Builder()
+      .usingServer("http://hub-cloud.browserstack.com/wd/hub")
+      .withCapabilities(capabilities)
+      .build()
+      .then(response)
+      .catch(response);
+
+    setTimeout(response);
+  });
 
 const log = (...messages) => DEBUG && console.log("    => Test:", ...messages);
 
@@ -53,7 +75,7 @@ const getDeviceName = ({
   const retrievedBrowsers = await getBrowsers();
   const browsers = CI
     ? retrievedBrowsers
-    : retrievedBrowsers.filter(br => br.browser === "iphone").slice(0, 1);
+    : retrievedBrowsers.filter(br => br.browser === "opera").slice(0, 1);
 
   log("Testing", browsers.length, "browsers:");
   browsers.map(browser => {
@@ -78,6 +100,8 @@ const getDeviceName = ({
         const isMobile = ["ios", "android"].indexOf(browser.os) > -1;
         if (!isMobile)
           browser["browserstack.selenium_version"] = "4.0.0-alpha-2";
+        if (browser.browser === "opera")
+          browser["browserstack.selenium_version"] = "2.43.1";
 
         browser.supportsSendBeacon =
           (browser.os === "ios" && version(browser.os_version) <= 12) ||
@@ -89,13 +113,16 @@ const getDeviceName = ({
 
         log(`Waiting to get ${browser.name}...`);
 
-        driver = await new Builder()
-          .usingServer("http://hub-cloud.browserstack.com/wd/hub")
-          .withCapabilities({
-            ...BS_CAPABILITIES,
-            ...browser
-          })
-          .build();
+        driver = await getDriverWithTimeout({
+          ...BS_CAPABILITIES,
+          ...browser
+        });
+
+        if (!driver) {
+          // Device seems unavailable the test will complete
+          expect(true, "Getting device take more than 10 minutes").to.be.false;
+          return;
+        }
 
         const commands = browser.supportsSendBeacon
           ? [
