@@ -7,16 +7,22 @@ const { getJSONBody } = require("./request");
 const log = (...messages) =>
   DEBUG && console.log("    => Node server:", ...messages);
 
+const bool = input => {
+  if (typeof input === "boolean") return input;
+  if (typeof input === "string") return input === "true";
+  return false;
+};
+
 const route = async (req, res) => {
   const { pathname, query } = url.parse(req.url, true);
-  const { script, json: urlJson } = query;
+  const { script, redirect = true, json: urlJson, beacon, push } = query;
 
   if (pathname === "/favicon.ico") {
     res.writeHead(404);
     return res.end();
   }
 
-  if (pathname === "/empty") {
+  if (req.method === "HEAD") {
     res.writeHead(200);
     return res.end();
   }
@@ -46,7 +52,6 @@ const route = async (req, res) => {
     res.writeHead(200, { "Content-Type": "text/javascript" });
     body = readFileSync(`./dist${script}`, "utf8");
     body = body.replace(/"https:/gi, `"http:`);
-    // log(body);
     res.write(body);
     return res.end();
   }
@@ -60,19 +65,27 @@ const route = async (req, res) => {
     <body>`;
 
   // As this code will run in older browsers, don't try to be smart with ES6
-  body += `<script>
-    window.onload = function() {
-      if (window.history && window.history.pushState) {
-        window.history.pushState({ "page_id": 2 }, "Page 2", "/page/2");
-      }
-      else {
-        window.location.href = url;
-      }
-    };
-    </script>`;
+  let onload = "";
+  if (bool(push)) {
+    onload = `window.history.pushState({ "page_id": 2 }, "Push State", "/pushstate");`;
+  } else if (bool(redirect)) {
+    const params = new URLSearchParams({
+      redirect: false,
+      script: script || "",
+      beacon,
+      push
+    }).toString();
+    onload = `window.location.href = "/href?${params}"`;
+  }
 
-  if (script)
-    body += `<script async defer src="/script.js?script=${script}"></script>`;
+  if (onload) {
+    body += `<script>window.onload = function() {${onload}};</script>`;
+  }
+
+  if (script) {
+    const params = script ? new URLSearchParams({ script }).toString() : "";
+    body += `<script defer async src="/script.js?${params}"></script>`;
+  }
 
   body += `</body></html>`;
 

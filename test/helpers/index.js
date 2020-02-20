@@ -62,7 +62,9 @@ module.exports.navigate = async ({ name, useLocalIp, driver, commands }) => {
     timeout,
     amount,
     close = false,
-    script
+    script,
+    beacon,
+    push
   } of commands) {
     if (sleepMs) {
       log(`sleep (${name})`, sleepMs);
@@ -84,11 +86,13 @@ module.exports.navigate = async ({ name, useLocalIp, driver, commands }) => {
           : `(exceeded timeout)`
       );
     } else if (script) {
-      log(
-        `script (${name})`,
-        `${localhost}/?script=${encodeURIComponent(script)}`
-      );
-      await driver.get(`${localhost}/?script=${encodeURIComponent(script)}`);
+      const params = new URLSearchParams({
+        script,
+        beacon,
+        push
+      }).toString();
+      log(`script (${name})`, `${localhost}/?${params}`);
+      await driver.get(`${localhost}/?${params}`);
     } else if (visit) {
       log(`visit (${name})`, `${localhost}${visit}`);
       await driver.get(`${localhost}${visit}`);
@@ -126,7 +130,7 @@ module.exports.waitForRequest = async ({
       return false;
     }
 
-    await this.sleep(100);
+    await this.sleep(50);
   }
 };
 

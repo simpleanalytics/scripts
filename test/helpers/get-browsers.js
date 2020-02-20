@@ -21,7 +21,7 @@ module.exports = async () => {
   });
 
   const ie = all.filter(({ browser, browser_version }) => {
-    return browser === "ie" && version(browser_version) >= 10;
+    return browser === "ie" && version(browser_version) >= 9;
   });
 
   const edge = makeUnique(

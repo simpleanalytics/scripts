@@ -69,7 +69,6 @@ const getDeviceName = ({
   const BrowserStackLocal = new browserstack.Local();
   const startLocal = promisify(BrowserStackLocal.start).bind(BrowserStackLocal);
   const stopLocal = promisify(BrowserStackLocal.stop).bind(BrowserStackLocal);
-  let driver;
 
   const stopServer = (await server()).done;
   await startLocal(BS_LOCAL_OPTIONS);
@@ -79,7 +78,11 @@ const getDeviceName = ({
   const retrievedBrowsers = await getBrowsers();
   const browsers = CI
     ? retrievedBrowsers
-    : retrievedBrowsers.filter(({ browser }) => true).slice(0, 2);
+    : retrievedBrowsers
+        .filter(
+          ({ browser, browser_version }) => browser === "chrome" // && version(browser_version) === 9
+        )
+        .slice(0, 2);
 
   log("Testing", browsers.length, "browsers:");
   browsers.map(browser => {
@@ -91,7 +94,7 @@ const getDeviceName = ({
   });
 
   const mochaInstance = new Mocha();
-  mochaInstance.timeout(2 * 60 * 60 * 1000); // 2 hours
+  mochaInstance.timeout(0); //2 * 60 * 60 * 1000); // 2 hours
 
   const suiteInstance = Mocha.Suite.create(
     mochaInstance.suite,
@@ -123,11 +126,16 @@ const getDeviceName = ({
             ? false
             : true;
 
+        browser.supportsPushState =
+          browser.browser === "ie" && version(browser.browser_version) < 10
+            ? false
+            : true;
+
         browser.useLocalIp = browser.os === "ios";
 
         log(`Waiting to get ${browser.name}...`);
 
-        driver = await getDriverWithTimeout({
+        const driver = await getDriverWithTimeout({
           ...BS_CAPABILITIES,
           ...browser
         });
@@ -138,19 +146,16 @@ const getDeviceName = ({
           return;
         }
 
-        const commands = browser.supportsSendBeacon
-          ? [
-              { script: "/latest/hello.js" },
-              { wait: "/script.js", amount: 1 },
-              { wait: "/get.gif", amount: 2 },
-              { close: true }
-            ]
-          : [
-              { script: "/latest/hello.js" },
-              { wait: "/script.js", amount: 1 },
-              { wait: "/get.gif", amount: 2 },
-              { close: true }
-            ];
+        const commands = [
+          {
+            script: "/latest/hello.js",
+            beacon: true,
+            push: browser.supportsPushState
+          },
+          { wait: "/script.js", amount: browser.supportsPushState ? 1 : 2 },
+          { wait: "/get.gif", amount: 2 },
+          { close: true }
+        ];
 
         // Empty global REQUESTS
         global.REQUESTS = [];
@@ -168,12 +173,12 @@ const getDeviceName = ({
     );
   }
 
-  mochaInstance.run(amountFailures => {
+  mochaInstance.run(async amountFailures => {
     // Stop local server and BrowserStack Local
-    stopLocal();
-    stopServer();
+    await stopLocal();
+    await stopServer();
 
-    // Exit with exit code when having failers
-    process.exitCode = STOP_ON_FAIL ? amountFailures > 0 : false;
+    // Exit with exit code when having failures
+    process.exit(STOP_ON_FAIL ? amountFailures > 0 : false);
   });
 })();
