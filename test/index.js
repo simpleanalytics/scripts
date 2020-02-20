@@ -23,20 +23,24 @@ const getDriverWithTimeout = (capabilities, timeout = 1080000) =>
     const start = Date.now();
     let responded = false;
 
-    const response = () => {
+    const response = message => {
+      if (message instanceof Error) {
+        log(message);
+        return resolve(message);
+      }
       if (responded) return;
       responded = true;
-      return Date.now() - start < timeout ? resolve(driver) : resolve();
+      return Date.now() - start < timeout ? resolve(message) : resolve();
     };
 
-    const driver = new Builder()
+    new Builder()
       .usingServer("http://hub-cloud.browserstack.com/wd/hub")
       .withCapabilities(capabilities)
       .build()
       .then(response)
       .catch(response);
 
-    setTimeout(response);
+    setTimeout(response, timeout);
   });
 
 const log = (...messages) => DEBUG && console.log("    => Test:", ...messages);
@@ -75,7 +79,7 @@ const getDeviceName = ({
   const retrievedBrowsers = await getBrowsers();
   const browsers = CI
     ? retrievedBrowsers
-    : retrievedBrowsers.filter(br => br.browser === "opera").slice(0, 1);
+    : retrievedBrowsers.filter(({ browser }) => true).slice(0, 2);
 
   log("Testing", browsers.length, "browsers:");
   browsers.map(browser => {
@@ -87,12 +91,22 @@ const getDeviceName = ({
   });
 
   const mochaInstance = new Mocha();
-  mochaInstance.timeout(0);
+  mochaInstance.timeout(2 * 60 * 60 * 1000); // 2 hours
 
   const suiteInstance = Mocha.Suite.create(
     mochaInstance.suite,
     "Public Script Test Suite"
   );
+
+  if (CI)
+    suiteInstance.addTest(
+      new Mocha.Test(`Getting browsers`, async function() {
+        expect(
+          browsers,
+          "Should have more than 10 browsers"
+        ).to.have.lengthOf.at.least(10);
+      })
+    );
 
   for (const browser of browsers) {
     suiteInstance.addTest(
