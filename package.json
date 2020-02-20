@@ -30,7 +30,7 @@
     "eslint": "^6.7.2",
     "esprima": "^4.0.1",
     "handlebars": "^4.5.3",
-    "mocha": "^7.0.1",
+    "mocha": "^6.2.2",
     "nodemon": "^1.19.1",
     "request": "^2.88.0",
     "selenium-webdriver": "^4.0.0-alpha.5",

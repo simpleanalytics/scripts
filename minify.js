@@ -29,7 +29,7 @@ const DEFAULTS = {
   scroll: true,
   spa: true,
   uniques: true,
-  online: true,
+  online: false,
   url: "docs.simpleanalytics.com/script"
 };
 
@@ -41,10 +41,7 @@ const files = [
     variables: {
       ...DEFAULTS,
       baseUrl: "simpleanalyticscdn.com",
-      apiUrlPrefix: "queue.",
-      apiUrlSuffix: "/v2/post",
-      onlineUrlPrefix: "online.",
-      onlineUrlSuffix: "/v1/visit"
+      apiUrlPrefix: "queue."
     }
   },
   {
@@ -55,10 +52,7 @@ const files = [
       ...DEFAULTS,
       version: 2,
       baseUrl: "simpleanalyticscdn.com",
-      apiUrlPrefix: "queue.",
-      apiUrlSuffix: "/v2/post",
-      onlineUrlPrefix: "online.",
-      onlineUrlSuffix: "/v1/visit"
+      apiUrlPrefix: "queue."
     }
   },
   {
@@ -68,9 +62,7 @@ const files = [
     variables: {
       ...DEFAULTS,
       version: 2,
-      baseUrl: "{{nginxHost}}",
-      apiUrlSuffix: "/v2/post",
-      onlineUrlSuffix: "/v1/visit"
+      baseUrl: "{{nginxHost}}"
     }
   },
   {
@@ -80,9 +72,7 @@ const files = [
     variables: {
       ...DEFAULTS,
       version: 2,
-      baseUrl: "{{nginxHost}}",
-      apiUrlSuffix: "/v2/post",
-      onlineUrlSuffix: "/v1/visit"
+      baseUrl: "{{nginxHost}}"
     }
   },
   {
@@ -93,7 +83,6 @@ const files = [
       ...DEFAULTS,
       version: 2,
       baseUrl: "{{nginxHost}}",
-      apiUrlSuffix: "/v2/post",
       duration: false,
       events: false,
       scroll: false,
@@ -108,7 +97,6 @@ const files = [
     variables: {
       ...DEFAULTS,
       baseUrl: "{{nginxHost}}",
-      apiUrlSuffix: "/v2/post",
       version: 2,
       duration: false,
       events: false,
