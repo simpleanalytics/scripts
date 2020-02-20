@@ -100,11 +100,11 @@ const getDeviceName = ({
 
   if (CI)
     suiteInstance.addTest(
-      new Mocha.Test(`Getting browsers`, async function() {
+      new Mocha.Test(`Having enough browsers to test`, async function() {
         expect(
           browsers,
-          "Should have more than 10 browsers"
-        ).to.have.lengthOf.at.least(10);
+          "Should have more than 20 browsers"
+        ).to.have.lengthOf.at.least(20);
       })
     );
 
