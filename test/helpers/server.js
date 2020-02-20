@@ -2,7 +2,6 @@ const url = require("url");
 const http = require("http");
 const { readFileSync } = require("fs");
 const { SERVER_PORT, DEBUG } = require("../constants");
-const { getIPv4 } = require("./");
 const { getJSONBody } = require("./request");
 
 const log = (...messages) =>
@@ -10,7 +9,7 @@ const log = (...messages) =>
 
 const route = async (req, res) => {
   const { pathname, query } = url.parse(req.url, true);
-  const { script } = query;
+  const { script, json: urlJson } = query;
 
   if (pathname === "/favicon.ico") {
     res.writeHead(404);
@@ -22,11 +21,14 @@ const route = async (req, res) => {
     return res.end();
   }
 
-  log(
-    `${req.method} request to ${pathname} with query ${JSON.stringify(query)}`
-  );
+  log(`${req.method} request to ${pathname}`);
 
-  const json = req.method === "POST" ? await getJSONBody(req) : null;
+  const json =
+    req.method === "POST"
+      ? await getJSONBody(req)
+      : urlJson
+      ? JSON.parse(urlJson)
+      : null;
 
   global.REQUESTS.push({
     method: req.method,
@@ -34,11 +36,17 @@ const route = async (req, res) => {
     body: json
   });
 
+  if (pathname.endsWith(".gif")) {
+    res.writeHead(200);
+    return res.end();
+  }
+
   let body = "";
   if (pathname === "/script.js" && script) {
     res.writeHead(200, { "Content-Type": "text/javascript" });
     body = readFileSync(`./dist${script}`, "utf8");
-    body = body.replace(/"https:"/gi, `"http:"`);
+    body = body.replace(/"https:/gi, `"http:`);
+    // log(body);
     res.write(body);
     return res.end();
   }

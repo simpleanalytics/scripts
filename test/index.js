@@ -3,7 +3,7 @@ const Mocha = require("mocha");
 const browserstack = require("browserstack-local");
 const { Builder } = require("selenium-webdriver");
 const { promisify } = require("util");
-const { DEBUG } = require("./constants");
+const { DEBUG, CI } = require("./constants");
 const { version, navigate } = require("./helpers");
 const getBrowsers = require("./helpers/get-browsers");
 
@@ -43,13 +43,17 @@ const getDeviceName = ({
   const BrowserStackLocal = new browserstack.Local();
   const startLocal = promisify(BrowserStackLocal.start).bind(BrowserStackLocal);
   const stopLocal = promisify(BrowserStackLocal.stop).bind(BrowserStackLocal);
+  let driver;
 
   const stopServer = (await server()).done;
   await startLocal(BS_LOCAL_OPTIONS);
   log("Is BrowserStack Local running?", BrowserStackLocal.isRunning());
-  const browsers = (await getBrowsers())
-    .filter(br => br.browser === "ie")
-    .slice(1, 2);
+
+  // Do not filter browsers when running as CI
+  const retrievedBrowsers = await getBrowsers();
+  const browsers = CI
+    ? retrievedBrowsers
+    : retrievedBrowsers.filter(br => br.browser === "iphone").slice(0, 1);
 
   log("Testing", browsers.length, "browsers:");
   browsers.map(browser => {
@@ -85,7 +89,7 @@ const getDeviceName = ({
 
         log(`Waiting to get ${browser.name}...`);
 
-        const driver = await new Builder()
+        driver = await new Builder()
           .usingServer("http://hub-cloud.browserstack.com/wd/hub")
           .withCapabilities({
             ...BS_CAPABILITIES,
@@ -93,25 +97,22 @@ const getDeviceName = ({
           })
           .build();
 
-        // log("browser", browser);
-
         const commands = browser.supportsSendBeacon
           ? [
               { script: "/latest/hello.js" },
               { wait: "/script.js", amount: 1 },
-              { sleep: 2000 },
-              { visit: `/empty` },
-              { wait: "/v2/post", amount: 1 },
-              { wait: "/v1/visit", amount: 2 },
+              { wait: "/get.gif", amount: 2 },
               { close: true }
             ]
           : [
               { script: "/latest/hello.js" },
               { wait: "/script.js", amount: 1 },
-              { wait: "/v2/post", amount: 2 },
-              { wait: "/v1/visit", amount: 2 },
+              { wait: "/get.gif", amount: 2 },
               { close: true }
             ];
+
+        // Empty global REQUESTS
+        global.REQUESTS = [];
 
         await navigate({
           ...browser,
@@ -119,18 +120,19 @@ const getDeviceName = ({
           driver
         });
 
-        await require("./beacon")(browser);
-
         await driver.quit();
 
-        global.REQUESTS = [];
+        await require("./test")(browser);
       })
     );
   }
 
   mochaInstance.run(amountFailures => {
+    // Stop local server and BrowserStack Local
     stopLocal();
     stopServer();
+
+    // Exit with exit code when having failers
     process.exitCode = STOP_ON_FAIL ? amountFailures > 0 : false;
   });
 })();

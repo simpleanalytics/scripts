@@ -1,5 +1,5 @@
 const { generateRandomString } = require("../helpers");
-const { SERVER_PORT } = require("./");
+const { SERVER_PORT, LOCATION } = require("./");
 
 const localIdentifier = `testing-${generateRandomString()}`;
 
@@ -20,14 +20,14 @@ module.exports.BS_LOCAL_OPTIONS = {
 };
 
 module.exports.BS_CAPABILITIES = {
-  project: "Simple Analytics",
-  build: "Tracking Scripts",
+  project: `Simple Analytics`,
+  build: `Test from ${LOCATION}`,
 
   "browserstack.local": "true",
   "browserstack.localIdentifier": localIdentifier,
-  "browserstack.debug": "true",
-  "browserstack.console": "errors",
-  "browserstack.networkLogs": "true",
+  "browserstack.debug": "false",
+  "browserstack.console": "disable",
+  "browserstack.networkLogs": "false",
   "browserstack.timezone": "Europe/Amsterdam",
   "browserstack.ie.noFlash": "true",
   "browserstack.user": this.BROWSERSTACK_USERNAME,
