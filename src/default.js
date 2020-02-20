@@ -22,27 +22,42 @@
   var stringify = JSON.stringify;
   var thousand = 1000;
   var addEventListenerFunc = window.addEventListener;
+  var fullApiUrl = protocol + apiUrlPrefix + baseUrl;
 
   // A simple log function so the user knows why a request is not being send
   var warn = function(message) {
     if (con && con.warn) con.warn("Simple Analytics:", message);
   };
 
+  var random = function() {
+    return Math.random()
+      .toString(36)
+      .slice(2);
+  };
+
   var seconds = function(since) {
     return Math.round((Date.now() - (since || 0)) / thousand);
   };
 
+  // This code could error on not having resolvedOptions in the Android Webview, that's why we use try...catch
+  var timezone;
+  try {
+    timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  } catch (e) {
+    /* Do nothing */
+  }
+
   // Send data via image of XHR request
   function sendData(data) {
+    page.id = random();
     data.pageviews = [page];
     data.time = seconds();
+    data.https = loc.protocol === https;
+    data.timezone = timezone;
+    data.width = window.innerWidth;
     warn(data);
     new Image().src =
-      protocol +
-      apiUrlPrefix +
-      baseUrl +
-      "/get.gif?json=" +
-      encodeURIComponentFunc(stringify(data));
+      fullApiUrl + "/get.gif?json=" + encodeURIComponentFunc(stringify(data));
   }
 
   // Send errors
@@ -69,14 +84,14 @@
   var dis = window.dispatchEvent;
   /** endif **/
 
-  // /** if duration **/
-  // var duration = "duration";
-  // var start = Date.now();
-  // /** endif **/
+  /** if duration **/
+  var duration = "duration";
+  var start = Date.now();
+  /** endif **/
 
-  // /** if scroll **/
-  // var scrolled = 0;
-  // /** endif **/
+  /** if scroll **/
+  var scrolled = 0;
+  /** endif **/
 
   var scriptElement = doc.querySelector('script[src*="' + baseUrl + '"]');
   var attr = function(scriptElement, attribute) {
@@ -111,22 +126,24 @@
       if (match && match[0]) return match[0];
     };
 
-    // This code could error on not having resolvedOptions in the Android Webview, that's why we use try...catch
-    var timezone;
-    try {
-      timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    } catch (e) {
-      /* Do nothing */
-    }
-
     var page;
     var lastSendPath;
     var payload = {
       version: version,
-      hostname: hostname,
-      https: loc.protocol === https,
-      timezone: timezone,
-      width: window.innerWidth
+      hostname: hostname
+    };
+
+    var assign = function() {
+      var to = {};
+      for (var index = 0; index < arguments.length; index++) {
+        var nextSource = arguments[index];
+        for (var nextKey in nextSource) {
+          if (Object.prototype.hasOwnProperty.call(nextSource, nextKey)) {
+            to[nextKey] = nextSource[nextKey];
+          }
+        }
+      }
+      return to;
     };
 
     // We don't want to end up with sensitive data so we clean the referrer URL
@@ -141,108 +158,86 @@
           .replace(/^([^/]+)\/$/, "$1") || undefined
     };
 
-    // // We don't put msHidden in if duration block, because it's used outside of that functionality
-    // var msHidden = 0;
+    // We don't put msHidden in if duration block, because it's used outside of that functionality
+    var msHidden = 0;
 
-    // /** if duration **/
-    // var hiddenStart = nullVar;
-    // window.addEventListener(
-    //   "visibilitychange",
-    //   function() {
-    //     if (doc.hidden) hiddenStart = Date.now();
-    //     else msHidden += Date.now() - hiddenStart;
-    //   },
-    //   false
-    // );
-    // /** endif **/
+    /** if duration **/
+    var hiddenStart;
+    window.addEventListener(
+      "visibilitychange",
+      function() {
+        if (doc.hidden) hiddenStart = Date.now();
+        else msHidden += Date.now() - hiddenStart;
+      },
+      false
+    );
+    /** endif **/
 
-    // var sendBeacon = "sendBeacon";
+    var sendBeacon = "sendBeacon";
 
-    // // Safari on iOS < 13 has some issues with the Beacon API
-    // var useSendBeacon =
-    //   sendBeacon in nav &&
-    //   /ip(hone|ad)(.*)os\s([1-9]|1[0-2])_/i.test(userAgent) === false;
+    var sendOnClose = function() {
+      var beacon = { version: version, original_id: page.id };
+      /** if duration **/
+      beacon[duration] = seconds(start + msHidden);
+      msHidden = 0;
+      start = 0;
+      /** endif **/
 
-    // if (useSendBeacon)
-    //   addEventListenerFunc(
-    //     "unload",
-    //     function() {
-    //       console.log("=> unload 1");
-    //       try {
-    //         if (document.visibilityState === "hidden") {
-    //           console.log("=> unload 2");
-    //           var last = payload[pageviews][payload[pageviews].length - 1];
-    //           console.log("=> last", last);
+      /** if scroll **/
+      beacon.scrolled = Math.max(0, scrolled, position());
+      /** endif **/
 
-    //           // /** if duration **/
-    //           // last[duration] = seconds(start + msHidden);
-    //           // msHidden = 0;
-    //           // /** endif **/
+      nav[sendBeacon](fullApiUrl + "/post", stringify(assign(payload, beacon)));
+    };
 
-    //           // /** if scroll **/
-    //           // var currentScroll = Math.max(0, scrolled, position());
-    //           // if (currentScroll) last.scrolled = currentScroll;
-    //           // /** endif **/
+    if (sendBeacon in nav) addEventListenerFunc("unload", sendOnClose, false);
 
-    //           payload.time = seconds();
-    //           fullApiUrl = "http://requestbin.net/r/1317qpg1" || fullApiUrl;
-    //           console.log("=> sendBeacon", fullApiUrl, payload);
-    //           nav[sendBeacon](fullApiUrl, stringify(payload));
+    /** if scroll **/
+    var scroll = "scroll";
+    var body = doc.body || {};
+    var documentElement = doc.documentElement || {};
+    var position = function() {
+      try {
+        var Height = "Height";
+        var scrollHeight = scroll + Height;
+        var offsetHeight = "offset" + Height;
+        var clientHeight = "client" + Height;
+        var documentClientHeight = documentElement[clientHeight] || 0;
+        var height = Math.max(
+          body[scrollHeight] || 0,
+          body[offsetHeight] || 0,
+          documentElement[clientHeight] || 0,
+          documentElement[scrollHeight] || 0,
+          documentElement[offsetHeight] || 0
+        );
+        return Math.min(
+          100,
+          Math.round(
+            (100 * ((documentElement.scrollTop || 0) + documentClientHeight)) /
+              height /
+              5
+          ) * 5
+        );
+      } catch (error) {
+        return 0;
+      }
+    };
 
-    //           console.log("=> sendBeacon done...");
-    //         }
-    //       } catch (error) {
-    //         sendError(error);
-    //       }
-    //     },
-    //     false
-    //   );
+    addEventListenerFunc("load", function() {
+      scrolled = position();
+      addEventListenerFunc(
+        scroll,
+        function() {
+          if (scrolled < position()) scrolled = position();
+        },
+        false
+      );
+    });
+    /** endif **/
 
-    // /** if scroll **/
-    // var scroll = "scroll";
-    // var body = doc.body || {};
-    // var documentElement = doc.documentElement || {};
-    // var position = function() {
-    //   try {
-    //     var Height = "Height";
-    //     var scrollHeight = scroll + Height;
-    //     var offsetHeight = "offset" + Height;
-    //     var clientHeight = "client" + Height;
-    //     var documentClientHeight = documentElement[clientHeight] || 0;
-    //     var height = Math.max(
-    //       body[scrollHeight] || 0,
-    //       body[offsetHeight] || 0,
-    //       documentElement[clientHeight] || 0,
-    //       documentElement[scrollHeight] || 0,
-    //       documentElement[offsetHeight] || 0
-    //     );
-    //     return Math.min(
-    //       100,
-    //       Math.round(
-    //         (100 * ((documentElement.scrollTop || 0) + documentClientHeight)) /
-    //           height /
-    //           5
-    //       ) * 5
-    //     );
-    //   } catch (error) {
-    //     sendError(error);
-    //     return 0;
-    //   }
-    // };
+    var sendPageView = function(isPushState, deleteSourceInfo) {
+      if (isPushState) sendOnClose();
 
-    // addEventListenerFunc("load", function() {
-    //   scrolled = position();
-    //   addEventListenerFunc(
-    //     scroll,
-    //     function() {
-    //       if (scrolled < position()) scrolled = position();
-    //     },
-    //     false
-    //   );
-    // });
-    // /** endif **/
-
-    var sendPageView = function(deleteSourceInfo) {
       // // Continue when type is pageviews
       // if (payloadPageviewsLength) {
       //   /** if duration **/
@@ -269,8 +264,7 @@
       //   // return;
       // }
 
-      payload.source = deleteSourceInfo ? null : source;
-      sendData(payload);
+      sendData(assign(payload, { source: deleteSourceInfo ? null : source }));
     };
 
     var pageview = function(isPushState) {
@@ -322,7 +316,7 @@
 
       page = data;
 
-      sendPageView(isPushState || userNavigated);
+      sendPageView(isPushState, isPushState || userNavigated);
     };
 
     /** if spa **/
@@ -386,9 +380,7 @@
     pageview();
 
     /** if events **/
-    var eventsId = Math.random()
-      .toString(36)
-      .slice(2);
+    var eventsId = random();
 
     var sendEvent = function(event) {
       try {
@@ -397,10 +389,9 @@
         warn("in your event function: " + error.message);
         event = "event_errored";
       }
-      payload.events = [event];
-      payload.event_id = eventsId;
-      payload.source = source;
-      sendData(payload);
+      sendData(
+        assign(payload, { events: [event], event_id: eventsId, source: source })
+      );
     };
 
     var defaultEventFunc = function(event) {
