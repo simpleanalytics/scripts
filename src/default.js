@@ -237,33 +237,6 @@
 
     var sendPageView = function(isPushState, deleteSourceInfo) {
       if (isPushState) sendOnClose();
-
-      // // Continue when type is pageviews
-      // if (payloadPageviewsLength) {
-      //   /** if duration **/
-      //   payloadPageviewLast.duration = seconds(start + msHidden);
-      //   /** endif **/
-
-      //   /** if scroll **/
-      //   payloadPageviewLast.scrolled = scrolled;
-      //   /** endif **/
-      // }
-
-      // if (useSendBeacon) {
-      //   /** if duration **/
-      //   start = Date.now();
-      //   msHidden = 0;
-      //   /** endif **/
-
-      //   /** if scroll **/
-      //   window.setTimeout(function() {
-      //     scrolled = position();
-      //   }, 500);
-      //   /** endif **/
-
-      //   // return;
-      // }
-
       sendData(assign(payload, { source: deleteSourceInfo ? null : source }));
     };
 
