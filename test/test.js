@@ -7,16 +7,30 @@ module.exports = async () => {
     "There should be requests recorded"
   ).to.have.lengthOf.at.least(3);
 
-  const requests = getRequests(global.REQUESTS, {
+  const pageViewRequests = getRequests(global.REQUESTS, {
     method: "GET",
-    pathname: "/get.gif"
+    pathname: "/simple.gif",
+    body: { type: "pageview" }
+  });
+
+  const beaconRequests = getRequests(global.REQUESTS, {
+    body: { type: "beacon" }
   });
 
   // console.log(JSON.stringify(global.REQUESTS, null, 2));
+  // console.log(JSON.stringify(pageViewRequests, null, 2));
 
-  expect(requests, "There are no required requests found").to.have.lengthOf(2);
+  expect(
+    pageViewRequests,
+    "There are not enough page views requests found"
+  ).to.have.lengthOf(2);
 
-  requests.map((request, index) => {
+  expect(
+    beaconRequests,
+    "There are not enough beacon requests found"
+  ).to.have.lengthOf(2);
+
+  pageViewRequests.map((request, index) => {
     expect(
       request,
       "There is no /v2/post request with body found"
@@ -30,28 +44,32 @@ module.exports = async () => {
       "hostname",
       "https",
       "width",
-      "pageviews",
+      "id",
+      "path",
+      "type",
+      "unique",
       "time"
     ]);
 
     expect(
-      request.body.pageviews,
-      `There should be 1 page view per request`
-    ).to.have.lengthOf(1);
+      parseInt(request.body.version, 10),
+      "Version should be a valid number"
+    ).to.be.a("number");
 
-    expect(request.body.version, "Version should be a number").to.be.a(
+    expect(
+      [true, false, "true", "false"],
+      "HTTPS should be a boolean"
+    ).to.include(request.body.https);
+
+    expect(parseInt(request.body.time, 10), "Time should be a number").to.be.a(
       "number"
     );
 
-    expect(request.body.https, "HTTPS should be a boolean").to.be.a("boolean");
-
-    expect(request.body.time, "Time should be a number").to.be.a("number");
-
     expect(
-      request.body.pageviews[0],
+      index === 0 ? [true, "true"] : [false, "false"],
       index === 0
         ? "The first visit should be unique"
         : "The second visit should not be unique"
-    ).to.have.property("unique", index === 0 ? true : false);
+    ).to.include(request.body.unique);
   });
 };

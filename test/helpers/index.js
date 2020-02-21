@@ -66,6 +66,12 @@ module.exports.navigate = async ({ name, useLocalIp, driver, commands }) => {
     beacon,
     push
   } of commands) {
+    const params = new URLSearchParams({
+      script: script || "",
+      beacon: beacon || "",
+      push: push || ""
+    }).toString();
+
     if (sleepMs) {
       log(`sleep (${name})`, sleepMs);
       await this.sleep(sleepMs);
@@ -86,16 +92,11 @@ module.exports.navigate = async ({ name, useLocalIp, driver, commands }) => {
           : `(exceeded timeout)`
       );
     } else if (script) {
-      const params = new URLSearchParams({
-        script,
-        beacon,
-        push
-      }).toString();
       log(`script (${name})`, `${localhost}/?${params}`);
       await driver.get(`${localhost}/?${params}`);
     } else if (visit) {
-      log(`visit (${name})`, `${localhost}${visit}`);
-      await driver.get(`${localhost}${visit}`);
+      log(`visit (${name})`, `${localhost}${visit}?${params}`);
+      await driver.get(`${localhost}${visit}?${params}`);
     }
   }
 };
@@ -134,13 +135,28 @@ module.exports.waitForRequest = async ({
   }
 };
 
+const isObject = obj => typeof obj === "object" && !!obj;
+
+// Allow search in two levels deep object
 module.exports.getRequests = (allRequests, params) => {
-  params = { method: "POST", ...params };
   const keys = Object.keys(params);
   return allRequests.filter(request => {
-    const foundKeys = keys.filter(key => {
-      return params[key] === request[key];
+    let requiredKeys = keys.length;
+    let foundDeepKeys = 0;
+
+    const foundMainKeys = keys.filter(key => {
+      if (!isObject(params[key]) || !isObject(request[key]))
+        return params[key] === request[key];
+
+      return Object.keys(params[key]).every(deepKey => {
+        requiredKeys++;
+        if (request[key][deepKey] === params[key][deepKey]) {
+          foundDeepKeys++;
+          return true;
+        }
+      });
     });
-    return foundKeys.length === keys.length;
+
+    return foundMainKeys.length + foundDeepKeys === requiredKeys;
   });
 };

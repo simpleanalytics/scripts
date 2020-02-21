@@ -7,6 +7,8 @@
   // makes our script availble for multple destination which prevents us to
   // need multiple scripts. The minified version stays small.
   var https = "https:";
+  var pageviewsText = "pageview";
+  var errorText = "error";
   var protocol = https + "//";
   var con = window.console;
   var doNotTrack = "doNotTrack";
@@ -23,6 +25,7 @@
   var thousand = 1000;
   var addEventListenerFunc = window.addEventListener;
   var fullApiUrl = protocol + apiUrlPrefix + baseUrl;
+  var undefinedVar = undefined;
 
   // A simple log function so the user knows why a request is not being send
   var warn = function(message) {
@@ -49,28 +52,36 @@
 
   // Send data via image of XHR request
   function sendData(data) {
-    page.id = random();
-    data.pageviews = [page];
     data.time = seconds();
-    data.https = loc.protocol === https;
-    data.timezone = timezone;
-    data.width = window.innerWidth;
-    warn(data);
     new Image().src =
-      fullApiUrl + "/get.gif?json=" + encodeURIComponentFunc(stringify(data));
+      fullApiUrl +
+      "/simple.gif?" +
+      Object.keys(data)
+        .map(function(key) {
+          return data[key] != undefinedVar
+            ? encodeURIComponentFunc(key) +
+                "=" +
+                encodeURIComponentFunc(data[key])
+            : "";
+        })
+        .join("&");
   }
 
   // Send errors
   function sendError(errorOrMessage) {
     errorOrMessage = errorOrMessage.message || errorOrMessage;
     warn(errorOrMessage);
-    sendData({ error: errorOrMessage, url: hostname + loc.pathname });
+    sendData({
+      type: errorText,
+      error: errorOrMessage,
+      url: hostname + loc.pathname
+    });
   }
 
   // We listen for the error events and only send errors that are
   // from our script (checked by filename) to our server.
   addEventListenerFunc(
-    "error",
+    errorText,
     function(event) {
       if (event.filename && event.filename.indexOf(baseUrl) > -1) {
         sendError(event.message);
@@ -99,16 +110,16 @@
   };
 
   var mode = attr(scriptElement, "mode");
-  var skipDNT = attr(scriptElement, "skip-dnt") === "true";
+  var skipDNT = attr(scriptElement, "skip-dnt") == "true";
   var functionName = attr(scriptElement, "sa-global") || "sa";
 
   // Don't track when Do Not Track is set to true
-  if (!skipDNT && doNotTrack in nav && nav[doNotTrack] === "1")
+  if (!skipDNT && doNotTrack in nav && nav[doNotTrack] == "1")
     return warn(notSending + "when " + doNotTrack + " is enabled");
 
   // Don't track when localhost
   /** unless testing **/
-  if (hostname.indexOf(".") === -1)
+  if (hostname.indexOf(".") == -1)
     return warn(notSending + "from " + localhost);
   /** endunless **/
 
@@ -126,7 +137,8 @@
       if (match && match[0]) return match[0];
     };
 
-    var page;
+    var page = {};
+    var lastPageId = random();
     var lastSendPath;
     var payload = {
       version: version,
@@ -137,9 +149,11 @@
       var to = {};
       for (var index = 0; index < arguments.length; index++) {
         var nextSource = arguments[index];
-        for (var nextKey in nextSource) {
-          if (Object.prototype.hasOwnProperty.call(nextSource, nextKey)) {
-            to[nextKey] = nextSource[nextKey];
+        if (nextSource) {
+          for (var nextKey in nextSource) {
+            if (Object.prototype.hasOwnProperty.call(nextSource, nextKey)) {
+              to[nextKey] = nextSource[nextKey];
+            }
           }
         }
       }
@@ -155,7 +169,7 @@
       referrer:
         (doc.referrer || "")
           .replace(/^https?:\/\/((m|l|w{2,3}([0-9]+)?)\.)?([^?#]+)(.*)$/, "$4")
-          .replace(/^([^/]+)\/$/, "$1") || undefined
+          .replace(/^([^/]+)\/$/, "$1") || undefinedVar
     };
 
     // We don't put msHidden in if duration block, because it's used outside of that functionality
@@ -175,8 +189,8 @@
 
     var sendBeacon = "sendBeacon";
 
-    var sendOnClose = function() {
-      var beacon = { version: version, original_id: page.id };
+    var sendOnLeave = function(id, push) {
+      var beacon = { type: "beacon", original_id: push ? id : lastPageId };
       /** if duration **/
       beacon[duration] = seconds(start + msHidden);
       msHidden = 0;
@@ -187,10 +201,12 @@
       beacon.scrolled = Math.max(0, scrolled, position());
       /** endif **/
 
-      nav[sendBeacon](fullApiUrl + "/post", stringify(assign(payload, beacon)));
+      var data = assign(payload, beacon);
+      if (push) sendData(data);
+      else nav[sendBeacon](fullApiUrl + "/append", stringify(data));
     };
 
-    if (sendBeacon in nav) addEventListenerFunc("unload", sendOnClose, false);
+    if (sendBeacon in nav) addEventListenerFunc("unload", sendOnLeave, false);
 
     /** if scroll **/
     var scroll = "scroll";
@@ -236,8 +252,18 @@
     /** endif **/
 
     var sendPageView = function(isPushState, deleteSourceInfo) {
-      if (isPushState) sendOnClose();
-      sendData(assign(payload, { source: deleteSourceInfo ? null : source }));
+      if (isPushState) sendOnLeave("" + lastPageId, true);
+      lastPageId = random();
+      page.id = lastPageId;
+
+      sendData(
+        assign(page, payload, deleteSourceInfo ? null : source, {
+          https: loc.protocol == https,
+          timezone: timezone,
+          width: window.innerWidth,
+          type: pageviewsText
+        })
+      );
     };
 
     var pageview = function(isPushState) {
@@ -246,11 +272,11 @@
 
       /** if hash **/
       // Add hash to path when script is put in to hash mode
-      if (mode === "hash" && loc.hash) path += loc.hash.split("?")[0];
+      if (mode == "hash" && loc.hash) path += loc.hash.split("?")[0];
       /** endif **/
 
       // Don't send the last path again (this could happen when pushState is used to change the path hash or search)
-      if (lastSendPath === path) return;
+      if (lastSendPath == path) return;
 
       lastSendPath = path;
 
@@ -283,7 +309,7 @@
         isPushState || userNavigated
           ? false
           : doc.referrer
-          ? doc.referrer.split(slash)[2] !== hostname
+          ? doc.referrer.split(slash)[2] != hostname
           : true;
       /** endif **/
 
@@ -294,7 +320,7 @@
 
     /** if spa **/
     var his = window.history;
-    var hisPushState = his ? his.pushState : undefined;
+    var hisPushState = his ? his.pushState : undefinedVar;
 
     // Overwrite history pushState function to
     // allow listening on the pushState event
@@ -304,7 +330,7 @@
         return function() {
           var rv = orig.apply(this, arguments);
           var event;
-          if (typeof Event === "function") {
+          if (typeof Event == "function") {
             event = new Event(type);
           } else {
             // Fix for IE
@@ -339,7 +365,7 @@
 
     /** if hash **/
     // When in hash mode, we record a pageview based on the onhashchange function
-    if (mode === "hash" && "onhashchange" in window) {
+    if (mode == "hash" && "onhashchange" in window) {
       addEventListenerFunc(
         "hashchange",
         function() {
@@ -363,7 +389,11 @@
         event = "event_errored";
       }
       sendData(
-        assign(payload, { events: [event], event_id: eventsId, source: source })
+        assign(payload, source, {
+          type: "event",
+          event: event,
+          event_id: eventsId
+        })
       );
     };
 
