@@ -80,9 +80,12 @@ const getDeviceName = ({
     ? retrievedBrowsers
     : retrievedBrowsers
         .filter(
-          ({ browser, browser_version }) => browser === "chrome" // && version(browser_version) === 9
+          ({ browser, browser_version }) => browser === "chrome"
+          // browser === "safari" &&
+          // version(browser_version) >= 13 &&
+          // version(browser_version) < 14
         )
-        .slice(0, 2);
+        .slice(0, 1);
 
   log("Testing", browsers.length, "browsers:");
   browsers.map(browser => {
@@ -140,7 +143,7 @@ const getDeviceName = ({
           ...browser
         });
 
-        if (!driver) {
+        if (!driver || typeof driver.get !== "function") {
           // Device seems unavailable the test will complete
           expect(true, "Getting device take more than 10 minutes").to.be.false;
           return;
@@ -153,7 +156,9 @@ const getDeviceName = ({
             push: browser.supportsPushState
           },
           { wait: "/script.js", amount: browser.supportsPushState ? 1 : 2 },
-          { wait: "/get.gif", amount: 2 },
+          { wait: "/simple.gif", amount: 2 },
+          { visit: "/empty" },
+          { wait: "/append", amount: 2 },
           { close: true }
         ];
 

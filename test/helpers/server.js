@@ -15,32 +15,37 @@ const bool = input => {
 
 const route = async (req, res) => {
   const { pathname, query } = url.parse(req.url, true);
-  const { script, redirect = true, json: urlJson, beacon, push } = query;
+  const { script, redirect = true, beacon, push } = query;
+
+  // log(`${req.method} request to ${pathname} ${JSON.stringify(query)}`);
 
   if (pathname === "/favicon.ico") {
     res.writeHead(404);
     return res.end();
   }
 
+  // Block HEAD requests
   if (req.method === "HEAD") {
     res.writeHead(200);
     return res.end();
   }
 
-  log(`${req.method} request to ${pathname}`);
-
-  const json =
-    req.method === "POST"
-      ? await getJSONBody(req)
-      : urlJson
-      ? JSON.parse(urlJson)
-      : null;
+  let json = req.method === "POST" ? await getJSONBody(req) : null;
+  if (!json && pathname.endsWith(".gif")) json = query;
 
   global.REQUESTS.push({
     method: req.method,
     pathname,
     body: json
   });
+
+  if (pathname === "/empty") {
+    res.writeHead(200);
+    res.write(
+      "<!DOCTYPE html><html><head><title>Simple Analytics Test</title>"
+    );
+    return res.end();
+  }
 
   if (pathname.endsWith(".gif")) {
     res.writeHead(200);
@@ -62,7 +67,7 @@ const route = async (req, res) => {
       <head>
         <title>Simple Analytics Test</title>
       </head>
-    <body>`;
+    <body style="height: 300vh;">`;
 
   // As this code will run in older browsers, don't try to be smart with ES6
   let onload = "";
@@ -72,13 +77,14 @@ const route = async (req, res) => {
     const params = new URLSearchParams({
       redirect: false,
       script: script || "",
-      beacon,
-      push
+      beacon: beacon || "",
+      push: push || ""
     }).toString();
     onload = `window.location.href = "/href?${params}"`;
   }
 
   if (onload) {
+    // log("onload:", onload);
     body += `<script>window.onload = function() {${onload}};</script>`;
   }
 
