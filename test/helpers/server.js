@@ -37,10 +37,9 @@ const route = async (req, res) => {
   try {
     json = req.method === "POST" ? await getJSONBody(req) : null;
   } catch (message) {
-    error(message);
-    const body = await getPost(req);
     error("pathname", pathname);
     error("body", body);
+    error(message);
   }
 
   if (!json && pathname.endsWith(".gif")) json = query;
