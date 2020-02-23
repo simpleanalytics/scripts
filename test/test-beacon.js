@@ -3,7 +3,7 @@ const { getRequests } = require("./helpers");
 
 module.exports = async () => {
   const beaconRequests = getRequests(global.REQUESTS, {
-    body: { type: "beacon" }
+    body: { type: "append" }
   });
 
   expect(
