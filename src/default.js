@@ -1,6 +1,6 @@
 /* eslint-env browser */
 
-(function(window, baseUrl, apiUrlPrefix, version) {
+(function(window, baseUrl, apiUrlPrefix, version, saGlobal) {
   if (!window) return;
 
   // Generate the needed variables, this seems like a lot of repetition, but it
@@ -16,7 +16,6 @@
   var nav = window.navigator;
   var loc = window.location;
   var doc = window.document;
-  var hostname = loc.hostname;
   var notSending = "Not sending requests ";
   var localhost = "localhost";
   var encodeURIComponentFunc = encodeURIComponent;
@@ -111,7 +110,8 @@
 
   var mode = attr(scriptElement, "mode");
   var skipDNT = attr(scriptElement, "skip-dnt") == "true";
-  var functionName = attr(scriptElement, "sa-global") || "sa";
+  var hostname = attr(scriptElement, "hostname") || loc.hostname;
+  var functionName = attr(scriptElement, "sa-global") || saGlobal;
 
   // Don't track when Do Not Track is set to true
   if (!skipDNT && doNotTrack in nav && nav[doNotTrack] == "1")
@@ -202,8 +202,12 @@
       /** endif **/
 
       var data = assign(payload, beacon);
-      if (push) sendData(data);
-      else nav[sendBeacon](fullApiUrl + "/append", stringify(data));
+      data.time = seconds();
+      if (push) {
+        sendData(data);
+      } else {
+        nav[sendBeacon](fullApiUrl + "/append", stringify(data));
+      }
     };
 
     if (sendBeacon in nav) addEventListenerFunc("unload", sendOnLeave, false);
@@ -418,4 +422,4 @@
   } catch (e) {
     sendError(e);
   }
-})(window, "{{baseUrl}}", "{{apiUrlPrefix}}", "{{version}}");
+})(window, "{{baseUrl}}", "{{apiUrlPrefix}}", "{{version}}", "{{saGlobal}}");

@@ -30,6 +30,7 @@ const DEFAULTS = {
   spa: true,
   uniques: true,
   online: false,
+  saGlobal: "sa_event",
   url: "docs.simpleanalytics.com/script"
 };
 
@@ -62,6 +63,17 @@ const files = [
     variables: {
       ...DEFAULTS,
       version: 2,
+      baseUrl: "{{nginxHost}}"
+    }
+  },
+  {
+    type: "js",
+    input: `${__dirname}/src/default.js`,
+    output: `custom/e.js`,
+    variables: {
+      ...DEFAULTS,
+      version: 2,
+      saGlobal: "sa",
       baseUrl: "{{nginxHost}}"
     }
   },

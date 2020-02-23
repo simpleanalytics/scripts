@@ -2,6 +2,7 @@ const crypto = require("crypto");
 const { networkInterfaces: getNetworkInterfaces } = require("os");
 const { DEBUG } = require("../constants");
 const { promisify } = require("util");
+const { By, Key } = require("selenium-webdriver");
 
 const log = (...messages) =>
   DEBUG && console.log("    => Helpers:", ...messages);
@@ -24,7 +25,7 @@ module.exports.getIPv4 = () =>
   });
 
 module.exports.getLocalhost = async ({ useLocalIp = false } = {}) =>
-  `${useLocalIp ? await this.getIPv4() : "localhost"}`;
+  `${useLocalIp ? `${await this.getIPv4()}` : "localhost"}`;
 
 module.exports.generateRandomString = (length = 30) =>
   crypto.randomBytes(Math.ceil(length / 2)).toString("hex");
@@ -64,7 +65,8 @@ module.exports.navigate = async ({ name, useLocalIp, driver, commands }) => {
     close = false,
     script,
     beacon,
-    push
+    push,
+    tab
   } of commands) {
     const params = new URLSearchParams({
       script: script || "",
@@ -75,6 +77,9 @@ module.exports.navigate = async ({ name, useLocalIp, driver, commands }) => {
     if (sleepMs) {
       log(`sleep (${name})`, sleepMs);
       await this.sleep(sleepMs);
+    } else if (tab) {
+      log(`open new tab (${name})`);
+      await driver.findElement(By.tagName("body")).sendKeys(Key.CONTROL + "t");
     } else if (close) {
       log(`close (${name})`, close);
       await driver.close();
@@ -87,6 +92,7 @@ module.exports.navigate = async ({ name, useLocalIp, driver, commands }) => {
       log(
         `waited (${name})`,
         wait,
+        `${amount || 1}x`,
         typeof exceeded === "number"
           ? `(found request in ${exceeded}ms)`
           : `(exceeded timeout)`

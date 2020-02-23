@@ -2,38 +2,29 @@ const { expect } = require("chai");
 const { getRequests } = require("./helpers");
 
 module.exports = async () => {
-  expect(
-    global.REQUESTS,
-    "There should be requests recorded"
-  ).to.have.lengthOf.at.least(3);
-
   const pageViewRequests = getRequests(global.REQUESTS, {
     method: "GET",
     pathname: "/simple.gif",
     body: { type: "pageview" }
   });
 
-  const beaconRequests = getRequests(global.REQUESTS, {
-    body: { type: "beacon" }
-  });
-
-  // console.log(JSON.stringify(global.REQUESTS, null, 2));
-  // console.log(JSON.stringify(pageViewRequests, null, 2));
-
   expect(
     pageViewRequests,
     "There are not enough page views requests found"
   ).to.have.lengthOf(2);
 
-  expect(
-    beaconRequests,
-    "There are not enough beacon requests found"
-  ).to.have.lengthOf(2);
+  expect([true, "true"], "The first visit should be unique").to.include(
+    pageViewRequests[0].body.unique
+  );
 
-  pageViewRequests.map((request, index) => {
+  expect([false, "false"], "The second visit should not be unique").to.include(
+    pageViewRequests[1].body.unique
+  );
+
+  pageViewRequests.map(request => {
     expect(
       request,
-      "There is no /v2/post request with body found"
+      "There are no page view requests with body found"
     ).to.have.property("body");
 
     expect(
@@ -56,20 +47,14 @@ module.exports = async () => {
       "Version should be a valid number"
     ).to.be.a("number");
 
-    expect(
-      [true, false, "true", "false"],
-      "HTTPS should be a boolean"
-    ).to.include(request.body.https);
+    // We replace "https:" with "http:" string in server.js
+    // that's why we expect local request to be https
+    expect([true, "true"], "HTTPS should be a boolean").to.include(
+      request.body.https
+    );
 
     expect(parseInt(request.body.time, 10), "Time should be a number").to.be.a(
       "number"
     );
-
-    expect(
-      index === 0 ? [true, "true"] : [false, "false"],
-      index === 0
-        ? "The first visit should be unique"
-        : "The second visit should not be unique"
-    ).to.include(request.body.unique);
   });
 };

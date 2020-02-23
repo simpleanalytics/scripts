@@ -2,10 +2,13 @@ const url = require("url");
 const http = require("http");
 const { readFileSync } = require("fs");
 const { SERVER_PORT, DEBUG } = require("../constants");
-const { getJSONBody } = require("./request");
+const { getPost, getJSONBody } = require("./request");
 
 const log = (...messages) =>
   DEBUG && console.log("    => Node server:", ...messages);
+
+const error = (...messages) =>
+  console.error("    => Node server (error):", ...messages);
 
 const bool = input => {
   if (typeof input === "boolean") return input;
@@ -30,7 +33,16 @@ const route = async (req, res) => {
     return res.end();
   }
 
-  let json = req.method === "POST" ? await getJSONBody(req) : null;
+  let json;
+  try {
+    json = req.method === "POST" ? await getJSONBody(req) : null;
+  } catch (message) {
+    error(message);
+    const body = await getPost(req);
+    error("pathname", pathname);
+    error("body", body);
+  }
+
   if (!json && pathname.endsWith(".gif")) json = query;
 
   global.REQUESTS.push({
@@ -42,7 +54,7 @@ const route = async (req, res) => {
   if (pathname === "/empty") {
     res.writeHead(200);
     res.write(
-      "<!DOCTYPE html><html><head><title>Simple Analytics Test</title>"
+      `<!DOCTYPE html><html><head><title>Simple Analytics Test</title><body><h1>${pathname}`
     );
     return res.end();
   }
@@ -67,7 +79,7 @@ const route = async (req, res) => {
       <head>
         <title>Simple Analytics Test</title>
       </head>
-    <body style="height: 300vh;">`;
+    <body style="height: 300vh;"><h1>${pathname}`;
 
   // As this code will run in older browsers, don't try to be smart with ES6
   let onload = "";
@@ -84,7 +96,6 @@ const route = async (req, res) => {
   }
 
   if (onload) {
-    // log("onload:", onload);
     body += `<script>window.onload = function() {${onload}};</script>`;
   }
 

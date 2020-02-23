@@ -80,10 +80,9 @@ const getDeviceName = ({
     ? retrievedBrowsers
     : retrievedBrowsers
         .filter(
-          ({ browser, browser_version }) => browser === "chrome"
-          // browser === "safari" &&
-          // version(browser_version) >= 13 &&
-          // version(browser_version) < 14
+          ({ browser, os_version, browser_version }) => browser === "chrome" // && os_version === 12
+          // version(browser_version) >= 9 &&
+          // version(browser_version) < 10
         )
         .slice(0, 1);
 
@@ -97,7 +96,7 @@ const getDeviceName = ({
   });
 
   const mochaInstance = new Mocha();
-  mochaInstance.timeout(0); //2 * 60 * 60 * 1000); // 2 hours
+  mochaInstance.timeout(2 * 60 * 60 * 1000); // 2 hours
 
   const suiteInstance = Mocha.Suite.create(
     mochaInstance.suite,
@@ -117,17 +116,12 @@ const getDeviceName = ({
   for (const browser of browsers) {
     suiteInstance.addTest(
       new Mocha.Test(`Testing ${browser.name}`, async function() {
-        const isMobile = ["ios", "android"].indexOf(browser.os) > -1;
+        const isMobile = ["ios", "android"].includes(browser.os);
         if (!isMobile)
           browser["browserstack.selenium_version"] = "4.0.0-alpha-2";
-        if (browser.browser === "opera")
-          browser["browserstack.selenium_version"] = "2.43.1";
 
         browser.supportsSendBeacon =
-          (browser.os === "ios" && version(browser.os_version) <= 12) ||
-          browser.browser === "ie"
-            ? false
-            : true;
+          browser.os === "ios" || browser.browser === "ie" ? false : true;
 
         browser.supportsPushState =
           browser.browser === "ie" && version(browser.browser_version) < 10
@@ -149,18 +143,32 @@ const getDeviceName = ({
           return;
         }
 
-        const commands = [
-          {
-            script: "/latest/hello.js",
-            beacon: true,
-            push: browser.supportsPushState
-          },
-          { wait: "/script.js", amount: browser.supportsPushState ? 1 : 2 },
-          { wait: "/simple.gif", amount: 2 },
-          { visit: "/empty" },
-          { wait: "/append", amount: 2 },
-          { close: true }
-        ];
+        let commands = [];
+
+        if (browser.supportsSendBeacon) {
+          log("supportsSendBeacon");
+          commands = [
+            { script: "/latest/hello.js", push: true, beacon: true },
+            { wait: "/script.js", amount: 1 },
+            { visit: "/empty" }, // Trigger sendBeacon
+            { wait: "/simple.gif", amount: 3 },
+            { wait: "/append" }
+          ];
+        } else if (browser.supportsPushState) {
+          commands = [
+            { script: "/latest/hello.js", push: true },
+            { wait: "/script.js", amount: 1 },
+            { wait: "/simple.gif", amount: 3 }
+          ];
+        } else {
+          commands = [
+            { script: "/latest/hello.js" },
+            { wait: "/script.js", amount: 2 },
+            { wait: "/simple.gif", amount: 2 }
+          ];
+        }
+
+        commands.push({ close: true });
 
         // Empty global REQUESTS
         global.REQUESTS = [];
@@ -173,7 +181,21 @@ const getDeviceName = ({
 
         await driver.quit();
 
-        await require("./test")(browser);
+        if (browser.supportsSendBeacon) {
+          log("Testing beacon");
+          await require("./test-beacon")(browser);
+        } else if (browser.supportsPushState) {
+          log("Testing one beacon");
+          await require("./test-one-beacon")(browser);
+        }
+
+        if (browser.supportsPushState) {
+          log("Testing push state");
+          await require("./test-pushstate")(browser);
+        } else {
+          log("Testing no push state");
+          await require("./test-no-pushstate")(browser);
+        }
       })
     );
   }
