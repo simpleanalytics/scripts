@@ -17,6 +17,12 @@ const {
   BROWSERSTACK_ACCESS_KEY
 } = require("./constants/browserstack");
 
+const localBrowserFilter = ({ browser, browser_version, os, os_version }) =>
+  browser === "ie" &&
+  version(browser_version) == 10 &&
+  os == "Windows" &&
+  os_version == "8";
+
 // 1080000 ms = 10 minutes
 const getDriverWithTimeout = (capabilities, timeout = 1080000) =>
   new Promise(resolve => {
@@ -78,13 +84,7 @@ const getDeviceName = ({
   const retrievedBrowsers = await getBrowsers();
   const browsers = CI
     ? retrievedBrowsers
-    : retrievedBrowsers
-        .filter(
-          ({ browser, os_version, browser_version }) => browser === "safari" // && os_version === 12
-          // version(browser_version) >= 9 &&
-          // version(browser_version) < 10
-        )
-        .slice(0, 1);
+    : retrievedBrowsers.filter(localBrowserFilter).slice(0, 1);
 
   log("Testing", browsers.length, "browsers:");
   browsers.map(browser => {

@@ -12,5 +12,10 @@ module.exports.getPost = req => {
 
 module.exports.getJSONBody = async req => {
   const body = await this.getPost(req);
-  return JSON.parse(body);
+  try {
+    return JSON.parse(body);
+  } catch (error) {
+    console.error("body", body);
+    return error;
+  }
 };
