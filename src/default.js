@@ -190,18 +190,18 @@
     var sendBeacon = "sendBeacon";
 
     var sendOnLeave = function(id, push) {
-      var beacon = { type: "beacon", original_id: push ? id : lastPageId };
+      var append = { type: "append", original_id: push ? id : lastPageId };
       /** if duration **/
-      beacon[duration] = seconds(start + msHidden);
+      append[duration] = seconds(start + msHidden);
       msHidden = 0;
       start = 0;
       /** endif **/
 
       /** if scroll **/
-      beacon.scrolled = Math.max(0, scrolled, position());
+      append.scrolled = Math.max(0, scrolled, position());
       /** endif **/
 
-      var data = assign(payload, beacon);
+      var data = assign(payload, append);
       data.time = seconds();
       if (push) {
         sendData(data);

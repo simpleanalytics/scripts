@@ -80,7 +80,7 @@ const getDeviceName = ({
     ? retrievedBrowsers
     : retrievedBrowsers
         .filter(
-          ({ browser, os_version, browser_version }) => browser === "chrome" // && os_version === 12
+          ({ browser, os_version, browser_version }) => browser === "safari" // && os_version === 12
           // version(browser_version) >= 9 &&
           // version(browser_version) < 10
         )
@@ -121,7 +121,11 @@ const getDeviceName = ({
           browser["browserstack.selenium_version"] = "4.0.0-alpha-2";
 
         browser.supportsSendBeacon =
-          browser.os === "ios" || browser.browser === "ie" ? false : true;
+          browser.os === "ios" ||
+          browser.browser === "ie" ||
+          browser.browser === "safari"
+            ? false
+            : true;
 
         browser.supportsPushState =
           browser.browser === "ie" && version(browser.browser_version) < 10
