@@ -38,8 +38,7 @@ module.exports = async () => {
       "id",
       "path",
       "type",
-      "unique",
-      "time"
+      "unique"
     ]);
 
     expect(
@@ -51,10 +50,6 @@ module.exports = async () => {
     // that's why we expect local request to be https
     expect([true, "true"], "HTTPS should be a boolean").to.include(
       request.body.https
-    );
-
-    expect(parseInt(request.body.time, 10), "Time should be a number").to.be.a(
-      "number"
     );
   });
 };
