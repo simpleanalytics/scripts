@@ -66,10 +66,11 @@
 
   // Send data via image of XHR request
   function sendData(data) {
+    data = assign(payload, data);
     new Image().src =
       fullApiUrl +
       "/simple.gif?" +
-      Object.keys(assign(payload, data))
+      Object.keys(data)
         .filter(function(key) {
           return data[key] != undefinedVar;
         })
