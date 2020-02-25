@@ -32,8 +32,7 @@ module.exports = async () => {
     "duration",
     "scrolled",
     "original_id",
-    "type",
-    "time"
+    "type"
   ]);
 
   expect(
@@ -50,8 +49,4 @@ module.exports = async () => {
     parseInt(request.body.version, 10),
     "Version should be a valid number"
   ).to.be.a("number");
-
-  expect(parseInt(request.body.time, 10), "Time should be a number").to.be.a(
-    "number"
-  );
 };

@@ -26,6 +26,10 @@
   var fullApiUrl = protocol + apiUrlPrefix + baseUrl;
   var undefinedVar = undefined;
 
+  var payload = {
+    version: version
+  };
+
   // A simple log function so the user knows why a request is not being send
   var warn = function(message) {
     if (con && con.warn) con.warn("Simple Analytics:", message);
@@ -37,8 +41,19 @@
       .slice(2);
   };
 
-  var seconds = function(since) {
-    return Math.round((Date.now() - (since || 0)) / thousand);
+  var assign = function() {
+    var to = {};
+    for (var index = 0; index < arguments.length; index++) {
+      var nextSource = arguments[index];
+      if (nextSource) {
+        for (var nextKey in nextSource) {
+          if (Object.prototype.hasOwnProperty.call(nextSource, nextKey)) {
+            to[nextKey] = nextSource[nextKey];
+          }
+        }
+      }
+    }
+    return to;
   };
 
   // This code could error on not having resolvedOptions in the Android Webview, that's why we use try...catch
@@ -51,17 +66,19 @@
 
   // Send data via image of XHR request
   function sendData(data) {
-    data.time = seconds();
     new Image().src =
       fullApiUrl +
       "/simple.gif?" +
-      Object.keys(data)
+      Object.keys(assign(payload, data))
+        .filter(function(key) {
+          return data[key] != undefinedVar;
+        })
         .map(function(key) {
-          return data[key] != undefinedVar
-            ? encodeURIComponentFunc(key) +
-                "=" +
-                encodeURIComponentFunc(data[key])
-            : "";
+          return (
+            encodeURIComponentFunc(key) +
+            "=" +
+            encodeURIComponentFunc(data[key])
+          );
         })
         .join("&");
   }
@@ -113,6 +130,8 @@
   var hostname = attr(scriptElement, "hostname") || loc.hostname;
   var functionName = attr(scriptElement, "sa-global") || saGlobal;
 
+  payload.hostname = hostname;
+
   // Don't track when Do Not Track is set to true
   if (!skipDNT && doNotTrack in nav && nav[doNotTrack] == "1")
     return warn(notSending + "when " + doNotTrack + " is enabled");
@@ -140,25 +159,6 @@
     var page = {};
     var lastPageId = random();
     var lastSendPath;
-    var payload = {
-      version: version,
-      hostname: hostname
-    };
-
-    var assign = function() {
-      var to = {};
-      for (var index = 0; index < arguments.length; index++) {
-        var nextSource = arguments[index];
-        if (nextSource) {
-          for (var nextKey in nextSource) {
-            if (Object.prototype.hasOwnProperty.call(nextSource, nextKey)) {
-              to[nextKey] = nextSource[nextKey];
-            }
-          }
-        }
-      }
-      return to;
-    };
 
     // We don't want to end up with sensitive data so we clean the referrer URL
     var utmRegexPrefix = "(utm_)?";
@@ -187,12 +187,13 @@
     );
     /** endif **/
 
-    var sendBeacon = "sendBeacon";
+    var sendBeaconText = "sendBeacon";
 
     var sendOnLeave = function(id, push) {
       var append = { type: "append", original_id: push ? id : lastPageId };
+
       /** if duration **/
-      append[duration] = seconds(start + msHidden);
+      append[duration] = Math.round((Date.now() - start + msHidden) / thousand);
       msHidden = 0;
       start = 0;
       /** endif **/
@@ -201,16 +202,14 @@
       append.scrolled = Math.max(0, scrolled, position());
       /** endif **/
 
-      var data = assign(payload, append);
-      data.time = seconds();
-      if (push) {
-        sendData(data);
+      if (push || !(sendBeaconText in nav)) {
+        sendData(append);
       } else {
-        nav[sendBeacon](fullApiUrl + "/append", stringify(data));
+        nav[sendBeaconText](fullApiUrl + "/append", stringify(append));
       }
     };
 
-    if (sendBeacon in nav) addEventListenerFunc("unload", sendOnLeave, false);
+    addEventListenerFunc("unload", sendOnLeave, false);
 
     /** if scroll **/
     var scroll = "scroll";
@@ -261,7 +260,7 @@
       page.id = lastPageId;
 
       sendData(
-        assign(page, payload, deleteSourceInfo ? null : source, {
+        assign(page, deleteSourceInfo ? null : source, {
           https: loc.protocol == https,
           timezone: timezone,
           width: window.innerWidth,
@@ -393,7 +392,7 @@
         event = "event_errored";
       }
       sendData(
-        assign(payload, source, {
+        assign(source, {
           type: "event",
           event: event,
           event_id: eventsId
