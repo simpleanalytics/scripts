@@ -35,10 +35,25 @@
     if (con && con.warn) con.warn("Simple Analytics:", message);
   };
 
-  var random = function() {
-    return Math.random()
-      .toString(36)
-      .slice(2);
+  var now = Date.now;
+
+  var uuid = function() {
+    var cryptoObject = window.crypto || window.msCrypto;
+    var emptyUUID = [1e7] + -1e3 + -4e3 + -8e3 + -1e11;
+
+    if (!cryptoObject)
+      return emptyUUID.replace(/[018]/g, function(c) {
+        var r = (Math.random() * 16) | 0,
+          v = c < 2 ? r : (r & 0x3) | 0x8;
+        return v.toString(16);
+      });
+
+    return emptyUUID.replace(/[018]/g, function(c) {
+      return (
+        c ^
+        (cryptoObject.getRandomValues(new Uint8Array(1))[0] & (15 >> (c / 4)))
+      ).toString(16);
+    });
   };
 
   var assign = function() {
@@ -114,7 +129,7 @@
 
   /** if duration **/
   var duration = "duration";
-  var start = Date.now();
+  var start = now();
   /** endif **/
 
   /** if scroll **/
@@ -158,7 +173,7 @@
     };
 
     var page = {};
-    var lastPageId = random();
+    var lastPageId = uuid();
     var lastSendPath;
 
     // We don't want to end up with sensitive data so we clean the referrer URL
@@ -181,8 +196,8 @@
     window.addEventListener(
       "visibilitychange",
       function() {
-        if (doc.hidden) hiddenStart = Date.now();
-        else msHidden += Date.now() - hiddenStart;
+        if (doc.hidden) hiddenStart = now();
+        else msHidden += now() - hiddenStart;
       },
       false
     );
@@ -194,7 +209,7 @@
       var append = { type: "append", original_id: push ? id : lastPageId };
 
       /** if duration **/
-      append[duration] = Math.round((Date.now() - start + msHidden) / thousand);
+      append[duration] = Math.round((now() - start + msHidden) / thousand);
       msHidden = 0;
       start = 0;
       /** endif **/
@@ -257,7 +272,7 @@
 
     var sendPageView = function(isPushState, deleteSourceInfo) {
       if (isPushState) sendOnLeave("" + lastPageId, true);
-      lastPageId = random();
+      lastPageId = uuid();
       page.id = lastPageId;
 
       sendData(
@@ -338,7 +353,7 @@
             event = new Event(type);
           } else {
             // Fix for IE
-            event = document.createEvent("Event");
+            event = doc.createEvent("Event");
             event.initEvent(type, true, true);
           }
           event.arguments = arguments;
@@ -383,7 +398,7 @@
     pageview();
 
     /** if events **/
-    var eventsId = random();
+    var sessionId = uuid();
 
     var sendEvent = function(event) {
       try {
@@ -396,7 +411,7 @@
         assign(source, {
           type: "event",
           event: event,
-          event_id: eventsId
+          session_id: sessionId
         })
       );
     };
