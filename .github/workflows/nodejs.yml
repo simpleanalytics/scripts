@@ -55,7 +55,7 @@ jobs:
         env:
           CI: true
           NODE_ENV: test
-          DEBUG: false
+          DEBUG: true
           LOCATION: ${{ secrets.LOCATION }}
           BROWSERSTACK_USERNAME: ${{ secrets.BROWSERSTACK_USERNAME }}
           BROWSERSTACK_ACCESS_KEY: ${{ secrets.BROWSERSTACK_ACCESS_KEY }}
