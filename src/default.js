@@ -221,7 +221,10 @@
       if (push || !(sendBeaconText in nav)) {
         sendData(append);
       } else {
-        nav[sendBeaconText](fullApiUrl + "/append", stringify(append));
+        nav[sendBeaconText](
+          fullApiUrl + "/append",
+          stringify(assign(payload, append))
+        );
       }
     };
 
@@ -402,7 +405,7 @@
 
     var sendEvent = function(event) {
       try {
-        event = "" + event instanceof Function ? event() : event;
+        event = "" + (event instanceof Function ? event() : event);
       } catch (error) {
         warn("in your event function: " + error.message);
         event = "event_errored";
@@ -410,7 +413,7 @@
       sendData(
         assign(source, {
           type: "event",
-          event: event,
+          event: event.replace(/[^a-z0-9]+/gi, "_").replace(/(^_|_$)/g, ""),
           session_id: sessionId
         })
       );

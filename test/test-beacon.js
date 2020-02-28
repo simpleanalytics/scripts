@@ -1,4 +1,5 @@
 const { expect } = require("chai");
+const UUIDvalidate = require("uuid-validate");
 const { getRequests } = require("./helpers");
 
 module.exports = async () => {
@@ -38,6 +39,11 @@ module.exports = async () => {
       "original_id",
       "type"
     ]);
+
+    expect(
+      UUIDvalidate(request.body.original_id, 4),
+      "original_id should be a valid UUIDv4"
+    ).to.be.true;
 
     expect(
       parseInt(request.body.scrolled, 10),
