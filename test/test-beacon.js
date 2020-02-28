@@ -56,6 +56,11 @@ module.exports = async () => {
     ).to.be.a("number");
 
     expect(
+      parseInt(request.body.duration, 10),
+      "Duration should be close to 0 or 1 second"
+    ).to.be.closeTo(1, 1);
+
+    expect(
       parseInt(request.body.version, 10),
       "Version should be a valid number"
     ).to.be.a("number");

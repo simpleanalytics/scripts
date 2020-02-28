@@ -2,7 +2,7 @@ const { expect } = require("chai");
 const UUIDvalidate = require("uuid-validate");
 const { getRequests } = require("./helpers");
 
-module.exports = async () => {
+module.exports = async ({ os }) => {
   const requests = getRequests(global.REQUESTS, {
     body: { type: "event" }
   });
@@ -39,9 +39,17 @@ module.exports = async () => {
       "session_id should be a valid UUIDv4"
     ).to.be.true;
 
-    expect(request.body.hostname, "Hostname should be localhost").to.equal(
-      "localhost"
-    );
+    if (os === "ios") {
+      expect(
+        /[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/.test(request.body.hostname),
+        "Hostname should be an IP on iOS"
+      ).to.be.true;
+    } else {
+      expect(
+        request.body.hostname,
+        "Hostname should be localhost on non iOS"
+      ).to.equal("localhost");
+    }
 
     expect(
       parseInt(request.body.version, 10),
