@@ -18,7 +18,23 @@ const {
 } = require("./constants/browserstack");
 
 const localBrowserFilter = ({ browser, browser_version, os, os_version }) =>
-  browser === "chrome"; // os === "ios" && version(browser_version) == 9 && os == "Windows" && os_version == "8";
+  browser === "chrome" && version(browser_version) == 49; // os === "ios" && os == "Windows" && os_version == "8";
+
+const getSeleniumVersion = ({ browser, os, browser_version }) => {
+  const isMobile = ["ios", "android"].includes(os);
+  if ((browser === "chrome" && version(browser_version) < 50) || isMobile)
+    return false;
+  return "4.0.0-alpha-2";
+};
+
+const getSupportsSendBeacon = ({ browser, os }) => {
+  return os === "ios" || browser === "ie" || browser === "safari"
+    ? false
+    : true;
+};
+const getSupportsPushState = ({ browser, browser_version }) => {
+  return browser === "ie" && version(browser_version) < 10 ? false : true;
+};
 
 // 1080000 ms = 10 minutes
 const getDriverWithTimeout = (capabilities, timeout = 1080000) =>
@@ -116,22 +132,12 @@ const getDeviceName = ({
   for (const browser of browsers) {
     suiteInstance.addTest(
       new Mocha.Test(`Testing ${browser.name}`, async function() {
-        const isMobile = ["ios", "android"].includes(browser.os);
-        if (!isMobile)
-          browser["browserstack.selenium_version"] = "4.0.0-alpha-2";
-
-        browser.supportsSendBeacon =
-          browser.os === "ios" ||
-          browser.browser === "ie" ||
-          browser.browser === "safari"
-            ? false
-            : true;
-
-        browser.supportsPushState =
-          browser.browser === "ie" && version(browser.browser_version) < 10
-            ? false
-            : true;
-
+        if (getSeleniumVersion(browser))
+          browser["browserstack.selenium_version"] = getSeleniumVersion(
+            browser
+          );
+        browser.supportsSendBeacon = getSupportsSendBeacon(browser);
+        browser.supportsPushState = getSupportsPushState(browser);
         browser.useLocalIp = browser.os === "ios";
 
         log(`Waiting to get ${browser.name}...`);
@@ -143,7 +149,7 @@ const getDeviceName = ({
 
         if (!driver || typeof driver.get !== "function") {
           // Device seems unavailable the test will complete
-          expect(true, "Getting device take more than 10 minutes").to.be.false;
+          expect(true, "Getting device took more than 10 minutes").to.be.false;
           return;
         }
 

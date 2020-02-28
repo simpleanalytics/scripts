@@ -15,7 +15,6 @@ module.exports.getJSONBody = async req => {
   try {
     return JSON.parse(body);
   } catch (error) {
-    console.error("body", body);
     return error;
   }
 };
