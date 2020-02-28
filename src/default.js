@@ -154,8 +154,8 @@
 
   // Don't track when localhost
   /** unless testing **/
-  if (hostname.indexOf(".") == -1)
-    return warn(notSending + "from " + localhost);
+  if (loc.hostname.indexOf(".") == -1)
+    return warn(notSending + "from " + loc.localhost);
   /** endunless **/
 
   try {
@@ -331,7 +331,7 @@
         isPushState || userNavigated
           ? false
           : doc.referrer
-          ? doc.referrer.split(slash)[2] != hostname
+          ? doc.referrer.split(slash)[2] != loc.hostname
           : true;
       /** endif **/
 
