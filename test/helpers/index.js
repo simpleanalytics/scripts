@@ -59,6 +59,7 @@ module.exports.navigate = async ({ name, useLocalIp, driver, commands }) => {
   for (const {
     sleep: sleepMs = 0,
     wait,
+    params,
     visit,
     timeout,
     amount,
@@ -66,11 +67,13 @@ module.exports.navigate = async ({ name, useLocalIp, driver, commands }) => {
     script,
     beacon,
     push,
+    event,
     tab
   } of commands) {
-    const params = new URLSearchParams({
+    const searchParams = new URLSearchParams({
       script: script || "",
       beacon: beacon || "",
+      event: event || "",
       push: push || ""
     }).toString();
 
@@ -85,47 +88,42 @@ module.exports.navigate = async ({ name, useLocalIp, driver, commands }) => {
       await driver.close();
     } else if (wait) {
       const exceeded = await this.waitForRequest({
-        pathname: wait,
+        params: {
+          ...params,
+          pathname: wait
+        },
         amount,
         timeout
       });
       log(
         `waited (${name})`,
         wait,
+        params ? `with params '${JSON.stringify(params)}'` : "",
         `${amount || 1}x`,
         typeof exceeded === "number"
           ? `(found request in ${exceeded}ms)`
           : `(exceeded timeout)`
       );
     } else if (script) {
-      log(`script (${name})`, `${localhost}/?${params}`);
-      await driver.get(`${localhost}/?${params}`);
+      log(`script (${name})`, `${localhost}/?${searchParams}`);
+      await driver.get(`${localhost}/?${searchParams}`);
     } else if (visit) {
-      log(`visit (${name})`, `${localhost}${visit}?${params}`);
-      await driver.get(`${localhost}${visit}?${params}`);
+      log(`visit (${name})`, `${localhost}${visit}?${searchParams}`);
+      await driver.get(`${localhost}${visit}?${searchParams}`);
     }
   }
 };
 
 module.exports.waitForRequest = async ({
-  pathname,
+  params,
   amount = 1,
   timeout = 5000
 } = {}) => {
-  if (!pathname) {
-    log("waitForRequest: No pathname defined");
-    return false;
-  }
-
   let searching = true;
   let start = Date.now();
 
   while (searching) {
-    const foundRequests = global.REQUESTS.filter(
-      ({ pathname: requestPathname }) => {
-        return pathname === requestPathname;
-      }
-    );
+    const foundRequests = this.getRequests(global.REQUESTS, params);
 
     if (foundRequests.length === amount) {
       searching = false;

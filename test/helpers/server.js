@@ -2,7 +2,7 @@ const url = require("url");
 const http = require("http");
 const { readFileSync } = require("fs");
 const { SERVER_PORT, DEBUG } = require("../constants");
-const { getPost, getJSONBody } = require("./request");
+const { getJSONBody } = require("./request");
 
 const log = (...messages) =>
   DEBUG && console.log("    => Node server:", ...messages);
@@ -18,9 +18,7 @@ const bool = input => {
 
 const route = async (req, res) => {
   const { pathname, query } = url.parse(req.url, true);
-  const { script, redirect = true, beacon, push } = query;
-
-  // log(`${req.method} request to ${pathname} ${JSON.stringify(query)}`);
+  const { script, redirect = true, beacon, push, event } = query;
 
   if (pathname === "/favicon.ico") {
     res.writeHead(404);
@@ -43,6 +41,10 @@ const route = async (req, res) => {
   }
 
   if (!json && pathname.endsWith(".gif")) json = query;
+
+  // log(
+  //   `${req.method} request to ${pathname} ${json ? JSON.stringify(json) : ""}`
+  // );
 
   global.REQUESTS.push({
     method: req.method,
@@ -82,7 +84,11 @@ const route = async (req, res) => {
 
   // As this code will run in older browsers, don't try to be smart with ES6
   let onload = "";
-  if (bool(push)) {
+  if (event === "function") {
+    onload = `sa_event(function() { return "function" + "output"; });`;
+  } else if (event) {
+    onload = `sa_event("${event}");`;
+  } else if (bool(push)) {
     onload = `window.history.pushState({ "page_id": 2 }, "Push State", "/pushstate");`;
   } else if (bool(redirect)) {
     const params = new URLSearchParams({

@@ -1,4 +1,5 @@
 const { expect } = require("chai");
+const UUIDvalidate = require("uuid-validate");
 const { getRequests } = require("./helpers");
 
 module.exports = async () => {
@@ -31,15 +32,18 @@ module.exports = async () => {
       request.body,
       "All required keys should be present"
     ).to.include.all.keys([
-      "version",
       "hostname",
       "https",
-      "width",
       "id",
       "path",
       "type",
-      "unique"
+      "unique",
+      "version",
+      "width"
     ]);
+
+    expect(UUIDvalidate(request.body.id, 4), "id should be a valid UUIDv4").to
+      .be.true;
 
     expect(
       parseInt(request.body.version, 10),

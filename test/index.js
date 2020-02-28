@@ -18,10 +18,7 @@ const {
 } = require("./constants/browserstack");
 
 const localBrowserFilter = ({ browser, browser_version, os, os_version }) =>
-  browser === "ie" &&
-  version(browser_version) == 10 &&
-  os == "Windows" &&
-  os_version == "8";
+  browser === "chrome"; // && version(browser_version) == 10 && os == "Windows" && os_version == "8";
 
 // 1080000 ms = 10 minutes
 const getDriverWithTimeout = (capabilities, timeout = 1080000) =>
@@ -150,7 +147,6 @@ const getDeviceName = ({
         let commands = [];
 
         if (browser.supportsSendBeacon) {
-          log("supportsSendBeacon");
           commands = [
             { script: "/latest/hello.js", push: true, beacon: true },
             { wait: "/script.js", amount: 1 },
@@ -172,8 +168,6 @@ const getDeviceName = ({
           ];
         }
 
-        commands.push({ close: true });
-
         // Empty global REQUESTS
         global.REQUESTS = [];
 
@@ -182,8 +176,6 @@ const getDeviceName = ({
           commands,
           driver
         });
-
-        await driver.quit();
 
         if (browser.supportsSendBeacon) {
           log("Testing beacon");
@@ -200,6 +192,30 @@ const getDeviceName = ({
           log("Testing no push state");
           await require("./test-no-pushstate")(browser);
         }
+
+        // Empty global REQUESTS
+        global.REQUESTS = [];
+
+        commands = [
+          { script: "/latest/hello.js", event: "-- event 123 &&" },
+          { wait: "/simple.gif", params: { body: { type: "event" } } },
+          { script: "/latest/hello.js", event: "function" },
+          {
+            wait: "/simple.gif",
+            params: { body: { type: "event" } },
+            amount: 2
+          }
+        ];
+
+        await navigate({
+          ...browser,
+          commands,
+          driver
+        });
+
+        await require("./test-events")(browser);
+
+        await driver.quit();
       })
     );
   }
