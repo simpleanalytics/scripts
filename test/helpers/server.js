@@ -35,8 +35,6 @@ const route = async (req, res) => {
   try {
     json = req.method === "POST" ? await getJSONBody(req) : null;
   } catch (message) {
-    error("pathname", pathname);
-    error("body", body);
     error(message);
   }
 

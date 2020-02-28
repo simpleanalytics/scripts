@@ -18,7 +18,7 @@ const {
 } = require("./constants/browserstack");
 
 const localBrowserFilter = ({ browser, browser_version, os, os_version }) =>
-  browser === "chrome"; // && version(browser_version) == 10 && os == "Windows" && os_version == "8";
+  browser === "chrome"; // os === "ios" && version(browser_version) == 9 && os == "Windows" && os_version == "8";
 
 // 1080000 ms = 10 minutes
 const getDriverWithTimeout = (capabilities, timeout = 1080000) =>
@@ -164,7 +164,12 @@ const getDeviceName = ({
           commands = [
             { script: "/latest/hello.js" },
             { wait: "/script.js", amount: 2 },
-            { wait: "/simple.gif", amount: 2 }
+            {
+              wait: "/simple.gif",
+              amount: 2,
+              params: { body: { type: "pageview" } },
+              timeout: browser.browser === "ie" ? 10000 : null
+            }
           ];
         }
 
@@ -176,6 +181,8 @@ const getDeviceName = ({
           commands,
           driver
         });
+
+        // console.log(JSON.stringify(global.REQUESTS, null, 2));
 
         if (browser.supportsSendBeacon) {
           log("Testing beacon");
@@ -192,6 +199,8 @@ const getDeviceName = ({
           log("Testing no push state");
           await require("./test-no-pushstate")(browser);
         }
+
+        log("Testing events");
 
         // Empty global REQUESTS
         global.REQUESTS = [];

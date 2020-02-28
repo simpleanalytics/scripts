@@ -211,7 +211,7 @@
       /** if duration **/
       append[duration] = Math.round((now() - start + msHidden) / thousand);
       msHidden = 0;
-      start = 0;
+      start = now();
       /** endif **/
 
       /** if scroll **/

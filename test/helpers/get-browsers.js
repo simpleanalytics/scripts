@@ -56,7 +56,7 @@ module.exports = async () => {
       .sort((left, right) =>
         version(left.browser_version) > version(right.browser_version) ? -1 : 1
       ),
-    ["os"]
+    ["os", "os_version"]
   );
 
   const ios = makeUnique(
