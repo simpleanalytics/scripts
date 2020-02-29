@@ -1,6 +1,6 @@
 # Simple Analytics Scripts
 
-![SA Tracking Scripts](https://github.com/simpleanalytics/scripts/workflows/SA%20Tracking%20Scripts/badge.svg)
+![SA Public Scripts CI](https://github.com/simpleanalytics/scripts/workflows/SA%20Public%20Scripts%20CI/badge.svg)
 
 Simple Analytics is a privacy friendly analytics tool with a strong mission: never invade the privacy of your visitors. We just show you the essentials: page views, referrers, top pages, and devices. We don't use cookies. We don't collect any personal data. So no cookie banners or GDPR to worry about. When a service is free you are the product. We won't ever sell your data. As a result, we require a subscription.
 

@@ -1,4 +1,4 @@
-name: Node CI Main
+name: SA Public Scripts CI
 
 on:
   pull_request:
