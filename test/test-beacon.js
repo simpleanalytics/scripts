@@ -58,7 +58,7 @@ module.exports = async () => {
     expect(
       parseInt(request.body.duration, 10),
       "Duration should be close to 0 or 1 second"
-    ).to.be.closeTo(1, 1);
+    ).to.be.closeTo(2, 2);
 
     expect(
       parseInt(request.body.version, 10),

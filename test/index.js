@@ -145,15 +145,18 @@ const getDeviceName = ({
 
         log(`Waiting to get ${browser.name}...`);
 
-        const driver = await getDriverWithTimeout({
-          ...BS_CAPABILITIES,
-          ...browser
-        });
+        const driverOptions = { ...BS_CAPABILITIES, ...browser };
+        let driver = await getDriverWithTimeout(driverOptions);
 
+        // Try again with new device when driver is not available
         if (!driver || typeof driver.get !== "function") {
-          // Device seems unavailable the test will complete
-          expect(true, "Getting device took more than 10 minutes").to.be.false;
-          return;
+          driver = await getDriverWithTimeout(driverOptions);
+
+          // Device seems unavailable so this test will fail
+          if (!driver || typeof driver.get !== "function") {
+            expect(true, `Getting driver for ${browser.name}`).to.be.false;
+            return;
+          }
         }
 
         let commands = [];
