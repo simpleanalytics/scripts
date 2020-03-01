@@ -407,8 +407,7 @@
       try {
         event = "" + (event instanceof Function ? event() : event);
       } catch (error) {
-        warn("in your event function: " + error.message);
-        event = "event_errored";
+        return warn("in your event function: " + error.message);
       }
       sendData(
         assign(source, {
