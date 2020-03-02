@@ -404,18 +404,28 @@
     var sessionId = uuid();
 
     var sendEvent = function(event) {
+      var isFunction = event instanceof Function;
+      if (["string", "number"].indexOf(typeof event) < 0 && !isFunction)
+        return warn("event is not a string: " + event);
+
       try {
-        event = "" + (event instanceof Function ? event() : event);
+        if (isFunction) {
+          event = event();
+          if (["string", "number"].indexOf(typeof event) < 0)
+            return warn("event function output is not a string: " + event);
+        }
       } catch (error) {
         return warn("in your event function: " + error.message);
       }
-      sendData(
-        assign(source, {
-          type: "event",
-          event: event.replace(/[^a-z0-9]+/gi, "_").replace(/(^_|_$)/g, ""),
-          session_id: sessionId
-        })
-      );
+      event = ("" + event).replace(/[^a-z0-9]+/gi, "_").replace(/(^_|_$)/g, "");
+      if (event)
+        sendData(
+          assign(source, {
+            type: "event",
+            event: event,
+            session_id: sessionId
+          })
+        );
     };
 
     var defaultEventFunc = function(event) {

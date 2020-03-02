@@ -18,10 +18,10 @@ const {
 } = require("./constants/browserstack");
 
 const localBrowserFilter = ({ browser, browser_version, os, os_version }) =>
-  browser === "chrome" &&
-  version(browser_version) == 49 &&
-  os == "OS X" &&
-  os_version == "Lion"; // os === "ios" && ;
+  browser === "chrome"; //&&
+// version(browser_version) == 49 &&
+// os == "OS X" &&
+// os_version == "Lion"; // os === "ios" && ;
 
 const getSeleniumVersion = ({ browser, os, browser_version }) => {
   const isMobile = ["ios", "android"].includes(os);
