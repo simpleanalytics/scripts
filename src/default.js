@@ -465,8 +465,8 @@
   }
 })(
   window,
-  "{{baseUrl}}",
   "{{overwriteOptions}}",
+  "{{baseUrl}}",
   "{{apiUrlPrefix}}",
   "{{version}}",
   "{{saGlobal}}"
