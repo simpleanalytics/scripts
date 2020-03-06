@@ -167,7 +167,7 @@
   // Don't track when localhost
   /** unless testing **/
   if (loc.hostname.indexOf(".") == -1)
-    return warn(notSending + "from " + loc.localhost);
+    return warn(notSending + "from " + loc.hostname);
   /** endunless **/
 
   try {
