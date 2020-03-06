@@ -1,3 +1,5 @@
+/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2020-03-06; 5b36) */
+
 /* eslint-env browser */
 
 (function(window, overwriteOptions, baseUrl, apiUrlPrefix, version, saGlobal) {
@@ -121,19 +123,13 @@
     false
   );
 
-  /** if spa **/
   var pushState = "pushState";
   var dis = window.dispatchEvent;
-  /** endif **/
 
-  /** if duration **/
   var duration = "duration";
   var start = now();
-  /** endif **/
 
-  /** if scroll **/
   var scrolled = 0;
-  /** endif **/
 
   function isBoolean(value) {
     return !!value === value;
@@ -165,10 +161,8 @@
     return warn(notSending + "when " + doNotTrack + " is enabled");
 
   // Don't track when localhost
-  /** unless testing **/
   if (loc.hostname.indexOf(".") == -1)
     return warn(notSending + "from " + loc.localhost);
-  /** endunless **/
 
   try {
     var getParams = function(regex) {
@@ -203,7 +197,6 @@
     // We don't put msHidden in if duration block, because it's used outside of that functionality
     var msHidden = 0;
 
-    /** if duration **/
     var hiddenStart;
     window.addEventListener(
       "visibilitychange",
@@ -213,22 +206,17 @@
       },
       false
     );
-    /** endif **/
 
     var sendBeaconText = "sendBeacon";
 
     var sendOnLeave = function(id, push) {
       var append = { type: "append", original_id: push ? id : lastPageId };
 
-      /** if duration **/
       append[duration] = Math.round((now() - start + msHidden) / thousand);
       msHidden = 0;
       start = now();
-      /** endif **/
 
-      /** if scroll **/
       append.scrolled = Math.max(0, scrolled, position());
-      /** endif **/
 
       if (push || !(sendBeaconText in nav)) {
         sendData(append);
@@ -242,7 +230,6 @@
 
     addEventListenerFunc("unload", sendOnLeave, false);
 
-    /** if scroll **/
     var scroll = "scroll";
     var body = doc.body || {};
     var documentElement = doc.documentElement || {};
@@ -283,7 +270,6 @@
         false
       );
     });
-    /** endif **/
 
     var sendPageView = function(isPushState, deleteSourceInfo) {
       if (isPushState) sendOnLeave("" + lastPageId, true);
@@ -304,10 +290,8 @@
       // Obfuscate personal data in URL by dropping the search and hash
       var path = decodeURIComponentFunc(loc.pathname);
 
-      /** if hash **/
       // Add hash to path when script is put in to hash mode
       if (options.mode == "hash" && loc.hash) path += loc.hash.split("?")[0];
-      /** endif **/
 
       // Don't send the last path again (this could happen when pushState is used to change the path hash or search)
       if (lastSendPath == path) return;
@@ -337,7 +321,6 @@
             perf[navigation] &&
             [1, 2].indexOf(perf[navigation].type) > -1;
 
-      /** if uniques **/
       // We set unique variable based on pushstate or back navigation, if no match we check the referrer
       data.unique =
         isPushState || userNavigated
@@ -345,14 +328,12 @@
           : doc.referrer
           ? doc.referrer.split(slash)[2] != loc.hostname
           : true;
-      /** endif **/
 
       page = data;
 
       sendPageView(isPushState, isPushState || userNavigated);
     };
 
-    /** if spa **/
     var his = window.history;
     var hisPushState = his ? his.pushState : undefinedVar;
 
@@ -395,9 +376,7 @@
         false
       );
     }
-    /** endif **/
 
-    /** if hash **/
     // When in hash mode, we record a pageview based on the onhashchange function
     if (options.mode == "hash" && "onhashchange" in window) {
       addEventListenerFunc(
@@ -408,11 +387,9 @@
         false
       );
     }
-    /** endif **/
 
     pageview();
 
-    /** if events **/
     var sessionId = uuid();
     var validTypes = ["string", "number"];
 
@@ -459,15 +436,14 @@
 
     // Post events from the queue of the user defined function
     for (var event in queue) sendEvent(queue[event]);
-    /** endif **/
   } catch (e) {
     sendError(e);
   }
 })(
   window,
-  "{{baseUrl}}",
-  "{{overwriteOptions}}",
-  "{{apiUrlPrefix}}",
-  "{{version}}",
-  "{{saGlobal}}"
+  INSTALL_OPTIONS.custom_domain || "queue.simpleanalyticscdn.com",
+  {"saGlobal":INSTALL_OPTIONS.saGlobal,"mode":INSTALL_OPTIONS.mode,"skipDnt":INSTALL_OPTIONS.recordDnt},
+  "",
+  2,
+  "sa_event"
 );

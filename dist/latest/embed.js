@@ -1,3 +1,54 @@
-/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2020-03-02; 5115) */
+/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2020-03-06; b2e1) */
 
-var o;o=document,NodeList.prototype.forEach=Array.prototype.forEach,o.addEventListener("DOMContentLoaded",function(){var n=1;o.querySelectorAll("[data-sa-graph-url]").forEach(function(e){var t=e.getAttribute("data-sa-graph-url"),a=-1<t.indexOf("?")?"&":"?",r=o.createElement("iframe");r.setAttribute("src",t+a+"embed=true&graph_id="+n),r.setAttribute("id","sa-graph-"+n),r.setAttribute("scrolling","no"),r.style.width="100%",r.style.border="none",e.innerHTML=r.outerHTML,n+=1}),window.onresize=function(){o.querySelectorAll("[data-sa-graph-url] iframe").forEach(function(e){e.contentWindow.postMessage("true","*")})},window.addEventListener("message",function(t){if("object"==typeof t.data)if("resize"===t.data.type)o.getElementById("sa-graph-"+t.data.id).height=t.data.height+"px";else if("pageviews"===t.data.type){var e=o.getElementById("sa-graph-"+t.data.id).parentNode.getAttribute("data-sa-page-views-selector");e&&o.querySelectorAll(e).forEach(function(e){e.textContent=t.data.pageviews})}})});
+/* eslint-env browser */
+
+(function(document) {
+  NodeList.prototype.forEach = Array.prototype.forEach;
+
+  document.addEventListener("DOMContentLoaded", function() {
+    var counter = 1;
+    document.querySelectorAll("[data-sa-graph-url]").forEach(function(graph) {
+      var url = graph.getAttribute("data-sa-graph-url");
+      var append = url.indexOf("?") > -1 ? "&" : "?";
+      var iframe = document.createElement("iframe");
+      iframe.setAttribute(
+        "src",
+        url + append + "embed=true&graph_id=" + counter
+      );
+      iframe.setAttribute("id", "sa-graph-" + counter);
+      iframe.setAttribute("scrolling", "no");
+      iframe.style.width = "100%";
+      iframe.style.border = "none";
+      graph.innerHTML = iframe.outerHTML;
+      counter = counter + 1;
+    });
+
+    window.onresize = function() {
+      document
+        .querySelectorAll("[data-sa-graph-url] iframe")
+        .forEach(function(iframe) {
+          iframe.contentWindow.postMessage("true", "*");
+        });
+    };
+
+    window.addEventListener("message", function(event) {
+      if (typeof event.data !== "object") {
+        return;
+      } else if (event.data.type === "resize") {
+        document.getElementById("sa-graph-" + event.data.id).height =
+          event.data.height + "px";
+      } else if (event.data.type === "pageviews") {
+        var graph = document.getElementById("sa-graph-" + event.data.id);
+        var selector = graph.parentNode.getAttribute(
+          "data-sa-page-views-selector"
+        );
+        if (selector)
+          document
+            .querySelectorAll(selector)
+            .forEach(function(pageViewsElement) {
+              pageViewsElement.textContent = event.data.pageviews;
+            });
+      }
+    });
+  });
+})(document);

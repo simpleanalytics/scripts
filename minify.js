@@ -23,6 +23,7 @@ if (IS_TESTING) console.log(YELLOW, "Running the scripts as testing");
 
 const DEFAULTS = {
   testing: IS_TESTING,
+  minify: true,
   duration: true,
   events: true,
   hash: true,
@@ -54,6 +55,22 @@ const files = [
       version: 2,
       baseUrl: "simpleanalyticscdn.com",
       apiUrlPrefix: "queue."
+    }
+  },
+  {
+    type: "js",
+    input: `${__dirname}/src/default.js`,
+    output: `cloudflare.js`,
+    variables: {
+      ...DEFAULTS,
+      minify: false,
+      version: 2,
+      baseUrl: "{{cloudFlareCustomDomain}}",
+      overwriteOptions: {
+        saGlobal: "INSTALL_OPTIONS.saGlobal",
+        mode: "INSTALL_OPTIONS.mode",
+        skipDnt: "INSTALL_OPTIONS.recordDnt"
+      }
     }
   },
   {
@@ -144,10 +161,17 @@ for (const file of files) {
     .replace(/{{(if|unless)/g, "{{#$1");
 
   const template = Handlebars.compile(contents);
-  const { code: codeTemplate, warnings } = UglifyJS.minify(
-    template(variables),
-    MINIFY_OPTIONS
-  );
+  const { code: codeTemplate, warnings } = variables.minify
+    ? UglifyJS.minify(
+        template({ ...variables, overwriteOptions: "{{overwriteOptions}}" }),
+        MINIFY_OPTIONS
+      )
+    : {
+        code: template({
+          ...variables,
+          overwriteOptions: "{{overwriteOptions}}"
+        })
+      };
 
   if (!codeTemplate)
     console.warn(RED, `[MINIFY][${name}] codeTemplate is undefined`);
@@ -156,10 +180,24 @@ for (const file of files) {
   for (const warning of warnings || [])
     console.warn(YELLOW, `[MINIFY][${name}] ${warning}`);
 
-  const code = codeTemplate.replace(
-    /\{\{\s?nginxHost\s?\}\}/gi,
-    '<!--# echo var="http_host" default="" -->'
-  );
+  const code = codeTemplate
+    .replace(
+      /\{\{\s?nginxHost\s?\}\}/gi,
+      '<!--# echo var="http_host" default="" -->'
+    )
+    .replace(
+      /"\{\{\s?overwriteOptions\s?\}\}"/gi,
+      variables.overwriteOptions
+        ? JSON.stringify(variables.overwriteOptions).replace(
+            /:"([^"]+)"/gi,
+            ":$1"
+          )
+        : "{}"
+    )
+    .replace(
+      /"\{\{\s?cloudFlareCustomDomain\s?\}\}"/gi,
+      'INSTALL_OPTIONS.custom_domain || "queue.simpleanalyticscdn.com"'
+    );
 
   const date = new Date().toISOString().slice(0, 10);
   const hash = require("crypto")
