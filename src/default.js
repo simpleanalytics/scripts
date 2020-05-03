@@ -78,10 +78,15 @@
     /* Do nothing */
   }
 
-  // Send data via image of XHR request
-  function sendData(data) {
+  // Send data via image
+  function sendData(data, callback) {
     data = assign(payload, data);
-    new Image().src =
+    var image = new Image();
+    if (callback) {
+      image.onerror = callback;
+      image.onload = callback;
+    }
+    image.src =
       fullApiUrl +
       "/simple.gif?" +
       Object.keys(data)
@@ -416,20 +421,31 @@
     var sessionId = uuid();
     var validTypes = ["string", "number"];
 
-    var sendEvent = function (event) {
+    var endEvent = function () {};
+
+    var sendEvent = function (event, callbackRaw) {
       var isFunction = event instanceof Function;
-      if (validTypes.indexOf(typeof event) < 0 && !isFunction)
-        return warn("event is not a string: " + event);
+      var callback =
+        callbackRaw instanceof Function ? callbackRaw : function () {};
+
+      if (validTypes.indexOf(typeof event) < 0 && !isFunction) {
+        warn("event is not a string: " + event);
+        return callback();
+      }
 
       try {
         if (isFunction) {
           event = event();
-          if (validTypes.indexOf(typeof event) < 0)
-            return warn("event function output is not a string: " + event);
+          if (validTypes.indexOf(typeof event) < 0) {
+            warn("event function output is not a string: " + event);
+            return callback();
+          }
         }
       } catch (error) {
-        return warn("in your event function: " + error.message);
+        warn("in your event function: " + error.message);
+        return callback();
       }
+
       event = ("" + event).replace(/[^a-z0-9]+/gi, "_").replace(/(^_|_$)/g, "");
       if (event)
         sendData(
@@ -437,12 +453,13 @@
             type: "event",
             event: event,
             session_id: sessionId,
-          })
+          }),
+          callback
         );
     };
 
-    var defaultEventFunc = function (event) {
-      sendEvent(event);
+    var defaultEventFunc = function (event, callback) {
+      sendEvent(event, callback);
     };
 
     // Set default function if user didn't define a function
