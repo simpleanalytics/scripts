@@ -6,7 +6,7 @@ module.exports = async () => {
   const pageViewRequests = getRequests(global.REQUESTS, {
     method: "GET",
     pathname: "/simple.gif",
-    body: { type: "pageview" }
+    body: { type: "pageview" },
   });
 
   expect(
@@ -22,7 +22,7 @@ module.exports = async () => {
     pageViewRequests[1].body.unique
   );
 
-  pageViewRequests.map(request => {
+  pageViewRequests.map((request) => {
     expect(
       request,
       "There are no page view requests with body found"
@@ -40,7 +40,7 @@ module.exports = async () => {
       "id",
       "path",
       "type",
-      "unique"
+      "unique",
     ]);
 
     expect(UUIDvalidate(request.body.id, 4), "id should be a valid UUIDv4").to

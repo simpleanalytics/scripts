@@ -30,23 +30,17 @@ module.exports.getLocalhost = async ({ useLocalIp = false } = {}) =>
 module.exports.generateRandomString = (length = 30) =>
   crypto.randomBytes(Math.ceil(length / 2)).toString("hex");
 
-module.exports.version = string => {
+module.exports.version = (string) => {
   if (!string) return 0;
-  return parseInt(
-    string
-      .split(".")
-      .slice(0, 2)
-      .join("."),
-    10
-  );
+  return parseInt(string.split(".").slice(0, 2).join("."), 10);
 };
 
 module.exports.makeUnique = (array = [], keys = []) => {
   if (!keys.length || !array.length) return [];
 
   return array.reduce((list, item) => {
-    const has = list.find(listItem =>
-      keys.every(key => listItem[key] === item[key])
+    const has = list.find((listItem) =>
+      keys.every((key) => listItem[key] === item[key])
     );
     if (!has) list.push(item);
     return list;
@@ -68,13 +62,13 @@ module.exports.navigate = async ({ name, useLocalIp, driver, commands }) => {
     beacon,
     push,
     event,
-    tab
+    tab,
   } of commands) {
     const searchParams = new URLSearchParams({
       script: script || "",
       beacon: beacon || "",
       event: event || "",
-      push: push || ""
+      push: push || "",
     }).toString();
 
     if (sleepMs) {
@@ -90,10 +84,10 @@ module.exports.navigate = async ({ name, useLocalIp, driver, commands }) => {
       const exceeded = await this.waitForRequest({
         params: {
           ...params,
-          pathname: wait
+          pathname: wait,
         },
         amount,
-        timeout
+        timeout,
       });
       log(
         `waited (${name})`,
@@ -117,7 +111,7 @@ module.exports.navigate = async ({ name, useLocalIp, driver, commands }) => {
 module.exports.waitForRequest = async ({
   params,
   amount = 1,
-  timeout = 5000
+  timeout = 5000,
 } = {}) => {
   let searching = true;
   let start = Date.now();
@@ -139,20 +133,20 @@ module.exports.waitForRequest = async ({
   }
 };
 
-const isObject = obj => typeof obj === "object" && !!obj;
+const isObject = (obj) => typeof obj === "object" && !!obj;
 
 // Allow search in two levels deep object
 module.exports.getRequests = (allRequests, params) => {
   const keys = Object.keys(params);
-  return allRequests.filter(request => {
+  return allRequests.filter((request) => {
     let requiredKeys = keys.length;
     let foundDeepKeys = 0;
 
-    const foundMainKeys = keys.filter(key => {
+    const foundMainKeys = keys.filter((key) => {
       if (!isObject(params[key]) || !isObject(request[key]))
         return params[key] === request[key];
 
-      return Object.keys(params[key]).every(deepKey => {
+      return Object.keys(params[key]).every((deepKey) => {
         requiredKeys++;
         if (request[key][deepKey] === params[key][deepKey]) {
           foundDeepKeys++;

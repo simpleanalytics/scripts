@@ -10,7 +10,7 @@ const log = (...messages) =>
 const error = (...messages) =>
   console.error("    => Node server (error):", ...messages);
 
-const bool = input => {
+const bool = (input) => {
   if (typeof input === "boolean") return input;
   if (typeof input === "string") return input === "true";
   return false;
@@ -47,7 +47,7 @@ const route = async (req, res) => {
   global.REQUESTS.push({
     method: req.method,
     pathname,
-    body: json
+    body: json,
   });
 
   if (pathname === "/empty") {
@@ -93,7 +93,7 @@ const route = async (req, res) => {
       redirect: false,
       script: script || "",
       beacon: beacon || "",
-      push: push || ""
+      push: push || "",
     }).toString();
     onload = `window.location.href = "/href?${params}"`;
   }
@@ -114,15 +114,15 @@ const route = async (req, res) => {
 };
 
 module.exports = () =>
-  new Promise(resolve => {
+  new Promise((resolve) => {
     const server = http.createServer(route).listen(SERVER_PORT, () => {
       log(`Started on port ${SERVER_PORT}`);
       resolve({
         done: () =>
-          new Promise(resolve => {
+          new Promise((resolve) => {
             log("Closing...");
             server.close(resolve);
-          })
+          }),
       });
     });
   });

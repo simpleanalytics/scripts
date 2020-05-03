@@ -4,7 +4,7 @@ const { getRequests } = require("./helpers");
 
 module.exports = async () => {
   const beaconRequests = getRequests(global.REQUESTS, {
-    body: { type: "append" }
+    body: { type: "append" },
   });
 
   expect(
@@ -22,7 +22,7 @@ module.exports = async () => {
     "Second beacon request should be send via /append"
   ).to.equal("/append");
 
-  beaconRequests.map(request => {
+  beaconRequests.map((request) => {
     expect(
       request,
       "There are no page view requests with body found"
@@ -37,7 +37,7 @@ module.exports = async () => {
       "duration",
       "scrolled",
       "original_id",
-      "type"
+      "type",
     ]);
 
     expect(

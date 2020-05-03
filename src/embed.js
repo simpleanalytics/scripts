@@ -1,11 +1,11 @@
 /* eslint-env browser */
 
-(function(document) {
+(function (document) {
   NodeList.prototype.forEach = Array.prototype.forEach;
 
-  document.addEventListener("DOMContentLoaded", function() {
+  document.addEventListener("DOMContentLoaded", function () {
     var counter = 1;
-    document.querySelectorAll("[data-sa-graph-url]").forEach(function(graph) {
+    document.querySelectorAll("[data-sa-graph-url]").forEach(function (graph) {
       var url = graph.getAttribute("data-sa-graph-url");
       var append = url.indexOf("?") > -1 ? "&" : "?";
       var iframe = document.createElement("iframe");
@@ -21,15 +21,15 @@
       counter = counter + 1;
     });
 
-    window.onresize = function() {
+    window.onresize = function () {
       document
         .querySelectorAll("[data-sa-graph-url] iframe")
-        .forEach(function(iframe) {
+        .forEach(function (iframe) {
           iframe.contentWindow.postMessage("true", "*");
         });
     };
 
-    window.addEventListener("message", function(event) {
+    window.addEventListener("message", function (event) {
       if (typeof event.data !== "object") {
         return;
       } else if (event.data.type === "resize") {
@@ -43,7 +43,7 @@
         if (selector)
           document
             .querySelectorAll(selector)
-            .forEach(function(pageViewsElement) {
+            .forEach(function (pageViewsElement) {
               pageViewsElement.textContent = event.data.pageviews;
             });
       }

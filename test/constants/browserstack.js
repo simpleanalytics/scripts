@@ -16,7 +16,7 @@ module.exports.BS_LOCAL_OPTIONS = {
   forceLocal: "true",
   forceProxy: "true",
   "local-proxy-host": "localhost",
-  "local-proxy-port": SERVER_PORT
+  "local-proxy-port": SERVER_PORT,
 };
 
 module.exports.BS_CAPABILITIES = {
@@ -31,5 +31,5 @@ module.exports.BS_CAPABILITIES = {
   "browserstack.timezone": "Europe/Amsterdam",
   "browserstack.ie.noFlash": "true",
   "browserstack.user": this.BROWSERSTACK_USERNAME,
-  "browserstack.key": this.BROWSERSTACK_ACCESS_KEY
+  "browserstack.key": this.BROWSERSTACK_ACCESS_KEY,
 };
