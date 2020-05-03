@@ -15,6 +15,7 @@
   var slash = "/";
   var nav = window.navigator;
   var loc = window.location;
+  var hostname = loc.hostname;
   var doc = window.document;
   var notSending = "Not sending requests ";
   var encodeURIComponentFunc = encodeURIComponent;
@@ -156,14 +157,16 @@
       : attr(scriptElement, "record-dnt") == "true" ||
         attr(scriptElement, "skip-dnt") == "true",
     hostname:
-      overwriteOptions.hostname ||
-      attr(scriptElement, "hostname") ||
-      loc.hostname,
+      overwriteOptions.hostname || attr(scriptElement, "hostname") || hostname,
     functionName:
       overwriteOptions.saGlobal || attr(scriptElement, "sa-global") || saGlobal,
   };
 
   payload.hostname = options.hostname;
+
+  // When a customer overwrites the hostname, we need to know what the original
+  // hostname was to hide that domain from referrer traffic
+  if (options.hostname !== hostname) payload.hostname_original = hostname;
 
   // Don't track when Do Not Track is set to true
   if (!options.recordDnt && doNotTrack in nav && nav[doNotTrack] == "1")
@@ -171,8 +174,7 @@
 
   // Don't track when localhost
   /** unless testing **/
-  if (loc.hostname.indexOf(".") == -1)
-    return warn(notSending + "from " + loc.hostname);
+  if (hostname.indexOf(".") == -1) return warn(notSending + "from " + hostname);
   /** endunless **/
 
   try {
@@ -348,7 +350,7 @@
         isPushState || userNavigated
           ? false
           : doc.referrer
-          ? doc.referrer.split(slash)[2] != loc.hostname
+          ? doc.referrer.split(slash)[2] != hostname
           : true;
       /** endif **/
 
