@@ -201,6 +201,8 @@
       source: getParams(utmRegexPrefix + "source|source|ref"),
       medium: getParams(utmRegexPrefix + "medium"),
       campaign: getParams(utmRegexPrefix + "campaign"),
+      term: getParams(utmRegexPrefix + "term"),
+      content: getParams(utmRegexPrefix + "content"),
       referrer:
         (doc.referrer || "")
           .replace(/^https?:\/\/((m|l|w{2,3}([0-9]+)?)\.)?([^?#]+)(.*)$/, "$4")
