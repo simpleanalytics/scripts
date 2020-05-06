@@ -1,4 +1,4 @@
-/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2020-05-06; 206e) */
+/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2020-05-06; 60a6) */
 
 /* eslint-env browser */
 
@@ -488,6 +488,6 @@
   {"saGlobal":INSTALL_OPTIONS.saGlobal,"mode":INSTALL_OPTIONS.mode,"skipDnt":INSTALL_OPTIONS.recordDnt},
   INSTALL_OPTIONS.custom_domain || "queue.simpleanalyticscdn.com",
   "",
-  2,
+  1,
   "sa_event"
 );

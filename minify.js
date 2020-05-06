@@ -52,7 +52,7 @@ const files = [
     output: `latest.js`,
     variables: {
       ...DEFAULTS,
-      version: 2,
+      version: 3,
       baseUrl: "simpleanalyticscdn.com",
       apiUrlPrefix: "queue.",
     },
@@ -64,7 +64,7 @@ const files = [
     variables: {
       ...DEFAULTS,
       minify: false,
-      version: 2,
+      version: 1,
       baseUrl: "{{cloudFlareCustomDomain}}",
       overwriteOptions: {
         saGlobal: "INSTALL_OPTIONS.saGlobal",
@@ -79,7 +79,7 @@ const files = [
     output: `custom/app.js`,
     variables: {
       ...DEFAULTS,
-      version: 2,
+      version: 3,
       baseUrl: "{{nginxHost}}",
     },
   },
@@ -89,7 +89,7 @@ const files = [
     output: `custom/e.js`,
     variables: {
       ...DEFAULTS,
-      version: 2,
+      version: 3,
       saGlobal: "sa",
       baseUrl: "{{nginxHost}}",
     },
@@ -100,7 +100,7 @@ const files = [
     output: `custom/latest.js`,
     variables: {
       ...DEFAULTS,
-      version: 2,
+      version: 3,
       baseUrl: "{{nginxHost}}",
     },
   },
@@ -110,7 +110,7 @@ const files = [
     output: `light.js`,
     variables: {
       ...DEFAULTS,
-      version: 2,
+      version: 3,
       baseUrl: "{{nginxHost}}",
       duration: false,
       events: false,
@@ -126,7 +126,7 @@ const files = [
     variables: {
       ...DEFAULTS,
       baseUrl: "{{nginxHost}}",
-      version: 2,
+      version: 3,
       duration: false,
       events: false,
       scroll: false,
@@ -161,11 +161,19 @@ for (const file of files) {
     .replace(/{{end(if|unless)/g, "{{/$1")
     .replace(/{{(if|unless)/g, "{{#$1");
 
+  const finalFileName = output.split("/").pop();
+
   const template = Handlebars.compile(contents);
-  const { code: codeTemplate, warnings } = variables.minify
+  const { code: codeTemplate, map, warnings } = variables.minify
     ? UglifyJS.minify(
         template({ ...variables, overwriteOptions: "{{overwriteOptions}}" }),
-        MINIFY_OPTIONS
+        {
+          ...MINIFY_OPTIONS,
+          sourceMap: {
+            filename: finalFileName,
+            url: `${finalFileName}.map`,
+          },
+        }
       )
     : {
         code: template({
@@ -229,12 +237,19 @@ for (const file of files) {
     continue;
   }
 
-  if (variables.version)
+  if (variables.version) {
     fs.mkdirSync(path.dirname(versionFile), { recursive: true });
+  }
+
   fs.mkdirSync(path.dirname(latestFile), { recursive: true });
 
-  if (variables.version) fs.writeFileSync(versionFile, lines);
+  if (variables.version) {
+    fs.writeFileSync(versionFile, lines);
+    if (map) fs.writeFileSync(`${versionFile}.map`, map);
+  }
+
   fs.writeFileSync(latestFile, lines);
+  if (map) fs.writeFileSync(`${latestFile}.map`, map);
 
   const bytes = new TextEncoder("utf-8").encode(lines).length;
 
