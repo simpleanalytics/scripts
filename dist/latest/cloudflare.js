@@ -1,8 +1,8 @@
-/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2020-03-06; 5699) */
+/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2020-05-06; 206e) */
 
 /* eslint-env browser */
 
-(function(window, overwriteOptions, baseUrl, apiUrlPrefix, version, saGlobal) {
+(function (window, overwriteOptions, baseUrl, apiUrlPrefix, version, saGlobal) {
   if (!window) return;
 
   // Generate the needed variables, this seems like a lot of repetition, but it
@@ -17,6 +17,7 @@
   var slash = "/";
   var nav = window.navigator;
   var loc = window.location;
+  var hostname = loc.hostname;
   var doc = window.document;
   var notSending = "Not sending requests ";
   var encodeURIComponentFunc = encodeURIComponent;
@@ -28,36 +29,36 @@
   var undefinedVar = undefined;
 
   var payload = {
-    version: version
+    version: version,
   };
 
   // A simple log function so the user knows why a request is not being send
-  var warn = function(message) {
+  var warn = function (message) {
     if (con && con.warn) con.warn("Simple Analytics:", message);
   };
 
   var now = Date.now;
 
-  var uuid = function() {
+  var uuid = function () {
     var cryptoObject = window.crypto || window.msCrypto;
     var emptyUUID = [1e7] + -1e3 + -4e3 + -8e3 + -1e11;
 
-    if (!cryptoObject)
-      return emptyUUID.replace(/[018]/g, function(c) {
-        var r = (Math.random() * 16) | 0,
-          v = c < 2 ? r : (r & 0x3) | 0x8;
-        return v.toString(16);
+    if (cryptoObject && cryptoObject.getRandomValues)
+      return emptyUUID.replace(/[018]/g, function (c) {
+        return (
+          c ^
+          (cryptoObject.getRandomValues(new Uint8Array(1))[0] & (15 >> (c / 4)))
+        ).toString(16);
       });
 
-    return emptyUUID.replace(/[018]/g, function(c) {
-      return (
-        c ^
-        (cryptoObject.getRandomValues(new Uint8Array(1))[0] & (15 >> (c / 4)))
-      ).toString(16);
+    return emptyUUID.replace(/[018]/g, function (c) {
+      var r = (Math.random() * 16) | 0,
+        v = c < 2 ? r : (r & 0x3) | 0x8;
+      return v.toString(16);
     });
   };
 
-  var assign = function() {
+  var assign = function () {
     var to = {};
     for (var index = 0; index < arguments.length; index++) {
       var nextSource = arguments[index];
@@ -80,17 +81,22 @@
     /* Do nothing */
   }
 
-  // Send data via image of XHR request
-  function sendData(data) {
+  // Send data via image
+  function sendData(data, callback) {
     data = assign(payload, data);
-    new Image().src =
+    var image = new Image();
+    if (callback) {
+      image.onerror = callback;
+      image.onload = callback;
+    }
+    image.src =
       fullApiUrl +
       "/simple.gif?" +
       Object.keys(data)
-        .filter(function(key) {
+        .filter(function (key) {
           return data[key] != undefinedVar;
         })
-        .map(function(key) {
+        .map(function (key) {
           return (
             encodeURIComponentFunc(key) +
             "=" +
@@ -107,7 +113,7 @@
     sendData({
       type: errorText,
       error: errorOrMessage,
-      url: options.hostname + loc.pathname
+      url: options.hostname + loc.pathname,
     });
   }
 
@@ -115,7 +121,7 @@
   // from our script (checked by filename) to our server.
   addEventListenerFunc(
     errorText,
-    function(event) {
+    function (event) {
       if (event.filename && event.filename.indexOf(baseUrl) > -1) {
         sendError(event.message);
       }
@@ -136,7 +142,7 @@
   }
 
   var scriptElement = doc.querySelector('script[src*="' + baseUrl + '"]');
-  var attr = function(scriptElement, attribute) {
+  var attr = function (scriptElement, attribute) {
     return scriptElement && scriptElement.getAttribute("data-" + attribute);
   };
 
@@ -144,34 +150,45 @@
     mode: overwriteOptions.mode || attr(scriptElement, "mode"),
     recordDnt: isBoolean(overwriteOptions.skipDnt)
       ? overwriteOptions.skipDnt
-      : attr(scriptElement, "record-dnt") == "true" ||
+      : attr(scriptElement, "ignore-dnt") == "true" ||
         attr(scriptElement, "skip-dnt") == "true",
     hostname:
-      overwriteOptions.hostname ||
-      attr(scriptElement, "hostname") ||
-      loc.hostname,
+      overwriteOptions.hostname || attr(scriptElement, "hostname") || hostname,
     functionName:
-      overwriteOptions.saGlobal || attr(scriptElement, "sa-global") || saGlobal
+      overwriteOptions.saGlobal || attr(scriptElement, "sa-global") || saGlobal,
+    ignorePages:
+      overwriteOptions.ignorePages || attr(scriptElement, "ignore-pages"),
   };
 
+  // Make sure ignore pages is an array
+  var ignorePagesRaw = options.ignorePages;
+  var ignorePages = Array.isArray(ignorePagesRaw)
+    ? ignorePagesRaw
+    : typeof ignorePagesRaw == "string" && ignorePagesRaw.length
+    ? ignorePagesRaw.join(/,( +)?/)
+    : [];
+
   payload.hostname = options.hostname;
+
+  // When a customer overwrites the hostname, we need to know what the original
+  // hostname was to hide that domain from referrer traffic
+  if (options.hostname !== hostname) payload.hostname_original = hostname;
 
   // Don't track when Do Not Track is set to true
   if (!options.recordDnt && doNotTrack in nav && nav[doNotTrack] == "1")
     return warn(notSending + "when " + doNotTrack + " is enabled");
 
   // Don't track when localhost
-  if (loc.hostname.indexOf(".") == -1)
-    return warn(notSending + "from " + loc.localhost);
+  if (hostname.indexOf(".") == -1) return warn(notSending + "from " + hostname);
 
   try {
-    var getParams = function(regex) {
+    var getParams = function (regex) {
       // From the search we grab the utm_source and ref and save only that
       var matches = loc.search.match(
         new RegExp("[?&](" + regex + ")=([^?&]+)", "gi")
       );
       var match = matches
-        ? matches.map(function(m) {
+        ? matches.map(function (m) {
             return m.split("=")[1];
           })
         : [];
@@ -188,10 +205,12 @@
       source: getParams(utmRegexPrefix + "source|source|ref"),
       medium: getParams(utmRegexPrefix + "medium"),
       campaign: getParams(utmRegexPrefix + "campaign"),
+      term: getParams(utmRegexPrefix + "term"),
+      content: getParams(utmRegexPrefix + "content"),
       referrer:
         (doc.referrer || "")
           .replace(/^https?:\/\/((m|l|w{2,3}([0-9]+)?)\.)?([^?#]+)(.*)$/, "$4")
-          .replace(/^([^/]+)\/$/, "$1") || undefinedVar
+          .replace(/^([^/]+)\/$/, "$1") || undefinedVar,
     };
 
     // We don't put msHidden in if duration block, because it's used outside of that functionality
@@ -200,7 +219,7 @@
     var hiddenStart;
     window.addEventListener(
       "visibilitychange",
-      function() {
+      function () {
         if (doc.hidden) hiddenStart = now();
         else msHidden += now() - hiddenStart;
       },
@@ -209,7 +228,7 @@
 
     var sendBeaconText = "sendBeacon";
 
-    var sendOnLeave = function(id, push) {
+    var sendOnLeave = function (id, push) {
       var append = { type: "append", original_id: push ? id : lastPageId };
 
       append[duration] = Math.round((now() - start + msHidden) / thousand);
@@ -233,7 +252,7 @@
     var scroll = "scroll";
     var body = doc.body || {};
     var documentElement = doc.documentElement || {};
-    var position = function() {
+    var position = function () {
       try {
         var Height = "Height";
         var scrollHeight = scroll + Height;
@@ -260,18 +279,18 @@
       }
     };
 
-    addEventListenerFunc("load", function() {
+    addEventListenerFunc("load", function () {
       scrolled = position();
       addEventListenerFunc(
         scroll,
-        function() {
+        function () {
           if (scrolled < position()) scrolled = position();
         },
         false
       );
     });
 
-    var sendPageView = function(isPushState, deleteSourceInfo) {
+    var sendPageView = function (isPushState, deleteSourceInfo) {
       if (isPushState) sendOnLeave("" + lastPageId, true);
       lastPageId = uuid();
       page.id = lastPageId;
@@ -281,14 +300,27 @@
           https: loc.protocol == https,
           timezone: timezone,
           width: window.innerWidth,
-          type: pageviewsText
+          type: pageviewsText,
         })
       );
     };
 
-    var pageview = function(isPushState) {
+    var pageview = function (isPushState) {
       // Obfuscate personal data in URL by dropping the search and hash
       var path = decodeURIComponentFunc(loc.pathname);
+
+      // Ignore pages specified in data-ignore-pages
+      var ignore;
+      ignorePages.forEach(function (ignorePage) {
+        if (
+          ignorePage === path ||
+          new RegExp((ignorePage || "").replace(/\*/gi, "(.*)"), "gi").test(
+            path
+          )
+        )
+          ignore = true;
+      });
+      if (ignore) return warn(notSending + "because " + path + " is ignored");
 
       // Add hash to path when script is put in to hash mode
       if (options.mode == "hash" && loc.hash) path += loc.hash.split("?")[0];
@@ -299,7 +331,7 @@
       lastSendPath = path;
 
       var data = {
-        path: path
+        path: path,
       };
 
       // If a user does refresh we need to delete the referrer because otherwise it count double
@@ -326,7 +358,7 @@
         isPushState || userNavigated
           ? false
           : doc.referrer
-          ? doc.referrer.split(slash)[2] != loc.hostname
+          ? doc.referrer.split(slash)[2] != hostname
           : true;
 
       page = data;
@@ -340,9 +372,9 @@
     // Overwrite history pushState function to
     // allow listening on the pushState event
     if (hisPushState && Event && dis) {
-      var stateListener = function(type) {
+      var stateListener = function (type) {
         var orig = his[type];
-        return function() {
+        return function () {
           var rv = orig.apply(this, arguments);
           var event;
           if (typeof Event == "function") {
@@ -362,7 +394,7 @@
 
       addEventListenerFunc(
         pushState,
-        function() {
+        function () {
           pageview(1);
         },
         false
@@ -370,7 +402,7 @@
 
       addEventListenerFunc(
         "popstate",
-        function() {
+        function () {
           pageview(1);
         },
         false
@@ -381,7 +413,7 @@
     if (options.mode == "hash" && "onhashchange" in window) {
       addEventListenerFunc(
         "hashchange",
-        function() {
+        function () {
           pageview(1);
         },
         false
@@ -393,33 +425,45 @@
     var sessionId = uuid();
     var validTypes = ["string", "number"];
 
-    var sendEvent = function(event) {
+    var endEvent = function () {};
+
+    var sendEvent = function (event, callbackRaw) {
       var isFunction = event instanceof Function;
-      if (validTypes.indexOf(typeof event) < 0 && !isFunction)
-        return warn("event is not a string: " + event);
+      var callback =
+        callbackRaw instanceof Function ? callbackRaw : function () {};
+
+      if (validTypes.indexOf(typeof event) < 0 && !isFunction) {
+        warn("event is not a string: " + event);
+        return callback();
+      }
 
       try {
         if (isFunction) {
           event = event();
-          if (validTypes.indexOf(typeof event) < 0)
-            return warn("event function output is not a string: " + event);
+          if (validTypes.indexOf(typeof event) < 0) {
+            warn("event function output is not a string: " + event);
+            return callback();
+          }
         }
       } catch (error) {
-        return warn("in your event function: " + error.message);
+        warn("in your event function: " + error.message);
+        return callback();
       }
+
       event = ("" + event).replace(/[^a-z0-9]+/gi, "_").replace(/(^_|_$)/g, "");
       if (event)
         sendData(
           assign(source, {
             type: "event",
             event: event,
-            session_id: sessionId
-          })
+            session_id: sessionId,
+          }),
+          callback
         );
     };
 
-    var defaultEventFunc = function(event) {
-      sendEvent(event);
+    var defaultEventFunc = function (event, callback) {
+      sendEvent(event, callback);
     };
 
     // Set default function if user didn't define a function

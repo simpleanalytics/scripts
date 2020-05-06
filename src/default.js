@@ -154,13 +154,23 @@
     mode: overwriteOptions.mode || attr(scriptElement, "mode"),
     recordDnt: isBoolean(overwriteOptions.skipDnt)
       ? overwriteOptions.skipDnt
-      : attr(scriptElement, "record-dnt") == "true" ||
+      : attr(scriptElement, "ignore-dnt") == "true" ||
         attr(scriptElement, "skip-dnt") == "true",
     hostname:
       overwriteOptions.hostname || attr(scriptElement, "hostname") || hostname,
     functionName:
       overwriteOptions.saGlobal || attr(scriptElement, "sa-global") || saGlobal,
+    ignorePages:
+      overwriteOptions.ignorePages || attr(scriptElement, "ignore-pages"),
   };
+
+  // Make sure ignore pages is an array
+  var ignorePagesRaw = options.ignorePages;
+  var ignorePages = Array.isArray(ignorePagesRaw)
+    ? ignorePagesRaw
+    : typeof ignorePagesRaw == "string" && ignorePagesRaw.length
+    ? ignorePagesRaw.join(/,( +)?/)
+    : [];
 
   payload.hostname = options.hostname;
 
@@ -172,8 +182,8 @@
   if (!options.recordDnt && doNotTrack in nav && nav[doNotTrack] == "1")
     return warn(notSending + "when " + doNotTrack + " is enabled");
 
-  // Don't track when localhost
   /** unless testing **/
+  // Don't track when localhost
   if (hostname.indexOf(".") == -1) return warn(notSending + "from " + hostname);
   /** endunless **/
 
@@ -312,6 +322,19 @@
     var pageview = function (isPushState) {
       // Obfuscate personal data in URL by dropping the search and hash
       var path = decodeURIComponentFunc(loc.pathname);
+
+      // Ignore pages specified in data-ignore-pages
+      var ignore;
+      ignorePages.forEach(function (ignorePage) {
+        if (
+          ignorePage === path ||
+          new RegExp((ignorePage || "").replace(/\*/gi, "(.*)"), "gi").test(
+            path
+          )
+        )
+          ignore = true;
+      });
+      if (ignore) return warn(notSending + "because " + path + " is ignored");
 
       /** if hash **/
       // Add hash to path when script is put in to hash mode

@@ -139,6 +139,7 @@ const files = [
     input: `${__dirname}/src/embed.js`,
     output: `embed.js`,
     variables: {
+      minify: true,
       version: 1,
       script: "embed.js",
       url: "docs.simpleanalytics.com/embed-graph-on-your-site",
