@@ -14,7 +14,7 @@ const {
   BS_LOCAL_OPTIONS,
   STOP_ON_FAIL,
   BROWSERSTACK_USERNAME,
-  BROWSERSTACK_ACCESS_KEY
+  BROWSERSTACK_ACCESS_KEY,
 } = require("./constants/browserstack");
 
 const localBrowserFilter = ({ browser, browser_version, os, os_version }) =>
@@ -41,11 +41,11 @@ const getSupportsPushState = ({ browser, browser_version }) => {
 
 // 1080000 ms = 10 minutes
 const getDriverWithTimeout = (capabilities, timeout = 1080000) =>
-  new Promise(resolve => {
+  new Promise((resolve) => {
     const start = Date.now();
     let responded = false;
 
-    const response = message => {
+    const response = (message) => {
       if (message instanceof Error) {
         log(message);
         return resolve(message);
@@ -77,7 +77,7 @@ const getDeviceName = ({
   browser_version,
   os,
   device,
-  os_version
+  os_version,
 } = {}) =>
   device
     ? `${device} ${
@@ -103,7 +103,7 @@ const getDeviceName = ({
     : retrievedBrowsers.filter(localBrowserFilter).slice(0, 1);
 
   log("Testing", browsers.length, "browsers:");
-  browsers.map(browser => {
+  browsers.map((browser) => {
     const name = getDeviceName(browser);
     browser.name = name;
     browser.browserName = browser.browser;
@@ -123,7 +123,7 @@ const getDeviceName = ({
     suiteInstance.addTest(
       new Mocha.Test(
         `Having enough browsers to test: ${browsers.length}`,
-        async function() {
+        async function () {
           expect(
             browsers,
             "Should have more than 20 browsers"
@@ -134,7 +134,7 @@ const getDeviceName = ({
 
   for (const browser of browsers) {
     suiteInstance.addTest(
-      new Mocha.Test(`Testing ${browser.name}`, async function() {
+      new Mocha.Test(`Testing ${browser.name}`, async function () {
         if (getSeleniumVersion(browser))
           browser["browserstack.selenium_version"] = getSeleniumVersion(
             browser
@@ -167,13 +167,13 @@ const getDeviceName = ({
             { wait: "/script.js", amount: 1 },
             { visit: "/empty" }, // Trigger sendBeacon
             { wait: "/simple.gif", amount: 3 },
-            { wait: "/append" }
+            { wait: "/append" },
           ];
         } else if (browser.supportsPushState) {
           commands = [
             { script: "/latest/hello.js", push: true },
             { wait: "/script.js", amount: 1 },
-            { wait: "/simple.gif", amount: 3 }
+            { wait: "/simple.gif", amount: 3 },
           ];
         } else {
           commands = [
@@ -183,8 +183,8 @@ const getDeviceName = ({
               wait: "/simple.gif",
               amount: 2,
               params: { body: { type: "pageview" } },
-              timeout: browser.browser === "ie" ? 10000 : null
-            }
+              timeout: browser.browser === "ie" ? 10000 : null,
+            },
           ];
         }
 
@@ -194,7 +194,7 @@ const getDeviceName = ({
         await navigate({
           ...browser,
           commands,
-          driver
+          driver,
         });
 
         // console.log(JSON.stringify(global.REQUESTS, null, 2));
@@ -227,14 +227,14 @@ const getDeviceName = ({
           {
             wait: "/simple.gif",
             params: { body: { type: "event" } },
-            amount: 2
-          }
+            amount: 2,
+          },
         ];
 
         await navigate({
           ...browser,
           commands,
-          driver
+          driver,
         });
 
         await require("./test-events")(browser);
@@ -244,7 +244,7 @@ const getDeviceName = ({
     );
   }
 
-  mochaInstance.run(async amountFailures => {
+  mochaInstance.run(async (amountFailures) => {
     // Stop local server and BrowserStack Local
     await stopLocal();
     await stopServer();

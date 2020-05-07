@@ -4,7 +4,7 @@ const { getRequests } = require("./helpers");
 
 module.exports = async () => {
   const beaconRequests = getRequests(global.REQUESTS, {
-    body: { type: "append" }
+    body: { type: "append" },
   });
 
   expect(
@@ -33,7 +33,7 @@ module.exports = async () => {
     "duration",
     "scrolled",
     "original_id",
-    "type"
+    "type",
   ]);
 
   expect(

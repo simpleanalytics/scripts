@@ -5,7 +5,7 @@ const requestPromise = promisify(request);
 const { makeUnique, version } = require(".");
 const {
   BROWSERSTACK_USERNAME,
-  BROWSERSTACK_ACCESS_KEY
+  BROWSERSTACK_ACCESS_KEY,
 } = require("../constants/browserstack");
 
 module.exports = async () => {
@@ -17,7 +17,7 @@ module.exports = async () => {
   const { body: all } = await requestPromise({
     method: "GET",
     json: true,
-    url
+    url,
   });
 
   const ie = all.filter(({ browser, browser_version }) => {
@@ -33,9 +33,9 @@ module.exports = async () => {
           !browser_version.includes("preview")
         );
       })
-      .map(item => ({
+      .map((item) => ({
         ...item,
-        browser_main_version: version(item.browser_version)
+        browser_main_version: version(item.browser_version),
       }))
       .sort((left, right) =>
         version(left.browser_version) > version(right.browser_version) ? -1 : 1
@@ -71,9 +71,9 @@ module.exports = async () => {
   const android = makeUnique(
     all
       .filter(({ browser }) => browser === "android")
-      .map(item => ({
+      .map((item) => ({
         ...item,
-        os_main_version: parseInt(item.os_version.split(".")[0], 10)
+        os_main_version: parseInt(item.os_version.split(".")[0], 10),
       }))
       .sort((left, right) =>
         version(left.os_version) > version(right.os_version) ? -1 : 1
@@ -91,9 +91,9 @@ module.exports = async () => {
           !browser_version.includes("preview")
         );
       })
-      .map(item => ({
+      .map((item) => ({
         ...item,
-        browser_main_version: version(item.browser_version)
+        browser_main_version: version(item.browser_version),
       }))
       .sort((left, right) =>
         left.browser_main_version > right.browser_main_version ? -1 : 1
@@ -153,7 +153,7 @@ module.exports = async () => {
     ...ie,
     ...ipads,
     ...ios,
-    ...safari
+    ...safari,
   ];
 
   return browsers;

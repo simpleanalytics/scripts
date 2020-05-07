@@ -13,9 +13,9 @@ const MINIFY_OPTIONS = {
   ie8: true,
   toplevel: true,
   mangle: {
-    reserved: ["sa"]
+    reserved: ["sa"],
   },
-  nameCache: null
+  nameCache: null,
 };
 
 const IS_TESTING = process.argv[2] === "testing";
@@ -31,7 +31,7 @@ const DEFAULTS = {
   uniques: true,
   online: false,
   saGlobal: "sa_event",
-  url: "docs.simpleanalytics.com/script"
+  url: "docs.simpleanalytics.com/script",
 };
 
 const files = [
@@ -42,8 +42,8 @@ const files = [
     variables: {
       ...DEFAULTS,
       baseUrl: "simpleanalyticscdn.com",
-      apiUrlPrefix: "queue."
-    }
+      apiUrlPrefix: "queue.",
+    },
   },
   {
     type: "js",
@@ -53,8 +53,8 @@ const files = [
       ...DEFAULTS,
       version: 2,
       baseUrl: "simpleanalyticscdn.com",
-      apiUrlPrefix: "queue."
-    }
+      apiUrlPrefix: "queue.",
+    },
   },
   {
     type: "js",
@@ -63,8 +63,8 @@ const files = [
     variables: {
       ...DEFAULTS,
       version: 2,
-      baseUrl: "{{nginxHost}}"
-    }
+      baseUrl: "{{nginxHost}}",
+    },
   },
   {
     type: "js",
@@ -74,8 +74,8 @@ const files = [
       ...DEFAULTS,
       version: 2,
       saGlobal: "sa",
-      baseUrl: "{{nginxHost}}"
-    }
+      baseUrl: "{{nginxHost}}",
+    },
   },
   {
     type: "js",
@@ -84,8 +84,8 @@ const files = [
     variables: {
       ...DEFAULTS,
       version: 2,
-      baseUrl: "{{nginxHost}}"
-    }
+      baseUrl: "{{nginxHost}}",
+    },
   },
   {
     type: "js",
@@ -99,8 +99,8 @@ const files = [
       events: false,
       scroll: false,
       uniques: false,
-      online: false
-    }
+      online: false,
+    },
   },
   {
     type: "js",
@@ -114,8 +114,8 @@ const files = [
       events: false,
       scroll: false,
       uniques: false,
-      online: false
-    }
+      online: false,
+    },
   },
   {
     type: "js",
@@ -124,9 +124,9 @@ const files = [
     variables: {
       version: 1,
       script: "embed.js",
-      url: "docs.simpleanalytics.com/embed-graph-on-your-site"
-    }
-  }
+      url: "docs.simpleanalytics.com/embed-graph-on-your-site",
+    },
+  },
 ];
 
 for (const file of files) {
@@ -174,7 +174,7 @@ for (const file of files) {
   const validate = template({
     ...variables,
     hostname: "sa.example.com",
-    script: "sa.example.com/app.js"
+    script: "sa.example.com/app.js",
   });
 
   try {

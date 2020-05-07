@@ -1,6 +1,6 @@
 /* eslint-env browser */
 
-(function(window, baseUrl, apiUrlPrefix, version, saGlobal) {
+(function (window, baseUrl, apiUrlPrefix, version, saGlobal) {
   if (!window) return;
 
   // Generate the needed variables, this seems like a lot of repetition, but it
@@ -27,28 +27,28 @@
   var undefinedVar = undefined;
 
   var payload = {
-    version: version
+    version: version,
   };
 
   // A simple log function so the user knows why a request is not being send
-  var warn = function(message) {
+  var warn = function (message) {
     if (con && con.warn) con.warn("Simple Analytics:", message);
   };
 
   var now = Date.now;
 
-  var uuid = function() {
+  var uuid = function () {
     var cryptoObject = window.crypto || window.msCrypto;
     var emptyUUID = [1e7] + -1e3 + -4e3 + -8e3 + -1e11;
 
     if (!cryptoObject)
-      return emptyUUID.replace(/[018]/g, function(c) {
+      return emptyUUID.replace(/[018]/g, function (c) {
         var r = (Math.random() * 16) | 0,
           v = c < 2 ? r : (r & 0x3) | 0x8;
         return v.toString(16);
       });
 
-    return emptyUUID.replace(/[018]/g, function(c) {
+    return emptyUUID.replace(/[018]/g, function (c) {
       return (
         c ^
         (cryptoObject.getRandomValues(new Uint8Array(1))[0] & (15 >> (c / 4)))
@@ -56,7 +56,7 @@
     });
   };
 
-  var assign = function() {
+  var assign = function () {
     var to = {};
     for (var index = 0; index < arguments.length; index++) {
       var nextSource = arguments[index];
@@ -86,10 +86,10 @@
       fullApiUrl +
       "/simple.gif?" +
       Object.keys(data)
-        .filter(function(key) {
+        .filter(function (key) {
           return data[key] != undefinedVar;
         })
-        .map(function(key) {
+        .map(function (key) {
           return (
             encodeURIComponentFunc(key) +
             "=" +
@@ -106,7 +106,7 @@
     sendData({
       type: errorText,
       error: errorOrMessage,
-      url: hostname + loc.pathname
+      url: hostname + loc.pathname,
     });
   }
 
@@ -114,7 +114,7 @@
   // from our script (checked by filename) to our server.
   addEventListenerFunc(
     errorText,
-    function(event) {
+    function (event) {
       if (event.filename && event.filename.indexOf(baseUrl) > -1) {
         sendError(event.message);
       }
@@ -137,7 +137,7 @@
   /** endif **/
 
   var scriptElement = doc.querySelector('script[src*="' + baseUrl + '"]');
-  var attr = function(scriptElement, attribute) {
+  var attr = function (scriptElement, attribute) {
     return scriptElement && scriptElement.getAttribute("data-" + attribute);
   };
 
@@ -159,13 +159,13 @@
   /** endunless **/
 
   try {
-    var getParams = function(regex) {
+    var getParams = function (regex) {
       // From the search we grab the utm_source and ref and save only that
       var matches = loc.search.match(
         new RegExp("[?&](" + regex + ")=([^?&]+)", "gi")
       );
       var match = matches
-        ? matches.map(function(m) {
+        ? matches.map(function (m) {
             return m.split("=")[1];
           })
         : [];
@@ -185,7 +185,7 @@
       referrer:
         (doc.referrer || "")
           .replace(/^https?:\/\/((m|l|w{2,3}([0-9]+)?)\.)?([^?#]+)(.*)$/, "$4")
-          .replace(/^([^/]+)\/$/, "$1") || undefinedVar
+          .replace(/^([^/]+)\/$/, "$1") || undefinedVar,
     };
 
     // We don't put msHidden in if duration block, because it's used outside of that functionality
@@ -195,7 +195,7 @@
     var hiddenStart;
     window.addEventListener(
       "visibilitychange",
-      function() {
+      function () {
         if (doc.hidden) hiddenStart = now();
         else msHidden += now() - hiddenStart;
       },
@@ -205,7 +205,7 @@
 
     var sendBeaconText = "sendBeacon";
 
-    var sendOnLeave = function(id, push) {
+    var sendOnLeave = function (id, push) {
       var append = { type: "append", original_id: push ? id : lastPageId };
 
       /** if duration **/
@@ -234,7 +234,7 @@
     var scroll = "scroll";
     var body = doc.body || {};
     var documentElement = doc.documentElement || {};
-    var position = function() {
+    var position = function () {
       try {
         var Height = "Height";
         var scrollHeight = scroll + Height;
@@ -261,11 +261,11 @@
       }
     };
 
-    addEventListenerFunc("load", function() {
+    addEventListenerFunc("load", function () {
       scrolled = position();
       addEventListenerFunc(
         scroll,
-        function() {
+        function () {
           if (scrolled < position()) scrolled = position();
         },
         false
@@ -273,7 +273,7 @@
     });
     /** endif **/
 
-    var sendPageView = function(isPushState, deleteSourceInfo) {
+    var sendPageView = function (isPushState, deleteSourceInfo) {
       if (isPushState) sendOnLeave("" + lastPageId, true);
       lastPageId = uuid();
       page.id = lastPageId;
@@ -283,12 +283,12 @@
           https: loc.protocol == https,
           timezone: timezone,
           width: window.innerWidth,
-          type: pageviewsText
+          type: pageviewsText,
         })
       );
     };
 
-    var pageview = function(isPushState) {
+    var pageview = function (isPushState) {
       // Obfuscate personal data in URL by dropping the search and hash
       var path = decodeURIComponentFunc(loc.pathname);
 
@@ -303,7 +303,7 @@
       lastSendPath = path;
 
       var data = {
-        path: path
+        path: path,
       };
 
       // If a user does refresh we need to delete the referrer because otherwise it count double
@@ -347,9 +347,9 @@
     // Overwrite history pushState function to
     // allow listening on the pushState event
     if (hisPushState && Event && dis) {
-      var stateListener = function(type) {
+      var stateListener = function (type) {
         var orig = his[type];
-        return function() {
+        return function () {
           var rv = orig.apply(this, arguments);
           var event;
           if (typeof Event == "function") {
@@ -369,7 +369,7 @@
 
       addEventListenerFunc(
         pushState,
-        function() {
+        function () {
           pageview(1);
         },
         false
@@ -377,7 +377,7 @@
 
       addEventListenerFunc(
         "popstate",
-        function() {
+        function () {
           pageview(1);
         },
         false
@@ -390,7 +390,7 @@
     if (mode == "hash" && "onhashchange" in window) {
       addEventListenerFunc(
         "hashchange",
-        function() {
+        function () {
           pageview(1);
         },
         false
@@ -403,7 +403,7 @@
     /** if events **/
     var sessionId = uuid();
 
-    var sendEvent = function(event) {
+    var sendEvent = function (event) {
       var isFunction = event instanceof Function;
       if (["string", "number"].indexOf(typeof event) < 0 && !isFunction)
         return warn("event is not a string: " + event);
@@ -423,12 +423,12 @@
           assign(source, {
             type: "event",
             event: event,
-            session_id: sessionId
+            session_id: sessionId,
           })
         );
     };
 
-    var defaultEventFunc = function(event) {
+    var defaultEventFunc = function (event) {
       sendEvent(event);
     };
 

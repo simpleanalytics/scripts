@@ -4,7 +4,7 @@ const { getRequests } = require("./helpers");
 
 module.exports = async ({ os }) => {
   const requests = getRequests(global.REQUESTS, {
-    body: { type: "event" }
+    body: { type: "event" },
   });
 
   expect(requests, "There should be two event requests").to.have.lengthOf(2);
@@ -17,7 +17,7 @@ module.exports = async ({ os }) => {
     "functionoutput"
   );
 
-  requests.map(request => {
+  requests.map((request) => {
     expect(
       request,
       "There are no event requests with body found"
@@ -31,7 +31,7 @@ module.exports = async ({ os }) => {
       "hostname",
       "event",
       "session_id",
-      "type"
+      "type",
     ]);
 
     expect(
