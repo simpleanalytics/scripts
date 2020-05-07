@@ -169,7 +169,7 @@
   var ignorePages = Array.isArray(ignorePagesRaw)
     ? ignorePagesRaw
     : typeof ignorePagesRaw == "string" && ignorePagesRaw.length
-    ? ignorePagesRaw.join(/,( +)?/)
+    ? ignorePagesRaw.join(/,( *)/)
     : [];
 
   payload.hostname = options.hostname;
@@ -325,9 +325,13 @@
 
       // Ignore pages specified in data-ignore-pages
       var ignore;
-      ignorePages.forEach(function (ignorePage) {
+      ignorePages.forEach(function (ignorePageRaw) {
+        var ignorePage = ignorePageRaw.slice(0,1) == "/"
+          ? ignorePageRaw
+          : "/" + ignorePageRaw;
+
         if (
-          ignorePage === path ||
+          ignorePage == path ||
           new RegExp((ignorePage || "").replace(/\*/gi, "(.*)"), "gi").test(
             path
           )
