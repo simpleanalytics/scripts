@@ -326,9 +326,10 @@
       // Ignore pages specified in data-ignore-pages
       var ignore;
       ignorePages.forEach(function (ignorePageRaw) {
-        var ignorePage = ignorePageRaw.slice(0,1) == "/"
-          ? ignorePageRaw
-          : "/" + ignorePageRaw;
+        var ignorePage =
+          ignorePageRaw.slice(0, 1) == "/"
+            ? ignorePageRaw
+            : "/" + ignorePageRaw;
 
         if (
           ignorePage == path ||
