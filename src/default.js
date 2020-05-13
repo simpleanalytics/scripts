@@ -458,8 +458,6 @@
     var sessionId = uuid();
     var validTypes = ["string", "number"];
 
-    var endEvent = function () {};
-
     var sendEvent = function (event, callbackRaw) {
       var isFunction = event instanceof Function;
       var callback =
