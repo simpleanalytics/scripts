@@ -319,27 +319,32 @@
       );
     };
 
+    // Ignore pages specified in data-ignore-pages
+    var shouldIgnore = function (path) {
+      for (var i in ignorePages) {
+        var ignorePageRaw = ignorePages[i];
+        if (!ignorePageRaw) continue;
+
+        // Prepend a slash when it's missing
+        var ignorePage =
+          ignorePageRaw[0] == "/" ? ignorePageRaw : "/" + ignorePageRaw;
+
+        if (
+          ignorePage === path ||
+          new RegExp(ignorePage.replace(/\*/gi, "(.*)"), "gi").test(path)
+        )
+          return true;
+      }
+      return false;
+    };
+
     var pageview = function (isPushState) {
       // Obfuscate personal data in URL by dropping the search and hash
       var path = decodeURIComponentFunc(loc.pathname);
 
       // Ignore pages specified in data-ignore-pages
-      var ignore;
-      ignorePages.forEach(function (ignorePageRaw) {
-        var ignorePage =
-          ignorePageRaw.slice(0, 1) == "/"
-            ? ignorePageRaw
-            : "/" + ignorePageRaw;
-
-        if (
-          ignorePage == path ||
-          new RegExp((ignorePage || "").replace(/\*/gi, "(.*)"), "gi").test(
-            path
-          )
-        )
-          ignore = true;
-      });
-      if (ignore) return warn(notSending + "because " + path + " is ignored");
+      if (shouldIgnore(path))
+        return warn(notSending + "because " + path + " is ignored");
 
       /** if hash **/
       // Add hash to path when script is put in to hash mode
