@@ -169,7 +169,7 @@
   var ignorePages = Array.isArray(ignorePagesRaw)
     ? ignorePagesRaw
     : typeof ignorePagesRaw == "string" && ignorePagesRaw.length
-    ? ignorePagesRaw.join(/,( *)/)
+    ? ignorePagesRaw.split(/, ?/)
     : [];
 
   payload.hostname = options.hostname;
