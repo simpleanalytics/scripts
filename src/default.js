@@ -52,7 +52,11 @@
       "_phantom" in window ||
       "phantom" in window ||
       /(bot|spider|crawl)/i.test(userAgent) ||
-      (/Chrome/.test(userAgent) && (!window.chrome || nav.languages === ""));
+      (/Chrome/.test(userAgent) &&
+        (!window.chrome ||
+          nav.languages === "" ||
+          !nav.plugins.length ||
+          !(nav.plugins instanceof PluginArray)));
 
     var payload = {
       version: version,
