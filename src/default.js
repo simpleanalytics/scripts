@@ -160,6 +160,10 @@
     return scriptElement && scriptElement.getAttribute("data-" + attribute);
   };
 
+  var disableAutoCollect =
+    attr(scriptElement, "auto-collect") == "false" ||
+    overwriteOptions.autoCollect == false;
+
   var options = {
     mode: overwriteOptions.mode || attr(scriptElement, "mode"),
     recordDnt: isBoolean(overwriteOptions.skipDnt)
@@ -172,6 +176,7 @@
       overwriteOptions.saGlobal || attr(scriptElement, "sa-global") || saGlobal,
     ignorePages:
       overwriteOptions.ignorePages || attr(scriptElement, "ignore-pages"),
+    autoCollect: !disableAutoCollect,
   };
 
   // Make sure ignore pages is an array
@@ -362,9 +367,9 @@
       return false;
     };
 
-    var pageview = function (isPushState) {
+    var pageview = function (isPushState, pathOverwrite) {
       // Obfuscate personal data in URL by dropping the search and hash
-      var path = decodeURIComponentFunc(loc.pathname);
+      var path = pathOverwrite || decodeURIComponentFunc(loc.pathname);
 
       // Ignore pages specified in data-ignore-pages
       if (shouldIgnore(path))
@@ -424,7 +429,7 @@
 
     // Overwrite history pushState function to
     // allow listening on the pushState event
-    if (hisPushState && Event && dis) {
+    if (options.autoCollect && hisPushState && Event && dis) {
       var stateListener = function (type) {
         var orig = his[type];
         return function () {
@@ -465,7 +470,11 @@
 
     /** if hash **/
     // When in hash mode, we record a pageview based on the onhashchange function
-    if (options.mode == "hash" && "onhashchange" in window) {
+    if (
+      options.autoCollect &&
+      options.mode == "hash" &&
+      "onhashchange" in window
+    ) {
       addEventListenerFunc(
         "hashchange",
         function () {
@@ -476,7 +485,11 @@
     }
     /** endif **/
 
-    pageview();
+    if (options.autoCollect) pageview();
+    else
+      window.sa_pageview = function (path) {
+        pageview(0, path);
+      };
 
     /** if events **/
     var sessionId = uuid();
