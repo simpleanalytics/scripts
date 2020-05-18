@@ -1,4 +1,4 @@
-/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2020-05-18; 90ac) */
+/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2020-05-18; 9ce2) */
 
 /* eslint-env browser */
 
@@ -23,6 +23,7 @@
     var loc = window.location;
     var hostname = loc.hostname;
     var doc = window.document;
+    var userAgent = nav.userAgent;
     var notSending = "Not sending requests ";
     var encodeURIComponentFunc = encodeURIComponent;
     var decodeURIComponentFunc = decodeURIComponent;
@@ -46,8 +47,18 @@
     // PAYLOAD FOR BOTH PAGE VIEWS AND EVENTS
     //
 
+    var bot =
+      nav.webdriver ||
+      window.__nightmare ||
+      "callPhantom" in window ||
+      "_phantom" in window ||
+      "phantom" in window ||
+      /(bot|spider|crawl)/i.test(userAgent) ||
+      (/Chrome/.test(userAgent) && (!window.chrome || nav.languages === ""));
+
     var payload = {
       version: version,
+      bot: !!bot,
     };
 
     /////////////////////
