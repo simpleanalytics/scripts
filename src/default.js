@@ -25,6 +25,16 @@
   var addEventListenerFunc = window.addEventListener;
   var fullApiUrl = protocol + apiUrlPrefix + baseUrl;
   var undefinedVar = undefined;
+  var documentElement = doc.documentElement || {};
+  var language = "language";
+  var Height = "Height";
+  var Width = "Width";
+  var scroll = "scroll";
+  var scrollHeight = scroll + Height;
+  var offsetHeight = "offset" + Height;
+  var clientHeight = "client" + Height;
+  var clientWidth = "client" + Width;
+  var screen = window.screen;
 
   var payload = {
     version: version,
@@ -174,6 +184,26 @@
 
   payload.hostname = options.hostname;
 
+  if (nav[language]) payload[language] = nav[language];
+
+  if (screen)
+    payload.screen = {
+      width: screen.width,
+      height: screen.height,
+    };
+
+  payload.viewport = {
+    width:
+      Math.max(documentElement[clientWidth] || 0, window.innerWidth || 0) ||
+      null,
+    height:
+      Math.max(documentElement[clientHeight] || 0, window.innerHeight || 0) ||
+      null,
+  };
+
+  // Warn when no document.doctype is defined (this breaks some documentElement dimensions)
+  if (!doc.doctype) warn("Add DOCTYPE html for accurater dimensions");
+
   // When a customer overwrites the hostname, we need to know what the original
   // hostname was to hide that domain from referrer traffic
   if (options.hostname !== hostname) payload.hostname_original = hostname;
@@ -262,15 +292,9 @@
     addEventListenerFunc("unload", sendOnLeave, false);
 
     /** if scroll **/
-    var scroll = "scroll";
     var body = doc.body || {};
-    var documentElement = doc.documentElement || {};
     var position = function () {
       try {
-        var Height = "Height";
-        var scrollHeight = scroll + Height;
-        var offsetHeight = "offset" + Height;
-        var clientHeight = "client" + Height;
         var documentClientHeight = documentElement[clientHeight] || 0;
         var height = Math.max(
           body[scrollHeight] || 0,
