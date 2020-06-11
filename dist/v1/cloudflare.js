@@ -1,4 +1,4 @@
-/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2020-05-18; 9ce2) */
+/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2020-06-11; c252) */
 
 /* eslint-env browser */
 
@@ -21,7 +21,7 @@
     var slash = "/";
     var nav = window.navigator;
     var loc = window.location;
-    var hostname = loc.hostname;
+    var locationHostname = loc.hostname;
     var doc = window.document;
     var userAgent = nav.userAgent;
     var notSending = "Not sending requests ";
@@ -54,12 +54,15 @@
       "_phantom" in window ||
       "phantom" in window ||
       /(bot|spider|crawl)/i.test(userAgent) ||
-      (/Chrome/.test(userAgent) && (!window.chrome || nav.languages === ""));
+      (window.chrome &&
+        (nav.languages === "" ||
+          !nav.plugins.length ||
+          !(nav.plugins instanceof PluginArray)));
 
     var payload = {
       version: version,
-      bot: !!bot,
     };
+    if (bot) payload.bot = true;
 
     /////////////////////
     // HELPER FUNCTIONS
@@ -241,7 +244,9 @@
 
     // Customers can overwrite their hostname, here we check for that
     var definedHostname =
-      overwriteOptions.hostname || attr(scriptElement, "hostname") || hostname;
+      overwriteOptions.hostname ||
+      attr(scriptElement, "hostname") ||
+      locationHostname;
 
     // Customers can ignore certain pages
     var ignorePagesRaw =
@@ -279,15 +284,16 @@
 
     // When a customer overwrites the hostname, we need to know what the original
     // hostname was to hide that domain from referrer traffic
-    if (definedHostname !== hostname) payload.hostname_original = hostname;
+    if (definedHostname !== locationHostname)
+      payload.hostname_original = locationHostname;
 
     // Don't track when Do Not Track is set to true
     if (!recordDnt && doNotTrack in nav && nav[doNotTrack] == "1")
       return warn(notSending + "when " + doNotTrack + " is enabled");
 
     // Don't track when localhost
-    if (hostname.indexOf(".") == -1)
-      return warn(notSending + "from " + hostname);
+    if (locationHostname.indexOf(".") == -1)
+      return warn(notSending + "from " + locationHostname);
 
     /////////////////////
     // SETUP INITIAL VARIABLES
@@ -298,17 +304,21 @@
     var lastSendPath;
 
     // We don't want to end up with sensitive data so we clean the referrer URL
+    var referrer =
+      (doc.referrer || "")
+        .replace(locationHostname, definedHostname)
+        .replace(/^https?:\/\/((m|l|w{2,3}([0-9]+)?)\.)?([^?#]+)(.*)$/, "$4")
+        .replace(/^([^/]+)\/$/, "$1") || undefinedVar;
+
+    // The prefix utm_ is optional
     var utmRegexPrefix = "(utm_)?";
     var source = {
-      source: getParams(utmRegexPrefix + "source|source|ref"),
+      source: getParams(utmRegexPrefix + "source|ref"),
       medium: getParams(utmRegexPrefix + "medium"),
       campaign: getParams(utmRegexPrefix + "campaign"),
       term: getParams(utmRegexPrefix + "term"),
       content: getParams(utmRegexPrefix + "content"),
-      referrer:
-        (doc.referrer || "")
-          .replace(/^https?:\/\/((m|l|w{2,3}([0-9]+)?)\.)?([^?#]+)(.*)$/, "$4")
-          .replace(/^([^/]+)\/$/, "$1") || undefinedVar,
+      referrer: referrer,
     };
 
     /////////////////////
@@ -390,6 +400,21 @@
     // ACTUAL PAGE VIEW LOGIC
     //
 
+    var getPath = function (overwrite) {
+      var path = overwrite || decodeURIComponentFunc(loc.pathname);
+
+      // Ignore pages specified in data-ignore-pages
+      if (shouldIgnore(path)) {
+        warn(notSending + "because " + path + " is ignored");
+        return;
+      }
+
+      // Add hash to path when script is put in to hash mode
+      if (mode == "hash" && loc.hash) path += loc.hash.split("?")[0];
+
+      return path;
+    };
+
     // Send page view and append data to it
     var sendPageView = function (isPushState, deleteSourceInfo) {
       if (isPushState) sendOnLeave("" + lastPageId, true);
@@ -397,54 +422,48 @@
       page.id = lastPageId;
 
       sendData(
-        assign(page, deleteSourceInfo ? null : source, {
-          https: loc.protocol == https,
-          timezone: timezone,
-          width: window.innerWidth,
-          type: pageviewsText,
-        })
+        assign(
+          page,
+          deleteSourceInfo
+            ? { referrer: referrer || definedHostname + getPath() }
+            : source,
+          {
+            https: loc.protocol == https,
+            timezone: timezone,
+            width: window.innerWidth,
+            type: pageviewsText,
+          }
+        )
       );
     };
 
     var pageview = function (isPushState, pathOverwrite) {
       // Obfuscate personal data in URL by dropping the search and hash
-      var path = pathOverwrite || decodeURIComponentFunc(loc.pathname);
-
-      // Ignore pages specified in data-ignore-pages
-      if (shouldIgnore(path))
-        return warn(notSending + "because " + path + " is ignored");
-
-      // Add hash to path when script is put in to hash mode
-      if (mode == "hash" && loc.hash) path += loc.hash.split("?")[0];
+      var path = getPath(pathOverwrite);
 
       // Don't send the last path again (this could happen when pushState is used to change the path hash or search)
-      if (lastSendPath == path) return;
+      if (!path || lastSendPath == path) return;
 
       lastSendPath = path;
 
       var data = {
         path: path,
-        viewport: {
-          width:
-            Math.max(
-              documentElement[clientWidth] || 0,
-              window.innerWidth || 0
-            ) || null,
-          height:
-            Math.max(
-              documentElement[clientHeight] || 0,
-              window.innerHeight || 0
-            ) || null,
-        },
+        viewport_width:
+          Math.max(documentElement[clientWidth] || 0, window.innerWidth || 0) ||
+          null,
+        viewport_height:
+          Math.max(
+            documentElement[clientHeight] || 0,
+            window.innerHeight || 0
+          ) || null,
       };
 
       if (nav[language]) data[language] = nav[language];
 
-      if (screen)
-        data.screen = {
-          width: screen.width,
-          height: screen.height,
-        };
+      if (screen) {
+        data.screen_width = screen.width;
+        data.screen_height = screen.height;
+      }
 
       // If a user does refresh we need to delete the referrer because otherwise it count double
       var perf = window.performance;
@@ -466,12 +485,10 @@
             [1, 2].indexOf(perf[navigation].type) > -1;
 
       // We set unique variable based on pushstate or back navigation, if no match we check the referrer
-      data.unique =
-        isPushState || userNavigated
-          ? false
-          : doc.referrer
-          ? doc.referrer.split(slash)[2] != hostname
-          : true;
+      var sameSite = doc.referrer
+        ? doc.referrer.split(slash)[2] == locationHostname
+        : false;
+      data.unique = isPushState || userNavigated ? false : !sameSite;
 
       page = data;
 
@@ -574,11 +591,13 @@
       }
 
       event = ("" + event).replace(/[^a-z0-9]+/gi, "_").replace(/(^_|_$)/g, "");
+
       if (event)
         sendData(
           assign(source, {
             type: "event",
             event: event,
+            page_id: page.id,
             session_id: sessionId,
           }),
           callback
