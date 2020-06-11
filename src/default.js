@@ -308,17 +308,20 @@
     var lastSendPath;
 
     // We don't want to end up with sensitive data so we clean the referrer URL
+    var referrer =
+      (doc.referrer || "")
+        .replace(/^https?:\/\/((m|l|w{2,3}([0-9]+)?)\.)?([^?#]+)(.*)$/, "$4")
+        .replace(/^([^/]+)\/$/, "$1") || undefinedVar;
+
+    // The prefix utm_ is optional
     var utmRegexPrefix = "(utm_)?";
     var source = {
-      source: getParams(utmRegexPrefix + "source|source|ref"),
+      source: getParams(utmRegexPrefix + "source|ref"),
       medium: getParams(utmRegexPrefix + "medium"),
       campaign: getParams(utmRegexPrefix + "campaign"),
       term: getParams(utmRegexPrefix + "term"),
       content: getParams(utmRegexPrefix + "content"),
-      referrer:
-        (doc.referrer || "")
-          .replace(/^https?:\/\/((m|l|w{2,3}([0-9]+)?)\.)?([^?#]+)(.*)$/, "$4")
-          .replace(/^([^/]+)\/$/, "$1") || undefinedVar,
+      referrer: referrer,
     };
 
     /////////////////////
@@ -601,11 +604,13 @@
       }
 
       event = ("" + event).replace(/[^a-z0-9]+/gi, "_").replace(/(^_|_$)/g, "");
+
       if (event)
         sendData(
           assign(source, {
             type: "event",
             event: event,
+            page_id: page.id,
             session_id: sessionId,
           }),
           callback
