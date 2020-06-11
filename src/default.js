@@ -19,7 +19,7 @@
     var slash = "/";
     var nav = window.navigator;
     var loc = window.location;
-    var hostname = loc.hostname;
+    var locationHostname = loc.hostname;
     var doc = window.document;
     var userAgent = nav.userAgent;
     var notSending = "Not sending requests ";
@@ -249,7 +249,9 @@
 
     // Customers can overwrite their hostname, here we check for that
     var definedHostname =
-      overwriteOptions.hostname || attr(scriptElement, "hostname") || hostname;
+      overwriteOptions.hostname ||
+      attr(scriptElement, "hostname") ||
+      locationHostname;
 
     // Customers can ignore certain pages
     var ignorePagesRaw =
@@ -287,7 +289,8 @@
 
     // When a customer overwrites the hostname, we need to know what the original
     // hostname was to hide that domain from referrer traffic
-    if (definedHostname !== hostname) payload.hostname_original = hostname;
+    if (definedHostname !== locationHostname)
+      payload.hostname_original = locationHostname;
 
     // Don't track when Do Not Track is set to true
     if (!recordDnt && doNotTrack in nav && nav[doNotTrack] == "1")
@@ -295,8 +298,8 @@
 
     /** unless testing **/
     // Don't track when localhost
-    if (hostname.indexOf(".") == -1)
-      return warn(notSending + "from " + hostname);
+    if (locationHostname.indexOf(".") == -1)
+      return warn(notSending + "from " + locationHostname);
     /** endunless **/
 
     /////////////////////
@@ -494,7 +497,7 @@
         isPushState || userNavigated
           ? false
           : doc.referrer
-          ? doc.referrer.split(slash)[2] != hostname
+          ? doc.referrer.split(slash)[2] != locationHostname
           : true;
       /** endif **/
 
