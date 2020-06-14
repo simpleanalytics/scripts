@@ -314,7 +314,7 @@
       (doc.referrer || "")
         .replace(locationHostname, definedHostname)
         .replace(/^https?:\/\/((m|l|w{2,3}([0-9]+)?)\.)?([^?#]+)(.*)$/, "$4")
-        .replace(/^([^/]+)\/$/, "$1") || undefinedVar;
+        .replace(/^([^/]+)$/, "$1") || undefinedVar;
 
     // The prefix utm_ is optional
     var utmRegexPrefix = "(utm_)?";
@@ -432,16 +432,20 @@
     };
 
     // Send page view and append data to it
-    var sendPageView = function (isPushState, deleteSourceInfo) {
+    var sendPageView = function (isPushState, deleteSourceInfo, sameSite) {
       if (isPushState) sendOnLeave("" + lastPageId, true);
       lastPageId = uuid();
       page.id = lastPageId;
+
+      var currentPage = definedHostname + getPath();
 
       sendData(
         assign(
           page,
           deleteSourceInfo
-            ? { referrer: referrer || definedHostname + getPath() }
+            ? {
+                referrer: sameSite ? referrer || currentPage : null,
+              }
             : source,
           {
             https: loc.protocol == https,
@@ -451,6 +455,8 @@
           }
         )
       );
+
+      referrer = currentPage;
     };
 
     var pageview = function (isPushState, pathOverwrite) {
@@ -500,17 +506,19 @@
             perf[navigation] &&
             [1, 2].indexOf(perf[navigation].type) > -1;
 
+      // Check if referrer is the same as current hostname
+      var sameSite = referrer
+        ? referrer.split(slash)[0] == locationHostname
+        : false;
+
       /** if uniques **/
       // We set unique variable based on pushstate or back navigation, if no match we check the referrer
-      var sameSite = doc.referrer
-        ? doc.referrer.split(slash)[2] == locationHostname
-        : false;
       data.unique = isPushState || userNavigated ? false : !sameSite;
       /** endif **/
 
       page = data;
 
-      sendPageView(isPushState, isPushState || userNavigated);
+      sendPageView(isPushState, isPushState || userNavigated, sameSite);
     };
 
     /////////////////////
