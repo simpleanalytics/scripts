@@ -22,7 +22,7 @@
     var locationHostname = loc.hostname;
     var doc = window.document;
     var userAgent = nav.userAgent;
-    var notSending = "Not sending requests ";
+    var notSending = "Not sending request ";
     var encodeURIComponentFunc = encodeURIComponent;
     var decodeURIComponentFunc = decodeURIComponent;
     var stringify = JSON.stringify;
@@ -284,7 +284,7 @@
     //
 
     // Warn when no document.doctype is defined (this breaks some documentElement dimensions)
-    if (!doc.doctype) warn("Add DOCTYPE html for accurater dimensions");
+    if (!doc.doctype) warn("Add DOCTYPE html for more accurate dimensions");
 
     // When a customer overwrites the hostname, we need to know what the original
     // hostname was to hide that domain from referrer traffic
@@ -296,8 +296,11 @@
       return warn(notSending + "when " + doNotTrack + " is enabled");
 
     /** unless testing **/
-    // Don't track when localhost
-    if (locationHostname.indexOf(".") == -1)
+    // Don't track when localhost or when it's an IP address
+    if (
+      locationHostname.indexOf(".") == -1 ||
+      /^[0-9]+$/.test(locationHostname.replace(/\./g, ""))
+    )
       return warn(notSending + "from " + locationHostname);
     /** endunless **/
 
@@ -444,7 +447,7 @@
           page,
           deleteSourceInfo
             ? {
-                referrer: sameSite ? referrer || currentPage : null,
+                referrer: sameSite ? referrer : null,
               }
             : source,
           {
@@ -508,7 +511,7 @@
 
       // Check if referrer is the same as current hostname
       var sameSite = referrer
-        ? referrer.split(slash)[0] == locationHostname
+        ? referrer.split(slash)[0] == definedHostname
         : false;
 
       /** if uniques **/
