@@ -23,6 +23,7 @@ if (IS_TESTING) console.log(YELLOW, "Running the scripts as testing");
 
 const DEFAULTS = {
   testing: IS_TESTING,
+  minify: true,
   duration: true,
   events: true,
   hash: true,
@@ -51,9 +52,25 @@ const files = [
     output: `latest.js`,
     variables: {
       ...DEFAULTS,
-      version: 2,
+      version: 3,
       baseUrl: "simpleanalyticscdn.com",
       apiUrlPrefix: "queue.",
+    },
+  },
+  {
+    type: "js",
+    input: `${__dirname}/src/default.js`,
+    output: `cloudflare.js`,
+    variables: {
+      ...DEFAULTS,
+      minify: false,
+      version: 1,
+      baseUrl: "{{cloudFlareCustomDomain}}",
+      overwriteOptions: {
+        saGlobal: "INSTALL_OPTIONS.saGlobal",
+        mode: "INSTALL_OPTIONS.mode",
+        skipDnt: "INSTALL_OPTIONS.recordDnt",
+      },
     },
   },
   {
@@ -62,7 +79,7 @@ const files = [
     output: `custom/app.js`,
     variables: {
       ...DEFAULTS,
-      version: 2,
+      version: 3,
       baseUrl: "{{nginxHost}}",
     },
   },
@@ -72,7 +89,7 @@ const files = [
     output: `custom/e.js`,
     variables: {
       ...DEFAULTS,
-      version: 2,
+      version: 3,
       saGlobal: "sa",
       baseUrl: "{{nginxHost}}",
     },
@@ -83,7 +100,7 @@ const files = [
     output: `custom/latest.js`,
     variables: {
       ...DEFAULTS,
-      version: 2,
+      version: 3,
       baseUrl: "{{nginxHost}}",
     },
   },
@@ -93,7 +110,7 @@ const files = [
     output: `light.js`,
     variables: {
       ...DEFAULTS,
-      version: 2,
+      version: 3,
       baseUrl: "{{nginxHost}}",
       duration: false,
       events: false,
@@ -109,7 +126,7 @@ const files = [
     variables: {
       ...DEFAULTS,
       baseUrl: "{{nginxHost}}",
-      version: 2,
+      version: 3,
       duration: false,
       events: false,
       scroll: false,
@@ -122,6 +139,7 @@ const files = [
     input: `${__dirname}/src/embed.js`,
     output: `embed.js`,
     variables: {
+      minify: true,
       version: 1,
       script: "embed.js",
       url: "docs.simpleanalytics.com/embed-graph-on-your-site",
@@ -143,11 +161,26 @@ for (const file of files) {
     .replace(/{{end(if|unless)/g, "{{/$1")
     .replace(/{{(if|unless)/g, "{{#$1");
 
+  const finalFileName = output.split("/").pop();
+
   const template = Handlebars.compile(contents);
-  const { code: codeTemplate, warnings } = UglifyJS.minify(
-    template(variables),
-    MINIFY_OPTIONS
-  );
+  const { code: codeTemplate, map, warnings } = variables.minify
+    ? UglifyJS.minify(
+        template({ ...variables, overwriteOptions: "{{overwriteOptions}}" }),
+        {
+          ...MINIFY_OPTIONS,
+          sourceMap: {
+            filename: finalFileName,
+            url: `${finalFileName}.map`,
+          },
+        }
+      )
+    : {
+        code: template({
+          ...variables,
+          overwriteOptions: "{{overwriteOptions}}",
+        }),
+      };
 
   if (!codeTemplate)
     console.warn(RED, `[MINIFY][${name}] codeTemplate is undefined`);
@@ -156,10 +189,24 @@ for (const file of files) {
   for (const warning of warnings || [])
     console.warn(YELLOW, `[MINIFY][${name}] ${warning}`);
 
-  const code = codeTemplate.replace(
-    /\{\{\s?nginxHost\s?\}\}/gi,
-    '<!--# echo var="http_host" default="" -->'
-  );
+  const code = codeTemplate
+    .replace(
+      /\{\{\s?nginxHost\s?\}\}/gi,
+      '<!--# echo var="http_host" default="" -->'
+    )
+    .replace(
+      /"\{\{\s?overwriteOptions\s?\}\}"/gi,
+      variables.overwriteOptions
+        ? JSON.stringify(variables.overwriteOptions).replace(
+            /:"([^"]+)"/gi,
+            ":$1"
+          )
+        : "{}"
+    )
+    .replace(
+      /"\{\{\s?cloudFlareCustomDomain\s?\}\}"/gi,
+      'INSTALL_OPTIONS.custom_domain || "queue.simpleanalyticscdn.com"'
+    );
 
   const date = new Date().toISOString().slice(0, 10);
   const hash = require("crypto")
@@ -190,12 +237,19 @@ for (const file of files) {
     continue;
   }
 
-  if (variables.version)
+  if (variables.version) {
     fs.mkdirSync(path.dirname(versionFile), { recursive: true });
+  }
+
   fs.mkdirSync(path.dirname(latestFile), { recursive: true });
 
-  if (variables.version) fs.writeFileSync(versionFile, lines);
+  if (variables.version) {
+    fs.writeFileSync(versionFile, lines);
+    if (map) fs.writeFileSync(`${versionFile}.map`, map);
+  }
+
   fs.writeFileSync(latestFile, lines);
+  if (map) fs.writeFileSync(`${latestFile}.map`, map);
 
   const bytes = new TextEncoder("utf-8").encode(lines).length;
 

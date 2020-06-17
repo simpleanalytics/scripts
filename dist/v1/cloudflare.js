@@ -1,3 +1,5 @@
+/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2020-06-15; 97cb) */
+
 /* eslint-env browser */
 
 (function (window, overwriteOptions, baseUrl, apiUrlPrefix, version, saGlobal) {
@@ -205,19 +207,13 @@
     // INITIALIZE VALUES
     //
 
-    /** if spa **/
     var pushState = "pushState";
     var dis = window.dispatchEvent;
-    /** endif **/
 
-    /** if duration **/
     var duration = "duration";
     var start = now();
-    /** endif **/
 
-    /** if scroll **/
     var scrolled = 0;
-    /** endif **/
 
     // This code could error on (incomplete) implementations, that's why we use try...catch
     var timezone;
@@ -295,14 +291,12 @@
     if (!recordDnt && doNotTrack in nav && nav[doNotTrack] == "1")
       return warn(notSending + "when " + doNotTrack + " is enabled");
 
-    /** unless testing **/
     // Don't track when localhost or when it's an IP address
     if (
       locationHostname.indexOf(".") == -1 ||
       /^[0-9]+$/.test(locationHostname.replace(/\./g, ""))
     )
       return warn(notSending + "from " + locationHostname);
-    /** endunless **/
 
     /////////////////////
     // SETUP INITIAL VARIABLES
@@ -337,7 +331,6 @@
     // We don't put msHidden in if duration block, because it's used outside of that functionality
     var msHidden = 0;
 
-    /** if duration **/
     var hiddenStart;
     window.addEventListener(
       "visibilitychange",
@@ -347,22 +340,17 @@
       },
       false
     );
-    /** endif **/
 
     var sendBeaconText = "sendBeacon";
 
     var sendOnLeave = function (id, push) {
       var append = { type: "append", original_id: push ? id : lastPageId };
 
-      /** if duration **/
       append[duration] = Math.round((now() - start + msHidden) / thousand);
       msHidden = 0;
       start = now();
-      /** endif **/
 
-      /** if scroll **/
       append.scrolled = Math.max(0, scrolled, position());
-      /** endif **/
 
       if (push || !(sendBeaconText in nav)) {
         sendData(append);
@@ -376,7 +364,6 @@
 
     addEventListenerFunc("unload", sendOnLeave, false);
 
-    /** if scroll **/
     var body = doc.body || {};
     var position = function () {
       try {
@@ -411,7 +398,6 @@
         false
       );
     });
-    /** endif **/
 
     /////////////////////
     // ACTUAL PAGE VIEW LOGIC
@@ -426,10 +412,8 @@
         return;
       }
 
-      /** if hash **/
       // Add hash to path when script is put in to hash mode
       if (mode == "hash" && loc.hash) path += loc.hash.split("?")[0];
-      /** endif **/
 
       return path;
     };
@@ -514,10 +498,8 @@
         ? referrer.split(slash)[0] == definedHostname
         : false;
 
-      /** if uniques **/
       // We set unique variable based on pushstate or back navigation, if no match we check the referrer
       data.unique = isPushState || userNavigated ? false : !sameSite;
-      /** endif **/
 
       page = data;
 
@@ -528,7 +510,6 @@
     // AUTOMATED PAGE VIEW COLLECTION
     //
 
-    /** if spa **/
     var his = window.history;
     var hisPushState = his ? his.pushState : undefinedVar;
 
@@ -572,9 +553,7 @@
         false
       );
     }
-    /** endif **/
 
-    /** if hash **/
     // When in hash mode, we record a pageview based on the onhashchange function
     if (autoCollect && mode == "hash" && "onhashchange" in window) {
       addEventListenerFunc(
@@ -585,7 +564,6 @@
         false
       );
     }
-    /** endif **/
 
     if (autoCollect) pageview();
     else
@@ -597,7 +575,6 @@
     // EVENTS
     //
 
-    /** if events **/
     var sessionId = uuid();
     var validTypes = ["string", "number"];
 
@@ -655,15 +632,14 @@
 
     // Post events from the queue of the user defined function
     for (var event in queue) sendEvent(queue[event]);
-    /** endif **/
   } catch (e) {
     sendError(e);
   }
 })(
   window,
-  "{{overwriteOptions}}",
-  "{{baseUrl}}",
-  "{{apiUrlPrefix}}",
-  "{{version}}",
-  "{{saGlobal}}"
+  {"saGlobal":INSTALL_OPTIONS.saGlobal,"mode":INSTALL_OPTIONS.mode,"skipDnt":INSTALL_OPTIONS.recordDnt},
+  INSTALL_OPTIONS.custom_domain || "queue.simpleanalyticscdn.com",
+  "",
+  1,
+  "sa_event"
 );
