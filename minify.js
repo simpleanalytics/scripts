@@ -8,6 +8,8 @@ const GREEN = "\x1b[32m%s\x1b[0m";
 const YELLOW = "\x1b[33m%s\x1b[0m";
 const RED = "\x1b[31m%s\x1b[0m";
 
+const trim = (string) => string.replace(/^\s+|\s+$/g, "");
+
 const MINIFY_OPTIONS = {
   warnings: false,
   ie8: true,
@@ -107,6 +109,16 @@ const files = [
   {
     type: "js",
     input: `${__dirname}/src/default.js`,
+    output: `custom/proxy.js`,
+    variables: {
+      ...DEFAULTS,
+      version: 3,
+      baseUrl: "{{nginxProxyHost}}",
+    },
+  },
+  {
+    type: "js",
+    input: `${__dirname}/src/default.js`,
     output: `light.js`,
     variables: {
       ...DEFAULTS,
@@ -166,20 +178,30 @@ for (const file of files) {
   const template = Handlebars.compile(contents);
   const { code: codeTemplate, map, warnings } = variables.minify
     ? UglifyJS.minify(
-        template({ ...variables, overwriteOptions: "{{overwriteOptions}}" }),
+        {
+          [finalFileName]: trim(
+            template({
+              ...variables,
+              overwriteOptions: "{{overwriteOptions}}",
+            })
+          ),
+        },
         {
           ...MINIFY_OPTIONS,
           sourceMap: {
+            includeSources: false,
             filename: finalFileName,
             url: `${finalFileName}.map`,
           },
         }
       )
     : {
-        code: template({
-          ...variables,
-          overwriteOptions: "{{overwriteOptions}}",
-        }),
+        code: trim(
+          template({
+            ...variables,
+            overwriteOptions: "{{overwriteOptions}}",
+          })
+        ),
       };
 
   if (!codeTemplate)
@@ -193,6 +215,10 @@ for (const file of files) {
     .replace(
       /\{\{\s?nginxHost\s?\}\}/gi,
       '<!--# echo var="http_host" default="" -->'
+    )
+    .replace(
+      /\{\{\s?nginxProxyHost\s?\}\}/gi,
+      '<!--# echo var="proxy_hostname" default="" --><!--# echo var="proxy_path" default="/simple" -->'
     )
     .replace(
       /"\{\{\s?overwriteOptions\s?\}\}"/gi,
