@@ -27,7 +27,6 @@
     "browserstack-local": "^1.4.5",
     "chai": "^4.2.0",
     "dotenv": "^8.2.0",
-    "esbuild": "^0.5.3",
     "eslint": "^6.7.2",
     "esprima": "^4.0.1",
     "handlebars": "^4.7.6",

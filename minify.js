@@ -176,36 +176,41 @@ for (const file of files) {
   const finalFileName = output.split("/").pop();
 
   const template = Handlebars.compile(contents);
+  const rawCode = template({
+    ...variables,
+    overwriteOptions: "{{overwriteOptions}}",
+  });
+
+  const date = new Date().toISOString().slice(0, 10);
+  const hash = require("crypto")
+    .createHash("sha256")
+    .update(rawCode)
+    .digest("hex")
+    .slice(0, 4);
+
+  const prepend = `/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; ${date}; ${hash}) */\n`;
+
+  const originalFileName = finalFileName.replace(".js", ".source.js");
   const { code: codeTemplate, map, warnings } = variables.minify
     ? UglifyJS.minify(
         {
-          [finalFileName]:
-            "\n\n" +
-            trim(
-              template({
-                ...variables,
-                overwriteOptions: "{{overwriteOptions}}",
-              })
-            ),
+          [originalFileName]: rawCode,
         },
         {
           ...MINIFY_OPTIONS,
+          output: {
+            ...MINIFY_OPTIONS.output,
+            preamble: prepend,
+          },
           sourceMap: {
             includeSources: true,
-            filename: `${finalFileName}`,
+            filename: originalFileName,
             url: `${finalFileName}.map`,
           },
         }
       )
     : {
-        code:
-          "\n\n" +
-          trim(
-            template({
-              ...variables,
-              overwriteOptions: "{{overwriteOptions}}",
-            })
-          ),
+        code: prepend + rawCode,
       };
 
   if (!codeTemplate)
@@ -238,16 +243,6 @@ for (const file of files) {
       'INSTALL_OPTIONS.custom_domain || "queue.simpleanalyticscdn.com"'
     );
 
-  const date = new Date().toISOString().slice(0, 10);
-  const hash = require("crypto")
-    .createHash("sha256")
-    .update(code)
-    .digest("hex")
-    .slice(0, 4);
-
-  const prepend = `/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; ${date}; ${hash}) */`;
-  const lines = [prepend, "", trim(code)].join("\n");
-
   const validate = template({
     ...variables,
     hostname: "sa.example.com",
@@ -274,14 +269,14 @@ for (const file of files) {
   fs.mkdirSync(path.dirname(latestFile), { recursive: true });
 
   if (variables.version) {
-    fs.writeFileSync(versionFile, lines);
+    fs.writeFileSync(versionFile, code);
     if (map) fs.writeFileSync(`${versionFile}.map`, map);
   }
 
-  fs.writeFileSync(latestFile, lines);
+  fs.writeFileSync(latestFile, code);
   if (map) fs.writeFileSync(`${latestFile}.map`, map);
 
-  const bytes = new TextEncoder("utf-8").encode(lines).length;
+  const bytes = new TextEncoder("utf-8").encode(code).length;
 
   console.log(
     `[MINIFY][${name}] Minified ${input.split("/").pop()} into ${bytes} bytes`
