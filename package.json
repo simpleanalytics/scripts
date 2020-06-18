@@ -29,12 +29,12 @@
     "dotenv": "^8.2.0",
     "eslint": "^6.7.2",
     "esprima": "^4.0.1",
-    "handlebars": "^4.5.3",
-    "mocha": "^6.2.2",
-    "nodemon": "^1.19.1",
+    "handlebars": "^4.7.6",
+    "mocha": "^6.2.3",
+    "nodemon": "^1.19.4",
     "request": "^2.88.0",
     "selenium-webdriver": "^4.0.0-alpha.5",
-    "uglify-js": "^3.6.0",
+    "uglify-js": "^3.9.4",
     "uuid-validate": "0.0.3"
   }
 }

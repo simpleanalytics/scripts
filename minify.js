@@ -179,12 +179,14 @@ for (const file of files) {
   const { code: codeTemplate, map, warnings } = variables.minify
     ? UglifyJS.minify(
         {
-          [finalFileName]: trim(
-            template({
-              ...variables,
-              overwriteOptions: "{{overwriteOptions}}",
-            })
-          ),
+          [finalFileName]:
+            // "\n\n" +
+            trim(
+              template({
+                ...variables,
+                overwriteOptions: "{{overwriteOptions}}",
+              })
+            ),
         },
         {
           ...MINIFY_OPTIONS,
@@ -196,13 +198,23 @@ for (const file of files) {
         }
       )
     : {
-        code: trim(
-          template({
-            ...variables,
-            overwriteOptions: "{{overwriteOptions}}",
-          })
-        ),
+        code:
+          // "\n\n" +
+          trim(
+            template({
+              ...variables,
+              overwriteOptions: "{{overwriteOptions}}",
+            })
+          ),
       };
+
+  if (finalFileName === "embed.js") {
+    console.log();
+    console.log(codeTemplate);
+    console.log();
+    console.log(contents);
+    console.log();
+  }
 
   if (!codeTemplate)
     console.warn(RED, `[MINIFY][${name}] codeTemplate is undefined`);
@@ -242,7 +254,7 @@ for (const file of files) {
     .slice(0, 4);
 
   const prepend = `/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; ${date}; ${hash}) */`;
-  const lines = [prepend, "", code].join("\n");
+  const lines = trim(code) || [prepend, "", trim(code)].join("\n");
 
   const validate = template({
     ...variables,

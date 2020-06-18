@@ -1,5 +1,3 @@
-/* eslint-env browser */
-
 (function (document) {
   NodeList.prototype.forEach = Array.prototype.forEach;
 
