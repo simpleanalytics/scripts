@@ -30,6 +30,7 @@ module.exports = async ({ os }) => {
       "version",
       "hostname",
       "event",
+      "page_id",
       "session_id",
       "type",
     ]);
@@ -37,6 +38,11 @@ module.exports = async ({ os }) => {
     expect(
       UUIDvalidate(request.body.session_id, 4),
       "session_id should be a valid UUIDv4"
+    ).to.be.true;
+
+    expect(
+      UUIDvalidate(request.body.page_id, 4),
+      "page_id should be a valid UUIDv4"
     ).to.be.true;
 
     if (os === "ios") {

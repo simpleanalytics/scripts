@@ -32,15 +32,21 @@ module.exports = async () => {
       request.body,
       "All required keys should be present"
     ).to.include.all.keys([
-      "id",
-      "version",
       "hostname",
       "https",
-      "width",
       "id",
+      "id",
+      "language",
       "path",
+      "referrer",
+      "screen_height",
+      "screen_width",
+      "timezone",
       "type",
       "unique",
+      "version",
+      "viewport_height",
+      "viewport_width",
     ]);
 
     expect(UUIDvalidate(request.body.id, 4), "id should be a valid UUIDv4").to
