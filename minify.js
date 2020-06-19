@@ -8,8 +8,6 @@ const GREEN = "\x1b[32m%s\x1b[0m";
 const YELLOW = "\x1b[33m%s\x1b[0m";
 const RED = "\x1b[31m%s\x1b[0m";
 
-const trim = (string) => string.replace(/^\s+|\s+$/g, "");
-
 const MINIFY_OPTIONS = {
   warnings: false,
   ie8: true,
@@ -18,6 +16,28 @@ const MINIFY_OPTIONS = {
     reserved: ["sa"],
   },
   nameCache: null,
+};
+
+const fillTemplate = (template, { overwriteOptions = null } = {}) => {
+  return template
+    .replace(
+      /\{\{\s?nginxHost\s?\}\}/gi,
+      '<!--# echo var="http_host" default="" -->'
+    )
+    .replace(
+      /\{\{\s?nginxProxyHost\s?\}\}/gi,
+      '<!--# echo var="proxy_hostname" default="" --><!--# echo var="proxy_path" default="/simple" -->'
+    )
+    .replace(
+      /\\?"\{\{\s?overwriteOptions\s?\}\}\\?"/gi,
+      overwriteOptions
+        ? JSON.stringify(overwriteOptions).replace(/:"([^"]+)"/gi, ":$1")
+        : "{}"
+    )
+    .replace(
+      /"\{\{\s?cloudFlareCustomDomain\s?\}\}"/gi,
+      'INSTALL_OPTIONS.custom_domain || "queue.simpleanalyticscdn.com"'
+    );
 };
 
 const IS_TESTING = process.argv[2] === "testing";
@@ -220,28 +240,7 @@ for (const file of files) {
   for (const warning of warnings || [])
     console.warn(YELLOW, `[MINIFY][${name}] ${warning}`);
 
-  const code = codeTemplate
-    .replace(
-      /\{\{\s?nginxHost\s?\}\}/gi,
-      '<!--# echo var="http_host" default="" -->'
-    )
-    .replace(
-      /\{\{\s?nginxProxyHost\s?\}\}/gi,
-      '<!--# echo var="proxy_hostname" default="" --><!--# echo var="proxy_path" default="/simple" -->'
-    )
-    .replace(
-      /"\{\{\s?overwriteOptions\s?\}\}"/gi,
-      variables.overwriteOptions
-        ? JSON.stringify(variables.overwriteOptions).replace(
-            /:"([^"]+)"/gi,
-            ":$1"
-          )
-        : "{}"
-    )
-    .replace(
-      /"\{\{\s?cloudFlareCustomDomain\s?\}\}"/gi,
-      'INSTALL_OPTIONS.custom_domain || "queue.simpleanalyticscdn.com"'
-    );
+  const code = fillTemplate(codeTemplate, variables);
 
   const validate = template({
     ...variables,
@@ -268,13 +267,15 @@ for (const file of files) {
 
   fs.mkdirSync(path.dirname(latestFile), { recursive: true });
 
+  const compiledMap = map ? fillTemplate(map, variables) : null;
+
   if (variables.version) {
     fs.writeFileSync(versionFile, code);
-    if (map) fs.writeFileSync(`${versionFile}.map`, map);
+    if (compiledMap) fs.writeFileSync(`${versionFile}.map`, compiledMap);
   }
 
   fs.writeFileSync(latestFile, code);
-  if (map) fs.writeFileSync(`${latestFile}.map`, map);
+  if (compiledMap) fs.writeFileSync(`${latestFile}.map`, compiledMap);
 
   const bytes = new TextEncoder("utf-8").encode(code).length;
 
