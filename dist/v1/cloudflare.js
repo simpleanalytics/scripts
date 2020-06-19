@@ -1,4 +1,4 @@
-/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2020-06-19; f295) */
+/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2020-06-19; 3b6e) */
 /* eslint-env browser */
 
 (function (window, overwriteOptions, baseUrl, apiUrlPrefix, version, saGlobal) {
@@ -247,10 +247,6 @@
       attr(scriptElement, "hostname") ||
       locationHostname;
 
-    // Customers can ignore certain pages
-    var ignorePagesRaw =
-      overwriteOptions.ignorePages || attr(scriptElement, "ignore-pages");
-
     // Some customers want to collect page views manually
     var autoCollect = !(
       attr(scriptElement, "auto-collect") == "false" ||
@@ -260,6 +256,10 @@
     // Event function name
     var functionName =
       overwriteOptions.saGlobal || attr(scriptElement, "sa-global") || saGlobal;
+
+    // Customers can ignore certain pages
+    var ignorePagesRaw =
+      overwriteOptions.ignorePages || attr(scriptElement, "ignore-pages");
 
     // Make sure ignore pages is an array
     var ignorePages = Array.isArray(ignorePagesRaw)
@@ -436,7 +436,6 @@
           {
             https: loc.protocol == https,
             timezone: timezone,
-            width: window.innerWidth,
             type: pageviewsText,
           }
         )

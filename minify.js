@@ -8,6 +8,10 @@ const GREEN = "\x1b[32m%s\x1b[0m";
 const YELLOW = "\x1b[33m%s\x1b[0m";
 const RED = "\x1b[31m%s\x1b[0m";
 
+Handlebars.registerHelper("or", function (param1, param2) {
+  return param1 || param2;
+});
+
 const MINIFY_OPTIONS = {
   warnings: false,
   ie8: true,
@@ -53,8 +57,31 @@ const DEFAULTS = {
   spa: true,
   uniques: true,
   online: false,
+  screen: true,
+  ignorepages: true,
+  botdetection: true,
+  errorhandling: true,
+  warnings: true,
+  ignorednt: true,
   saGlobal: "sa_event",
   url: "docs.simpleanalytics.com/script",
+};
+
+const LIGHT = {
+  ...DEFAULTS,
+  spa: false,
+  hash: false,
+  duration: false,
+  events: false,
+  scroll: false,
+  uniques: false,
+  online: false,
+  screen: false,
+  ignorepages: false,
+  botdetection: false,
+  errorhandling: false,
+  warnings: false,
+  ignorednt: false,
 };
 
 const files = [
@@ -141,14 +168,9 @@ const files = [
     input: `${__dirname}/src/default.js`,
     output: `light.js`,
     variables: {
-      ...DEFAULTS,
+      ...LIGHT,
       version: 3,
       baseUrl: "{{nginxHost}}",
-      duration: false,
-      events: false,
-      scroll: false,
-      uniques: false,
-      online: false,
     },
   },
   {
@@ -156,14 +178,9 @@ const files = [
     input: `${__dirname}/src/default.js`,
     output: `custom/light.js`,
     variables: {
-      ...DEFAULTS,
+      ...LIGHT,
       baseUrl: "{{nginxHost}}",
       version: 3,
-      duration: false,
-      events: false,
-      scroll: false,
-      uniques: false,
-      online: false,
     },
   },
   {

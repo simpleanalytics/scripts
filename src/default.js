@@ -12,7 +12,9 @@
     // version stays small.
     var https = "https:";
     var pageviewsText = "pageview";
+    /** if errorhandling **/
     var errorText = "error";
+    /** endif **/
     var protocol = https + "//";
     var con = window.console;
     var doNotTrack = "doNotTrack";
@@ -39,12 +41,15 @@
     var offsetHeight = "offset" + Height;
     var clientHeight = "client" + Height;
     var clientWidth = "client" + Width;
+    /** if screen **/
     var screen = window.screen;
+    /** endif **/
 
     /////////////////////
     // PAYLOAD FOR BOTH PAGE VIEWS AND EVENTS
     //
 
+    /** if botdetection **/
     var bot =
       nav.webdriver ||
       window.__nightmare ||
@@ -56,6 +61,9 @@
         (nav.languages === "" ||
           !nav.plugins.length ||
           !(nav.plugins instanceof PluginArray)));
+    /** else **/
+    var bot = /(bot|spider|crawl)/i.test(userAgent);
+    /** endif **/
 
     var payload = {
       version: version,
@@ -126,6 +134,7 @@
       if (match && match[0]) return match[0];
     };
 
+    /** if ignorepages **/
     // Ignore pages specified in data-ignore-pages
     var shouldIgnore = function (path) {
       for (var i in ignorePages) {
@@ -144,6 +153,7 @@
       }
       return false;
     };
+    /** endif **/
 
     /////////////////////
     // SEND DATA VIA OUR PIXEL
@@ -153,10 +163,12 @@
     var sendData = function (data, callback) {
       data = assign(payload, data);
       var image = new Image();
+      /** if events **/
       if (callback) {
         image.onerror = callback;
         image.onload = callback;
       }
+      /** endif **/
       image.src =
         fullApiUrl +
         "/simple.gif?" +
@@ -174,6 +186,7 @@
           .join("&");
     };
 
+    /** if errorhandling **/
     /////////////////////
     // ERROR FUNCTIONS
     //
@@ -200,6 +213,7 @@
       },
       false
     );
+    /** endif **/
 
     /////////////////////
     // INITIALIZE VALUES
@@ -240,11 +254,13 @@
     // Script mode, this can be hash mode for example
     var mode = overwriteOptions.mode || attr(scriptElement, "mode");
 
+    /** if ignorednt **/
     // Should we record Do Not Track visits?
     var recordDnt = isBoolean(overwriteOptions.skipDnt)
       ? overwriteOptions.skipDnt
       : attr(scriptElement, "ignore-dnt") == "true" ||
         attr(scriptElement, "skip-dnt") == "true";
+    /** endif **/
 
     // Customers can overwrite their hostname, here we check for that
     var definedHostname =
@@ -252,19 +268,24 @@
       attr(scriptElement, "hostname") ||
       locationHostname;
 
-    // Customers can ignore certain pages
-    var ignorePagesRaw =
-      overwriteOptions.ignorePages || attr(scriptElement, "ignore-pages");
-
+    /** if (or spa hash) **/
     // Some customers want to collect page views manually
     var autoCollect = !(
       attr(scriptElement, "auto-collect") == "false" ||
       overwriteOptions.autoCollect === false
     );
+    /** endif **/
 
+    /** if events **/
     // Event function name
     var functionName =
       overwriteOptions.saGlobal || attr(scriptElement, "sa-global") || saGlobal;
+    /** endif **/
+
+    /** if ignorepages **/
+    // Customers can ignore certain pages
+    var ignorePagesRaw =
+      overwriteOptions.ignorePages || attr(scriptElement, "ignore-pages");
 
     // Make sure ignore pages is an array
     var ignorePages = Array.isArray(ignorePagesRaw)
@@ -272,6 +293,7 @@
       : typeof ignorePagesRaw == "string" && ignorePagesRaw.length
       ? ignorePagesRaw.split(/, ?/)
       : [];
+    /** endif **/
 
     /////////////////////
     // ADD HOSTNAME TO PAYLOAD
@@ -283,8 +305,10 @@
     // ADD WARNINGS
     //
 
+    /** if warnings **/
     // Warn when no document.doctype is defined (this breaks some documentElement dimensions)
     if (!doc.doctype) warn("Add DOCTYPE html for more accurate dimensions");
+    /** endif **/
 
     // When a customer overwrites the hostname, we need to know what the original
     // hostname was to hide that domain from referrer traffic
@@ -292,8 +316,13 @@
       payload.hostname_original = locationHostname;
 
     // Don't track when Do Not Track is set to true
+    /** if ignorednt **/
     if (!recordDnt && doNotTrack in nav && nav[doNotTrack] == "1")
       return warn(notSending + "when " + doNotTrack + " is enabled");
+    /** else **/
+    if (doNotTrack in nav && nav[doNotTrack] == "1")
+      return warn(notSending + "when " + doNotTrack + " is enabled");
+    /** endif **/
 
     /** unless testing **/
     // Don't track when localhost or when it's an IP address
@@ -420,11 +449,13 @@
     var getPath = function (overwrite) {
       var path = overwrite || decodeURIComponentFunc(loc.pathname);
 
+      /** if ignorepages **/
       // Ignore pages specified in data-ignore-pages
       if (shouldIgnore(path)) {
         warn(notSending + "because " + path + " is ignored");
         return;
       }
+      /** endif **/
 
       /** if hash **/
       // Add hash to path when script is put in to hash mode
@@ -453,7 +484,6 @@
           {
             https: loc.protocol == https,
             timezone: timezone,
-            width: window.innerWidth,
             type: pageviewsText,
           }
         )
@@ -471,6 +501,7 @@
 
       lastSendPath = path;
 
+      /** if screen **/
       var data = {
         path: path,
         viewport_width:
@@ -482,13 +513,20 @@
             window.innerHeight || 0
           ) || null,
       };
+      /** else **/
+      var data = {
+        path: path,
+      };
+      /** endif **/
 
       if (nav[language]) data[language] = nav[language];
 
+      /** if screen **/
       if (screen) {
         data.screen_width = screen.width;
         data.screen_height = screen.height;
       }
+      /** endif **/
 
       // If a user does refresh we need to delete the referrer because otherwise it count double
       var perf = window.performance;
@@ -524,11 +562,11 @@
       sendPageView(isPushState, isPushState || userNavigated, sameSite);
     };
 
+    /** if spa **/
     /////////////////////
     // AUTOMATED PAGE VIEW COLLECTION
     //
 
-    /** if spa **/
     var his = window.history;
     var hisPushState = his ? his.pushState : undefinedVar;
 
@@ -587,17 +625,21 @@
     }
     /** endif **/
 
+    /** if (or spa hash) **/
     if (autoCollect) pageview();
     else
       window.sa_pageview = function (path) {
         pageview(0, path);
       };
+    /** else **/
+    pageview();
+    /** endif **/
 
+    /** if events **/
     /////////////////////
     // EVENTS
     //
 
-    /** if events **/
     var sessionId = uuid();
     var validTypes = ["string", "number"];
 
@@ -657,7 +699,11 @@
     for (var event in queue) sendEvent(queue[event]);
     /** endif **/
   } catch (e) {
+    /** if errorhandling **/
     sendError(e);
+    /** else **/
+    warn(e);
+    /** endif **/
   }
 })(
   window,
