@@ -27,7 +27,6 @@ module.exports = async ({ os }) => {
       request.body,
       "All required keys should be present"
     ).to.include.all.keys([
-      "bot",
       "version",
       "hostname",
       "event",

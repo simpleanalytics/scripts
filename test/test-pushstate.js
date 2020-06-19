@@ -32,11 +32,9 @@ module.exports = async () => {
       request.body,
       "All required keys should be present"
     ).to.include.all.keys([
-      "bot",
       "hostname",
       "https",
       "id",
-      "language",
       "path",
       "screen_height",
       "screen_width",
