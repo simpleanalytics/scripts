@@ -1,4 +1,4 @@
-/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2020-06-19; 3b6e) */
+/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2020-06-19; cc23) */
 /* eslint-env browser */
 
 (function (window, overwriteOptions, baseUrl, apiUrlPrefix, version, saGlobal) {
@@ -603,7 +603,7 @@
 
       if (event)
         sendData(
-          assign(source, {
+          assign(source, bot ? { bot: true } : {}, {
             type: "event",
             event: event,
             page_id: page.id,

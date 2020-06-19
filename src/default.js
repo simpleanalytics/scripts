@@ -670,7 +670,7 @@
 
       if (event)
         sendData(
-          assign(source, {
+          assign(source, bot ? { bot: true } : {}, {
             type: "event",
             event: event,
             page_id: page.id,
