@@ -1,4 +1,4 @@
-/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2020-06-19; cc23) */
+/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2020-06-22; 048b) */
 /* eslint-env browser */
 
 (function (window, overwriteOptions, baseUrl, apiUrlPrefix, version, saGlobal) {
@@ -137,11 +137,15 @@
         var ignorePage =
           ignorePageRaw[0] == "/" ? ignorePageRaw : "/" + ignorePageRaw;
 
-        if (
-          ignorePage === path ||
-          new RegExp(ignorePage.replace(/\*/gi, "(.*)"), "gi").test(path)
-        )
-          return true;
+        try {
+          if (
+            ignorePage === path ||
+            new RegExp(ignorePage.replace(/\*/gi, "(.*)"), "gi").test(path)
+          )
+            return true;
+        } catch (error) {
+          return false;
+        }
       }
       return false;
     };

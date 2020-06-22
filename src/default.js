@@ -145,11 +145,15 @@
         var ignorePage =
           ignorePageRaw[0] == "/" ? ignorePageRaw : "/" + ignorePageRaw;
 
-        if (
-          ignorePage === path ||
-          new RegExp(ignorePage.replace(/\*/gi, "(.*)"), "gi").test(path)
-        )
-          return true;
+        try {
+          if (
+            ignorePage === path ||
+            new RegExp(ignorePage.replace(/\*/gi, "(.*)"), "gi").test(path)
+          )
+            return true;
+        } catch (error) {
+          return false;
+        }
       }
       return false;
     };
