@@ -1,4 +1,4 @@
-/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2020-06-22; 1202) */
+/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2020-06-22; 3cf3) */
 /* eslint-env browser */
 
 (function (window, overwriteOptions, baseUrl, apiUrlPrefix, version, saGlobal) {
@@ -17,7 +17,6 @@
     var protocol = https + "//";
     var con = window.console;
     var doNotTrack = "doNotTrack";
-    var uuidRegex = /[018]/g;
     var slash = "/";
     var nav = window.navigator;
     var loc = window.location;
@@ -78,6 +77,7 @@
     var uuid = function () {
       var cryptoObject = window.crypto || window.msCrypto;
       var emptyUUID = [1e7] + -1e3 + -4e3 + -8e3 + -1e11;
+      var uuidRegex = /[018]/g;
 
       try {
         return emptyUUID.replace(uuidRegex, function (c) {
