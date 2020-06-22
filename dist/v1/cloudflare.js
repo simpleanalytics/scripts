@@ -1,4 +1,4 @@
-/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2020-06-22; 048b) */
+/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2020-06-22; 1202) */
 /* eslint-env browser */
 
 (function (window, overwriteOptions, baseUrl, apiUrlPrefix, version, saGlobal) {
@@ -17,6 +17,7 @@
     var protocol = https + "//";
     var con = window.console;
     var doNotTrack = "doNotTrack";
+    var uuidRegex = /[018]/g;
     var slash = "/";
     var nav = window.navigator;
     var loc = window.location;
@@ -78,20 +79,21 @@
       var cryptoObject = window.crypto || window.msCrypto;
       var emptyUUID = [1e7] + -1e3 + -4e3 + -8e3 + -1e11;
 
-      if (cryptoObject && cryptoObject.getRandomValues)
-        return emptyUUID.replace(/[018]/g, function (c) {
+      try {
+        return emptyUUID.replace(uuidRegex, function (c) {
           return (
             c ^
             (cryptoObject.getRandomValues(new Uint8Array(1))[0] &
               (15 >> (c / 4)))
           ).toString(16);
         });
-
-      return emptyUUID.replace(/[018]/g, function (c) {
-        var r = (Math.random() * 16) | 0,
-          v = c < 2 ? r : (r & 0x3) | 0x8;
-        return v.toString(16);
-      });
+      } catch (error) {
+        return emptyUUID.replace(uuidRegex, function (c) {
+          var r = (Math.random() * 16) | 0,
+            v = c < 2 ? r : (r & 0x3) | 0x8;
+          return v.toString(16);
+        });
+      }
     };
 
     var assign = function () {
