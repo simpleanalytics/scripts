@@ -29,16 +29,16 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
   fi
 
   echo '==> Deploying to production'
-  # rsync --rsync-path="sudo rsync" "$scripts_path/e.js" "$remote_path/events.js"
+  rsync --rsync-path="sudo rsync" "$scripts_path/e.js" "$remote_path/events.js"
   rsync --rsync-path="sudo rsync" "$scripts_path/e.js.map" "$remote_path/events.js.map"
-  # rsync --rsync-path="sudo rsync" "$scripts_path/latest.js" "$remote_path/latest.js"
-  # rsync --rsync-path="sudo rsync" "$scripts_path/latest.js.map" "$remote_path/latest.js.map"
-  # rsync --rsync-path="sudo rsync" "$scripts_path/light.js" "$remote_path/light.js"
-  # rsync --rsync-path="sudo rsync" "$scripts_path/light.js.map" "$remote_path/light.js.map"
-  # rsync --rsync-path="sudo rsync" "$scripts_path/proxy.js" "$remote_path/proxy.js"
-  # rsync --rsync-path="sudo rsync" "$scripts_path/proxy.js.map" "$remote_path/proxy.js.map"
-  # rsync --rsync-path="sudo rsync" "$scripts_path/embed.js" "$remote_path/embed.js"
-  # rsync --rsync-path="sudo rsync" "$scripts_path/embed.js.map" "$remote_path/embed.js.map"
+  rsync --rsync-path="sudo rsync" "$scripts_path/latest.js" "$remote_path/latest.js"
+  rsync --rsync-path="sudo rsync" "$scripts_path/latest.js.map" "$remote_path/latest.js.map"
+  rsync --rsync-path="sudo rsync" "$scripts_path/light.js" "$remote_path/light.js"
+  rsync --rsync-path="sudo rsync" "$scripts_path/light.js.map" "$remote_path/light.js.map"
+  rsync --rsync-path="sudo rsync" "$scripts_path/proxy.js" "$remote_path/proxy.js"
+  rsync --rsync-path="sudo rsync" "$scripts_path/proxy.js.map" "$remote_path/proxy.js.map"
+  rsync --rsync-path="sudo rsync" "$scripts_path/embed.js" "$remote_path/embed.js"
+  rsync --rsync-path="sudo rsync" "$scripts_path/embed.js.map" "$remote_path/embed.js.map"
 
   echo -e "==> ${GREEN}Woop woop! Deployed!${RESET}"
 
