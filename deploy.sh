@@ -37,8 +37,8 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
   rsync --rsync-path="sudo rsync" "$scripts_path/light.js.map" "$remote_path/light.js.map"
   rsync --rsync-path="sudo rsync" "$scripts_path/proxy.js" "$remote_path/proxy.js"
   rsync --rsync-path="sudo rsync" "$scripts_path/proxy.js.map" "$remote_path/proxy.js.map"
-  rsync --rsync-path="sudo rsync" "$scripts_path/embed.js" "$remote_path/embed.js"
-  rsync --rsync-path="sudo rsync" "$scripts_path/embed.js.map" "$remote_path/embed.js.map"
+  rsync --rsync-path="sudo rsync" "$scripts_path/../embed.js" "$remote_path/embed.js"
+  rsync --rsync-path="sudo rsync" "$scripts_path/../embed.js.map" "$remote_path/embed.js.map"
 
   echo -e "==> ${GREEN}Woop woop! Deployed!${RESET}"
 
