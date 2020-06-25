@@ -58,9 +58,8 @@
       "phantom" in window ||
       /(bot|spider|crawl)/i.test(userAgent) ||
       (window.chrome &&
-        (nav.languages === "" ||
-          !nav.plugins.length ||
-          !(nav.plugins instanceof PluginArray)));
+        (nav.languages === "" || !(nav.plugins instanceof PluginArray)));
+
     /** else **/
     var bot = /(bot|spider|crawl)/i.test(userAgent);
     /** endif **/

@@ -1,4 +1,4 @@
-/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2020-06-22; 3cf3) */
+/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2020-06-25; f045) */
 /* eslint-env browser */
 
 (function (window, overwriteOptions, baseUrl, apiUrlPrefix, version, saGlobal) {
@@ -54,9 +54,8 @@
       "phantom" in window ||
       /(bot|spider|crawl)/i.test(userAgent) ||
       (window.chrome &&
-        (nav.languages === "" ||
-          !nav.plugins.length ||
-          !(nav.plugins instanceof PluginArray)));
+        (nav.languages === "" || !(nav.plugins instanceof PluginArray)));
+
 
     var payload = {
       version: version,
