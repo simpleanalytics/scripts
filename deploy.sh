@@ -41,7 +41,6 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
   rsync --rsync-path="sudo rsync" "$scripts_path/../embed.js.map" "$remote_path/embed.js.map"
 
   echo -e "==> ${GREEN}Woop woop! Deployed!${RESET}"
-
 else
   echo '==> Cancelled by you'
 fi
