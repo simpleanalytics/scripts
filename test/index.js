@@ -111,7 +111,7 @@ const getDeviceName = ({
     return browser;
   });
 
-  const mochaInstance = new Mocha({ retries: 3 });
+  const mochaInstance = new Mocha({ retries: CI ? 2 : 0 });
   mochaInstance.timeout(2 * 60 * 60 * 1000); // 2 hours
 
   const suiteInstance = Mocha.Suite.create(

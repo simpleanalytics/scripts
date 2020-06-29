@@ -1,4 +1,4 @@
-/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2020-06-25; f045) */
+/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2020-06-29; ee99) */
 /* eslint-env browser */
 
 (function (window, overwriteOptions, baseUrl, apiUrlPrefix, version, saGlobal) {
@@ -40,6 +40,8 @@
     var offsetHeight = "offset" + Height;
     var clientHeight = "client" + Height;
     var clientWidth = "client" + Width;
+    var isBotAgent =
+      /(bot|spider|crawl)/i.test(userAgent) && !/(cubot)/i.test(userAgent);
     var screen = window.screen;
 
     /////////////////////
@@ -52,9 +54,7 @@
       "callPhantom" in window ||
       "_phantom" in window ||
       "phantom" in window ||
-      /(bot|spider|crawl)/i.test(userAgent) ||
-      (window.chrome &&
-        (nav.languages === "" || !(nav.plugins instanceof PluginArray)));
+      isBotAgent;
 
 
     var payload = {

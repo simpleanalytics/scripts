@@ -41,6 +41,8 @@
     var offsetHeight = "offset" + Height;
     var clientHeight = "client" + Height;
     var clientWidth = "client" + Width;
+    var isBotAgent =
+      /(bot|spider|crawl)/i.test(userAgent) && !/(cubot)/i.test(userAgent);
     /** if screen **/
     var screen = window.screen;
     /** endif **/
@@ -56,12 +58,10 @@
       "callPhantom" in window ||
       "_phantom" in window ||
       "phantom" in window ||
-      /(bot|spider|crawl)/i.test(userAgent) ||
-      (window.chrome &&
-        (nav.languages === "" || !(nav.plugins instanceof PluginArray)));
+      isBotAgent;
 
     /** else **/
-    var bot = /(bot|spider|crawl)/i.test(userAgent);
+    var bot = isBotAgent;
     /** endif **/
 
     var payload = {

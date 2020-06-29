@@ -8,6 +8,8 @@ const GREEN = "\x1b[32m%s\x1b[0m";
 const YELLOW = "\x1b[33m%s\x1b[0m";
 const RED = "\x1b[31m%s\x1b[0m";
 
+const VERSION = 4;
+
 Handlebars.registerHelper("or", function (param1, param2) {
   return param1 || param2;
 });
@@ -101,7 +103,7 @@ const files = [
     output: `latest.js`,
     variables: {
       ...DEFAULTS,
-      version: 3,
+      version: VERSION,
       baseUrl: "simpleanalyticscdn.com",
       apiUrlPrefix: "queue.",
     },
@@ -128,7 +130,7 @@ const files = [
     output: `custom/app.js`,
     variables: {
       ...DEFAULTS,
-      version: 3,
+      version: VERSION,
       baseUrl: "{{nginxHost}}",
     },
   },
@@ -138,7 +140,7 @@ const files = [
     output: `custom/e.js`,
     variables: {
       ...DEFAULTS,
-      version: 3,
+      version: VERSION,
       saGlobal: "sa",
       baseUrl: "{{nginxHost}}",
     },
@@ -149,7 +151,7 @@ const files = [
     output: `custom/latest.js`,
     variables: {
       ...DEFAULTS,
-      version: 3,
+      version: VERSION,
       baseUrl: "{{nginxHost}}",
     },
   },
@@ -159,7 +161,7 @@ const files = [
     output: `custom/proxy.js`,
     variables: {
       ...DEFAULTS,
-      version: 3,
+      version: VERSION,
       baseUrl: "{{nginxProxyHost}}",
     },
   },
@@ -169,7 +171,7 @@ const files = [
     output: `light.js`,
     variables: {
       ...LIGHT,
-      version: 3,
+      version: VERSION,
       baseUrl: "{{nginxHost}}",
     },
   },
@@ -180,7 +182,7 @@ const files = [
     variables: {
       ...LIGHT,
       baseUrl: "{{nginxHost}}",
-      version: 3,
+      version: VERSION,
     },
   },
   {
