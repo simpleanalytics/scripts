@@ -52,6 +52,7 @@ if (IS_TESTING) console.log(YELLOW, "Running the scripts as testing");
 const DEFAULTS = {
   testing: IS_TESTING,
   minify: true,
+  sri: true,
   duration: true,
   events: true,
   hash: true,
@@ -93,6 +94,7 @@ const files = [
     output: `hello.js`,
     variables: {
       ...DEFAULTS,
+      sri: false,
       baseUrl: "simpleanalyticscdn.com",
       apiUrlPrefix: "queue.",
     },
@@ -116,6 +118,7 @@ const files = [
       ...DEFAULTS,
       minify: false,
       version: 1,
+      sri: false,
       baseUrl: "{{cloudFlareCustomDomain}}",
       overwriteOptions: {
         saGlobal: "INSTALL_OPTIONS.saGlobal",
@@ -140,6 +143,7 @@ const files = [
     output: `custom/e.js`,
     variables: {
       ...DEFAULTS,
+      sri: false,
       version: VERSION,
       saGlobal: "sa",
       baseUrl: "{{nginxHost}}",
@@ -192,6 +196,7 @@ const files = [
     variables: {
       minify: true,
       version: 1,
+      sri: false,
       script: "embed.js",
       url: "docs.simpleanalytics.com/embed-graph-on-your-site",
     },
@@ -280,7 +285,7 @@ for (const file of files) {
     continue;
   }
 
-  if (variables.version) {
+  if (variables.version && variables.sri) {
     fs.mkdirSync(path.dirname(versionFile), { recursive: true });
   }
 
@@ -288,7 +293,7 @@ for (const file of files) {
 
   const compiledMap = map ? fillTemplate(map, variables) : null;
 
-  if (variables.version) {
+  if (variables.version && variables.sri) {
     fs.writeFileSync(versionFile, code);
     if (compiledMap) fs.writeFileSync(`${versionFile}.map`, compiledMap);
   }
