@@ -1,4 +1,4 @@
-<img src="https://mijnimpact-adriaan-io.s3.amazonaws.com/1599219439864-logo-github-readme.png" alt="Simple Analytics logo" align="right" height="60" />
+<img src="https://mijnimpact-adriaan-io.s3.amazonaws.com/1599219520505-logo-github-readme.png" alt="Simple Analytics logo" align="right" height="63" />
 
 # Scripts
 
