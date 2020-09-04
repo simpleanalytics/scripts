@@ -1,4 +1,4 @@
-<img src="https://assets.simpleanalytics.com/press/logo-wide/logo_wide_light@3x.png" alt="Simple Analytics logo" align="right" height="30" />
+<img src="https://mijnimpact-adriaan-io.s3.amazonaws.com/1599219439864-logo-github-readme.png" alt="Simple Analytics logo" align="right" height="60" />
 
 # Scripts
 
