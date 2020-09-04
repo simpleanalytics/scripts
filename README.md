@@ -1,4 +1,6 @@
-# Simple Analytics Scripts
+<img src="https://mijnimpact-adriaan-io.s3.amazonaws.com/1599219045856-logo-github-readme.png" alt="Simple Analytics logo" align="right" height="46px" />
+
+# Scripts
 
 <a href="https://github.com/simpleanalytics/scripts/actions">
   <img src="https://github.com/simpleanalytics/scripts/workflows/SA%20Public%20Scripts%20CI/badge.svg">
