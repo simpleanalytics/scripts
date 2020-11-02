@@ -261,8 +261,8 @@
 
     /** if ignorednt **/
     // Should we record Do Not Track visits?
-    var recordDnt = isBoolean(overwriteOptions.skipDnt)
-      ? overwriteOptions.skipDnt
+    var collectDnt = isBoolean(overwriteOptions.collectDnt)
+      ? overwriteOptions.collectDnt
       : attr(scriptElement, "ignore-dnt") == "true" ||
         attr(scriptElement, "skip-dnt") == "true";
     /** endif **/
@@ -322,7 +322,7 @@
 
     // Don't track when Do Not Track is set to true
     /** if ignorednt **/
-    if (!recordDnt && doNotTrack in nav && nav[doNotTrack] == "1")
+    if (!collectDnt && doNotTrack in nav && nav[doNotTrack] == "1")
       return warn(notSending + "when " + doNotTrack + " is enabled");
     /** else **/
     if (doNotTrack in nav && nav[doNotTrack] == "1")
@@ -715,6 +715,6 @@
   "{{overwriteOptions}}",
   "{{baseUrl}}",
   "{{apiUrlPrefix}}",
-  "{{version}}",
+  "{{scriptName}}",
   "{{saGlobal}}"
 );
