@@ -8,7 +8,7 @@ const GREEN = "\x1b[32m%s\x1b[0m";
 const YELLOW = "\x1b[33m%s\x1b[0m";
 const RED = "\x1b[31m%s\x1b[0m";
 
-const VERSION = 4;
+const VERSION = 5;
 
 Handlebars.registerHelper("or", function (param1, param2) {
   return param1 || param2;
@@ -68,6 +68,7 @@ const DEFAULTS = {
   ignorednt: true,
   saGlobal: "sa_event",
   url: "docs.simpleanalytics.com/script",
+  scriptName: "script",
 };
 
 const LIGHT = {
@@ -94,6 +95,7 @@ const files = [
     output: `hello.js`,
     variables: {
       ...DEFAULTS,
+      scriptName: "cdn_hello",
       sri: false,
       baseUrl: "simpleanalyticscdn.com",
       apiUrlPrefix: "queue.",
@@ -106,6 +108,7 @@ const files = [
     variables: {
       ...DEFAULTS,
       version: VERSION,
+      scriptName: `cdn_latest_${VERSION}`,
       baseUrl: "simpleanalyticscdn.com",
       apiUrlPrefix: "queue.",
     },
@@ -116,14 +119,16 @@ const files = [
     output: `cloudflare.js`,
     variables: {
       ...DEFAULTS,
+      scriptName: "",
       minify: false,
-      version: 1,
+      version: 2,
+      scriptName: "cloudflare_2",
       sri: false,
       baseUrl: "{{cloudFlareCustomDomain}}",
       overwriteOptions: {
-        saGlobal: "INSTALL_OPTIONS.saGlobal",
-        mode: "INSTALL_OPTIONS.mode",
-        skipDnt: "INSTALL_OPTIONS.recordDnt",
+        saGlobal: "INSTALL_OPTIONS.sa_global",
+        mode: "INSTALL_OPTIONS.hash_mode ? 'hash' : null",
+        collectDnt: "INSTALL_OPTIONS.collect_dnt",
       },
     },
   },
@@ -134,6 +139,7 @@ const files = [
     variables: {
       ...DEFAULTS,
       version: VERSION,
+      scriptName: `custom_app_${VERSION}`,
       baseUrl: "{{nginxHost}}",
     },
   },
@@ -145,6 +151,7 @@ const files = [
       ...DEFAULTS,
       sri: false,
       version: VERSION,
+      scriptName: `custom_events_${VERSION}`,
       saGlobal: "sa",
       baseUrl: "{{nginxHost}}",
     },
@@ -156,6 +163,7 @@ const files = [
     variables: {
       ...DEFAULTS,
       version: VERSION,
+      scriptName: `custom_latest_${VERSION}`,
       baseUrl: "{{nginxHost}}",
     },
   },
@@ -166,6 +174,7 @@ const files = [
     variables: {
       ...DEFAULTS,
       version: VERSION,
+      scriptName: `custom_proxy_${VERSION}`,
       baseUrl: "{{nginxProxyHost}}",
     },
   },
@@ -176,6 +185,7 @@ const files = [
     variables: {
       ...LIGHT,
       version: VERSION,
+      scriptName: `cdn_light_${VERSION}`,
       baseUrl: "{{nginxHost}}",
     },
   },
@@ -185,8 +195,9 @@ const files = [
     output: `custom/light.js`,
     variables: {
       ...LIGHT,
-      baseUrl: "{{nginxHost}}",
       version: VERSION,
+      scriptName: `custom_light_${VERSION}`,
+      baseUrl: "{{nginxHost}}",
     },
   },
   {
@@ -211,7 +222,6 @@ for (const file of files) {
 
   const contents = fs
     .readFileSync(input, "utf8")
-    .replace(/\"\{\{\s?version\s?\}\}"/g, variables.version || 0)
     .replace(/\/\*\*\s?/g, "{{")
     .replace(/\s?\*\*\//g, "}}")
     .replace(/{{end(if|unless)/g, "{{/$1")
