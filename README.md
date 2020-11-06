@@ -18,6 +18,8 @@ As our public scripts are very important in our mission to privacy we decided to
 
 Just run `npm run watch` and every file will be validated and minified on save. We minify our scripts with [UglifyJS](http://lisperator.net/uglifyjs/), a well known JavaScript minifier.
 
+The most important file of the repository is [`/src/default.js`](src/default.js)
+
 ## Device testing is sponsored by BrowserStack
 
 We get amazing sponsoring from [BrowserStack](https://www.browserstack.com/). Thanks BrowserStack!
