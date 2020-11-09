@@ -37,7 +37,7 @@
     var Height = "Height";
     var Width = "Width";
     var scroll = "scroll";
-    var uaData = nav.userAgentData;    
+    var uaData = nav.userAgentData;
     var scrollHeight = scroll + Height;
     var offsetHeight = "offset" + Height;
     var clientHeight = "client" + Height;
