@@ -37,7 +37,7 @@
     var Height = "Height";
     var Width = "Width";
     var scroll = "scroll";
-    var uaData = nav.userAgentData;
+    var uaData = nav.userAgentData;    
     var scrollHeight = scroll + Height;
     var offsetHeight = "offset" + Height;
     var clientHeight = "client" + Height;
@@ -74,8 +74,8 @@
     // Use User-Agent Client Hints for better privacy
     // https://web.dev/user-agent-client-hints/
     if (uaData) {
-      payload.mobile = uaData.mobile;
       try {
+        payload.mobile = uaData.mobile;
         var brand = uaData.brands.slice(-1)[0];
         payload.browser = brand.brand;
         payload.browserVersion = brand.version;
