@@ -389,7 +389,7 @@
       var append = { type: "append", original_id: push ? id : lastPageId };
 
       /** if duration **/
-      append[duration] = Math.round((now() - start + msHidden) / thousand);
+      append[duration] = Math.round((now() - start - msHidden) / thousand);
       msHidden = 0;
       start = now();
       /** endif **/
