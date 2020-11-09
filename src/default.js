@@ -452,7 +452,15 @@
     //
 
     var getPath = function (overwrite) {
-      var path = overwrite || decodeURIComponentFunc(loc.pathname);
+      var path = "";
+      
+      // decodeURIComponent can fail when having invalid characters
+      // https://github.com/simpleanalytics/roadmap/issues/462
+      try {
+        path = overwrite || decodeURIComponentFunc(loc.pathname);
+      } catch (e) {
+        // Do nothing
+      }
 
       /** if ignorepages **/
       // Ignore pages specified in data-ignore-pages
