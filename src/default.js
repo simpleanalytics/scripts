@@ -41,6 +41,7 @@
     var offsetHeight = "offset" + Height;
     var clientHeight = "client" + Height;
     var clientWidth = "client" + Width;
+    var pagehide = "pagehide";
     var isBotAgent =
       /(bot|spider|crawl)/i.test(userAgent) && !/(cubot)/i.test(userAgent);
     /** if screen **/
@@ -371,25 +372,13 @@
     // We don't put msHidden in if duration block, because it's used outside of that functionality
     var msHidden = 0;
 
-    /** if duration **/
-    var hiddenStart;
-    window.addEventListener(
-      "visibilitychange",
-      function () {
-        if (doc.hidden) hiddenStart = now();
-        else msHidden += now() - hiddenStart;
-      },
-      false
-    );
-    /** endif **/
-
     var sendBeaconText = "sendBeacon";
 
     var sendOnLeave = function (id, push) {
       var append = { type: "append", original_id: push ? id : lastPageId };
 
       /** if duration **/
-      append[duration] = Math.round((now() - start + msHidden) / thousand);
+      append[duration] = Math.round((now() - start - msHidden) / thousand);
       msHidden = 0;
       start = now();
       /** endif **/
@@ -408,7 +397,21 @@
       }
     };
 
-    addEventListenerFunc("unload", sendOnLeave, false);
+    /** if duration **/
+    var hiddenStart;
+    window.addEventListener(
+      "visibilitychange",
+      function () {
+        if (doc.hidden) {
+          if (!("on" + pagehide in window)) sendOnLeave();
+          hiddenStart = now();
+        } else msHidden += now() - hiddenStart;
+      },
+      false
+    );
+    /** endif **/
+
+    addEventListenerFunc(pagehide, sendOnLeave, false);
 
     /** if scroll **/
     var body = doc.body || {};

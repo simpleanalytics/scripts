@@ -1,4 +1,4 @@
-/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2020-06-29; ee99) */
+/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2020-11-17; 5ff6) */
 /* eslint-env browser */
 
 (function (window, overwriteOptions, baseUrl, apiUrlPrefix, version, saGlobal) {
@@ -40,6 +40,7 @@
     var offsetHeight = "offset" + Height;
     var clientHeight = "client" + Height;
     var clientWidth = "client" + Width;
+    var pagehide = "pagehide";
     var isBotAgent =
       /(bot|spider|crawl)/i.test(userAgent) && !/(cubot)/i.test(userAgent);
     var screen = window.screen;
@@ -241,8 +242,8 @@
     var mode = overwriteOptions.mode || attr(scriptElement, "mode");
 
     // Should we record Do Not Track visits?
-    var recordDnt = isBoolean(overwriteOptions.skipDnt)
-      ? overwriteOptions.skipDnt
+    var collectDnt = isBoolean(overwriteOptions.collectDnt)
+      ? overwriteOptions.collectDnt
       : attr(scriptElement, "ignore-dnt") == "true" ||
         attr(scriptElement, "skip-dnt") == "true";
 
@@ -292,7 +293,7 @@
       payload.hostname_original = locationHostname;
 
     // Don't track when Do Not Track is set to true
-    if (!recordDnt && doNotTrack in nav && nav[doNotTrack] == "1")
+    if (!collectDnt && doNotTrack in nav && nav[doNotTrack] == "1")
       return warn(notSending + "when " + doNotTrack + " is enabled");
 
     // Don't track when localhost or when it's an IP address
@@ -335,22 +336,12 @@
     // We don't put msHidden in if duration block, because it's used outside of that functionality
     var msHidden = 0;
 
-    var hiddenStart;
-    window.addEventListener(
-      "visibilitychange",
-      function () {
-        if (doc.hidden) hiddenStart = now();
-        else msHidden += now() - hiddenStart;
-      },
-      false
-    );
-
     var sendBeaconText = "sendBeacon";
 
     var sendOnLeave = function (id, push) {
       var append = { type: "append", original_id: push ? id : lastPageId };
 
-      append[duration] = Math.round((now() - start + msHidden) / thousand);
+      append[duration] = Math.round((now() - start - msHidden) / thousand);
       msHidden = 0;
       start = now();
 
@@ -366,7 +357,19 @@
       }
     };
 
-    addEventListenerFunc("unload", sendOnLeave, false);
+    var hiddenStart;
+    window.addEventListener(
+      "visibilitychange",
+      function () {
+        if (doc.hidden) {
+          if (!("on" + pagehide in window)) sendOnLeave();
+          hiddenStart = now();
+        } else msHidden += now() - hiddenStart;
+      },
+      false
+    );
+
+    addEventListenerFunc(pagehide, sendOnLeave, false);
 
     var body = doc.body || {};
     var position = function () {
@@ -640,9 +643,9 @@
   }
 })(
   window,
-  {"saGlobal":INSTALL_OPTIONS.saGlobal,"mode":INSTALL_OPTIONS.mode,"skipDnt":INSTALL_OPTIONS.recordDnt},
+  {"saGlobal":INSTALL_OPTIONS.sa_global,"mode":INSTALL_OPTIONS.hash_mode ? 'hash' : null,"collectDnt":INSTALL_OPTIONS.collect_dnt},
   INSTALL_OPTIONS.custom_domain || "queue.simpleanalyticscdn.com",
   "",
-  1,
+  "cloudflare_2",
   "sa_event"
 );

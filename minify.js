@@ -119,7 +119,6 @@ const files = [
     output: `cloudflare.js`,
     variables: {
       ...DEFAULTS,
-      scriptName: "",
       minify: false,
       version: 2,
       scriptName: "cloudflare_2",
