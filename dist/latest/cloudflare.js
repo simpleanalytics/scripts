@@ -1,4 +1,4 @@
-/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2020-11-17; 5ff6) */
+/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2020-11-17; be35) */
 /* eslint-env browser */
 
 (function (window, overwriteOptions, baseUrl, apiUrlPrefix, version, saGlobal) {
@@ -36,6 +36,7 @@
     var Height = "Height";
     var Width = "Width";
     var scroll = "scroll";
+    var uaData = nav.userAgentData;
     var scrollHeight = scroll + Height;
     var offsetHeight = "offset" + Height;
     var clientHeight = "client" + Height;
@@ -62,6 +63,19 @@
       version: version,
     };
     if (bot) payload.bot = true;
+
+    // Use User-Agent Client Hints for better privacy
+    // https://web.dev/user-agent-client-hints/
+    if (uaData) {
+      try {
+        payload.mobile = uaData.mobile;
+        var brand = uaData.brands.slice(-1)[0];
+        payload.browser = brand.brand;
+        payload.browserVersion = brand.version;
+      } catch (e) {
+        // Do nothing
+      }
+    }
 
     /////////////////////
     // HELPER FUNCTIONS
@@ -411,7 +425,15 @@
     //
 
     var getPath = function (overwrite) {
-      var path = overwrite || decodeURIComponentFunc(loc.pathname);
+      var path = "";
+
+      // decodeURIComponent can fail when having invalid characters
+      // https://github.com/simpleanalytics/roadmap/issues/462
+      try {
+        path = overwrite || decodeURIComponentFunc(loc.pathname);
+      } catch (e) {
+        // Do nothing
+      }
 
       // Ignore pages specified in data-ignore-pages
       if (shouldIgnore(path)) {
