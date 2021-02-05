@@ -115,7 +115,7 @@
       }
     };
 
-    var isFunction = function(func) {
+    var isFunction = function (func) {
       return typeof func === "function";
     };
 
