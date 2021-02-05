@@ -707,9 +707,8 @@
     var validTypes = ["string", "number"];
 
     var sendEvent = function (event, callbackRaw) {
-      var eventIsFunction =  isFunction(event);
-      var callback =
-        isFunction(callbackRaw) ? callbackRaw : function () {};
+      var eventIsFunction = isFunction(event);
+      var callback = isFunction(callbackRaw) ? callbackRaw : function () {};
 
       if (validTypes.indexOf(typeof event) < 0 && !eventIsFunction) {
         warn("event is not a string: " + event);
