@@ -77,7 +77,7 @@
       try {
         payload.mobile = uaData.mobile;
         
-        var ex = new RegExp(/\;?(not|totally)(.*)(brand)/i);
+        var ex = new RegExp(/(not|totally)(.*)(brand)/i);
         var parsedBrands = [];
         for (var i=0,m=uaData.brands.length; i<m; i++) {
           var b = uaData.brands[i];
