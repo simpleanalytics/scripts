@@ -117,7 +117,7 @@
     };
 
     var isFunction = function (func) {
-      return typeof func === "function";
+      return typeof func == "function";
     };
 
     var assign = function () {
