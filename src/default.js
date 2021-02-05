@@ -25,6 +25,7 @@
     var doc = window.document;
     var userAgent = nav.userAgent;
     var notSending = "Not sending request ";
+    var fetchedHighEntropyValues = false;
     var encodeURIComponentFunc = encodeURIComponent;
     var decodeURIComponentFunc = decodeURIComponent;
     var stringify = JSON.stringify;
@@ -77,20 +78,6 @@
       try {
         payload.mobile = uaData.mobile;
         payload.brands = stringify(uaData.brands);
-
-        // Request platform information if this is available
-        if (isFunction(uaData.getHighEntropyValues)) {
-          uaData
-            .getHighEntropyValues(["platform", "platformVersion"])
-            .then(function (highEntropyValues) {
-              payload.platform = highEntropyValues.platform || null;
-              payload.platformVersion =
-                highEntropyValues.platformVersion || null;
-            })
-            .catch(function (e) {
-              // Do nothing
-            });
-        }
       } catch (e) {
         // Do nothing
       }
@@ -605,7 +592,37 @@
 
       page = data;
 
-      sendPageView(isPushState, isPushState || userNavigated, sameSite);
+      var triggerSendPageView = function() {
+        fetchedHighEntropyValues = true;
+        sendPageView(isPushState, isPushState || userNavigated, sameSite);
+      };
+
+      if (!fetchedHighEntropyValues) {
+        // Request platform information if this is available
+        try {
+          if (uaData && isFunction(uaData.getHighEntropyValues)) {
+              uaData
+                .getHighEntropyValues(["platform", "platformVersion"])
+                .then(function (highEntropyValues) {
+                  payload.platform = highEntropyValues.platform || null;
+                  payload.platformVersion =
+                    highEntropyValues.platformVersion || null;
+                  triggerSendPageView();
+                })
+                .catch(function (e) {
+                  triggerSendPageView();
+                });
+          }
+          else {
+            triggerSendPageView();
+          }
+        } catch(e) {
+          triggerSendPageView();
+        }
+      }
+      else {
+        triggerSendPageView();
+      }
     };
 
     /** if spa **/
