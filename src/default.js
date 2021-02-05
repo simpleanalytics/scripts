@@ -76,20 +76,7 @@
     if (uaData) {
       try {
         payload.mobile = uaData.mobile;
-
-        var ex = new RegExp(/(not|totally)(.*)(brand)/i);
-        var parsedBrands = [];
-        for (var i = 0, m = uaData.brands.length; i < m; i++) {
-          var b = uaData.brands[i];
-          if (!ex.test(b.brand)) {
-            parsedBrands.push(b);
-          }
-        }
-        if (parsedBrands.length > 0) {
-          var brand = parsedBrands[parsedBrands.length - 1];
-          payload.browser = brand.brand;
-          payload.browserVersion = brand.version;
-        }
+        payload.brands = stringify(uaData.brands);
       } catch (e) {
         // Do nothing
       }
