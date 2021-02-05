@@ -640,7 +640,7 @@
           var arg = arguments;
           var rv = orig.apply(this, arg);
           var event;
-          if (isFunction(Event)) {
+          if (typeof Event == "function") {
             event = new Event(type);
           } else {
             // Fix for IE
