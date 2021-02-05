@@ -80,12 +80,16 @@
 
         // Request platform information if this is available
         if (isFunction(uaData.getHighEntropyValues)) {
-          uaData.getHighEntropyValues(["platform", "platformVersion"]).then(function(highEntropyValues) {
-            payload.platform = highEntropyValues.platform || null;
-            payload.platformVersion = highEntropyValues.platformVersion || null;
-          }).catch(function(e) {
-            // Do nothing
-          });
+          uaData
+            .getHighEntropyValues(["platform", "platformVersion"])
+            .then(function (highEntropyValues) {
+              payload.platform = highEntropyValues.platform || null;
+              payload.platformVersion =
+                highEntropyValues.platformVersion || null;
+            })
+            .catch(function (e) {
+              // Do nothing
+            });
         }
       } catch (e) {
         // Do nothing
