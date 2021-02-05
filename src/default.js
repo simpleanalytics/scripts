@@ -592,7 +592,7 @@
 
       page = data;
 
-      var triggerSendPageView = function() {
+      var triggerSendPageView = function () {
         fetchedHighEntropyValues = true;
         sendPageView(isPushState, isPushState || userNavigated, sameSite);
       };
@@ -601,26 +601,24 @@
         // Request platform information if this is available
         try {
           if (uaData && isFunction(uaData.getHighEntropyValues)) {
-              uaData
-                .getHighEntropyValues(["platform", "platformVersion"])
-                .then(function (highEntropyValues) {
-                  payload.platform = highEntropyValues.platform || null;
-                  payload.platformVersion =
-                    highEntropyValues.platformVersion || null;
-                  triggerSendPageView();
-                })
-                .catch(function (e) {
-                  triggerSendPageView();
-                });
-          }
-          else {
+            uaData
+              .getHighEntropyValues(["platform", "platformVersion"])
+              .then(function (highEntropyValues) {
+                payload.platform = highEntropyValues.platform || null;
+                payload.platformVersion =
+                  highEntropyValues.platformVersion || null;
+                triggerSendPageView();
+              })
+              .catch(function (e) {
+                triggerSendPageView();
+              });
+          } else {
             triggerSendPageView();
           }
-        } catch(e) {
+        } catch (e) {
           triggerSendPageView();
         }
-      }
-      else {
+      } else {
         triggerSendPageView();
       }
     };
