@@ -18,16 +18,15 @@ const {
 } = require("./constants/browserstack");
 
 const localBrowserFilter = ({ browser, browser_version, os, os_version }) =>
-  browser === "chrome"; //&&
-// version(browser_version) == 49 &&
-// os == "OS X" &&
-// os_version == "Lion"; // os === "ios" && ;
+  browser === "chrome" && version(browser_version) == 88;
+// && os == "OS X"
+// && os_version == "Lion"; // os === "ios"
 
 const getSeleniumVersion = ({ browser, os, browser_version }) => {
   const isMobile = ["ios", "android"].includes(os);
   if ((browser === "chrome" && version(browser_version) < 50) || isMobile)
     return false;
-  return "4.0.0-alpha-2";
+  return "4.0.0-alpha-6";
 };
 
 const getSupportsSendBeacon = ({ browser, os }) => {
@@ -36,7 +35,13 @@ const getSupportsSendBeacon = ({ browser, os }) => {
     : true;
 };
 const getSupportsPushState = ({ browser, browser_version }) => {
-  return browser === "ie" && version(browser_version) < 10 ? false : true;
+  return !(browser === "ie" && version(browser_version) < 10);
+};
+const getSupportsClientHints = ({ browser, browser_version }) => {
+  return (
+    ["edge", "chrome", "opera"].includes(browser) &&
+    version(browser_version) >= 88
+  );
 };
 
 // 1080000 ms = 10 minutes
@@ -141,6 +146,7 @@ const getDeviceName = ({
           );
         browser.supportsSendBeacon = getSupportsSendBeacon(browser);
         browser.supportsPushState = getSupportsPushState(browser);
+        browser.supportsClientHints = getSupportsClientHints(browser);
         browser.useLocalIp = browser.os === "ios";
 
         log(`Waiting to get ${browser.name}...`);
@@ -163,7 +169,11 @@ const getDeviceName = ({
 
         if (browser.supportsSendBeacon) {
           commands = [
-            { script: "/latest/hello.js", push: true, beacon: true },
+            {
+              script: "/latest/latest.js",
+              push: browser.supportsPushState,
+              beacon: browser.supportsSendBeacon,
+            },
             { wait: "/script.js", amount: 1 },
             { visit: "/empty" }, // Trigger sendBeacon
             { wait: "/simple.gif", amount: 3 },
@@ -171,13 +181,13 @@ const getDeviceName = ({
           ];
         } else if (browser.supportsPushState) {
           commands = [
-            { script: "/latest/hello.js", push: true },
+            { script: "/latest/latest.js", push: browser.supportsPushState },
             { wait: "/script.js", amount: 1 },
             { wait: "/simple.gif", amount: 3 },
           ];
         } else {
           commands = [
-            { script: "/latest/hello.js" },
+            { script: "/latest/latest.js" },
             { wait: "/script.js", amount: 2 },
             {
               wait: "/simple.gif",
@@ -213,6 +223,11 @@ const getDeviceName = ({
         } else {
           log("Testing no push state");
           await require("./test-no-pushstate")(browser);
+        }
+
+        if (browser.supportsClientHints) {
+          log("Testing client hints");
+          await require("./test-client-hints")(browser);
         }
 
         log("Testing events");

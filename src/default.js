@@ -44,6 +44,8 @@
     var clientHeight = "client" + Height;
     var clientWidth = "client" + Width;
     var pagehide = "pagehide";
+    var platformText = "platform";
+    var platformVersionText = "platformVersion";
     var isBotAgent =
       /(bot|spider|crawl)/i.test(userAgent) && !/(cubot)/i.test(userAgent);
     /** if screen **/
@@ -75,12 +77,8 @@
     // Use User-Agent Client Hints for better privacy
     // https://web.dev/user-agent-client-hints/
     if (uaData) {
-      try {
-        payload.mobile = uaData.mobile;
-        payload.brands = stringify(uaData.brands);
-      } catch (e) {
-        // Do nothing
-      }
+      payload.mobile = uaData.mobile;
+      payload.brands = stringify(uaData.brands);
     }
 
     /////////////////////
@@ -602,16 +600,13 @@
         try {
           if (uaData && isFunction(uaData.getHighEntropyValues)) {
             uaData
-              .getHighEntropyValues(["platform", "platformVersion"])
+              .getHighEntropyValues([platformText, platformVersionText])
               .then(function (highEntropyValues) {
-                payload.platform = highEntropyValues.platform || null;
-                payload.platformVersion =
-                  highEntropyValues.platformVersion || null;
+                payload.os_name = highEntropyValues[platformText];
+                payload.os_version = highEntropyValues[platformVersionText];
                 triggerSendPageView();
               })
-              .catch(function (e) {
-                triggerSendPageView();
-              });
+              .catch(triggerSendPageView);
           } else {
             triggerSendPageView();
           }
