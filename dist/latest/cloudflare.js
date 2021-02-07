@@ -1,4 +1,4 @@
-/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2020-11-17; be35) */
+/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2021-02-07; 591f) */
 /* eslint-env browser */
 
 (function (window, overwriteOptions, baseUrl, apiUrlPrefix, version, saGlobal) {
@@ -24,6 +24,7 @@
     var doc = window.document;
     var userAgent = nav.userAgent;
     var notSending = "Not sending request ";
+    var fetchedHighEntropyValues = false;
     var encodeURIComponentFunc = encodeURIComponent;
     var decodeURIComponentFunc = decodeURIComponent;
     var stringify = JSON.stringify;
@@ -42,6 +43,8 @@
     var clientHeight = "client" + Height;
     var clientWidth = "client" + Width;
     var pagehide = "pagehide";
+    var platformText = "platform";
+    var platformVersionText = "platformVersion";
     var isBotAgent =
       /(bot|spider|crawl)/i.test(userAgent) && !/(cubot)/i.test(userAgent);
     var screen = window.screen;
@@ -67,14 +70,8 @@
     // Use User-Agent Client Hints for better privacy
     // https://web.dev/user-agent-client-hints/
     if (uaData) {
-      try {
-        payload.mobile = uaData.mobile;
-        var brand = uaData.brands.slice(-1)[0];
-        payload.browser = brand.brand;
-        payload.browserVersion = brand.version;
-      } catch (e) {
-        // Do nothing
-      }
+      payload.mobile = uaData.mobile;
+      payload.brands = stringify(uaData.brands);
     }
 
     /////////////////////
@@ -108,6 +105,10 @@
           return v.toString(16);
         });
       }
+    };
+
+    var isFunction = function (func) {
+      return typeof func == "function";
     };
 
     var assign = function () {
@@ -531,7 +532,32 @@
 
       page = data;
 
-      sendPageView(isPushState, isPushState || userNavigated, sameSite);
+      var triggerSendPageView = function () {
+        fetchedHighEntropyValues = true;
+        sendPageView(isPushState, isPushState || userNavigated, sameSite);
+      };
+
+      if (!fetchedHighEntropyValues) {
+        // Request platform information if this is available
+        try {
+          if (uaData && isFunction(uaData.getHighEntropyValues)) {
+            uaData
+              .getHighEntropyValues([platformText, platformVersionText])
+              .then(function (highEntropyValues) {
+                payload.os_name = highEntropyValues[platformText];
+                payload.os_version = highEntropyValues[platformVersionText];
+                triggerSendPageView();
+              })
+              .catch(triggerSendPageView);
+          } else {
+            triggerSendPageView();
+          }
+        } catch (e) {
+          triggerSendPageView();
+        }
+      } else {
+        triggerSendPageView();
+      }
     };
 
     /////////////////////
@@ -607,17 +633,16 @@
     var validTypes = ["string", "number"];
 
     var sendEvent = function (event, callbackRaw) {
-      var isFunction = event instanceof Function;
-      var callback =
-        callbackRaw instanceof Function ? callbackRaw : function () {};
+      var eventIsFunction = isFunction(event);
+      var callback = isFunction(callbackRaw) ? callbackRaw : function () {};
 
-      if (validTypes.indexOf(typeof event) < 0 && !isFunction) {
+      if (validTypes.indexOf(typeof event) < 0 && !eventIsFunction) {
         warn("event is not a string: " + event);
         return callback();
       }
 
       try {
-        if (isFunction) {
+        if (eventIsFunction) {
           event = event();
           if (validTypes.indexOf(typeof event) < 0) {
             warn("event function output is not a string: " + event);
