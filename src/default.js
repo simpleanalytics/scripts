@@ -71,6 +71,7 @@
 
     var payload = {
       version: version,
+      ua: userAgent,
     };
     if (bot) payload.bot = true;
 
