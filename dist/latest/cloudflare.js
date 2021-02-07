@@ -1,4 +1,4 @@
-/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2021-02-07; a41a) */
+/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2021-02-07; 648c) */
 /* eslint-env browser */
 
 (function (window, overwriteOptions, baseUrl, apiUrlPrefix, version, saGlobal) {
@@ -63,7 +63,8 @@
 
 
     var payload = {
-      version: uaData,
+      version: version,
+      ua: userAgent,
     };
     if (bot) payload.bot = true;
 
