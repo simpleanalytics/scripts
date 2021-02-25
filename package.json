@@ -21,7 +21,6 @@
     "url": "https://github.com/simpleanalytics/scripts/issues"
   },
   "homepage": "https://github.com/simpleanalytics/scripts#readme",
-  "dependencies": {},
   "devDependencies": {
     "@ianwalter/bsl": "^2.1.1",
     "browserstack-local": "^1.4.5",
