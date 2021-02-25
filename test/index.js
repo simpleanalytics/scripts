@@ -226,8 +226,7 @@ const getDeviceName = ({
         }
 
         if (browser.supportsClientHints) {
-          log("Testing client hints");
-          await require("./test-client-hints")(browser);
+          log("We can't test client hints because they only work on https");
         }
 
         log("Testing events");
