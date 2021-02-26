@@ -26,7 +26,7 @@ const getSeleniumVersion = ({ browser, os, browser_version }) => {
   const isMobile = ["ios", "android"].includes(os);
   if ((browser === "chrome" && version(browser_version) < 50) || isMobile)
     return false;
-  return "4.0.0-alpha-6";
+  return "4.0.0-alpha-2";
 };
 
 const getSupportsSendBeacon = ({ browser, os }) => {
