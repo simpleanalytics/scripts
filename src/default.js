@@ -579,9 +579,9 @@
             perf[navigation] &&
             [1, 2].indexOf(perf[navigation].type) > -1;
 
-      // Check if referrer is the same as current hostname
+      // Check if referrer is the same as current real hostname (not the defined hostname!)
       var sameSite = referrer
-        ? referrer.split(slash)[0] == definedHostname
+        ? doc.referrer.split("/")[2] == locationHostname
         : false;
 
       /** if uniques **/
