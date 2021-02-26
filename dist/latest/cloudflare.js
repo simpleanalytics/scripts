@@ -1,4 +1,4 @@
-/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2021-02-07; 648c) */
+/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2021-02-26; d48b) */
 /* eslint-env browser */
 
 (function (window, overwriteOptions, baseUrl, apiUrlPrefix, version, saGlobal) {
@@ -523,9 +523,9 @@
             perf[navigation] &&
             [1, 2].indexOf(perf[navigation].type) > -1;
 
-      // Check if referrer is the same as current hostname
+      // Check if referrer is the same as current real hostname (not the defined hostname!)
       var sameSite = referrer
-        ? referrer.split(slash)[0] == definedHostname
+        ? doc.referrer.split("/")[2] == locationHostname
         : false;
 
       // We set unique variable based on pushstate or back navigation, if no match we check the referrer
