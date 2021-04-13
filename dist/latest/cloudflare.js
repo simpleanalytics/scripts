@@ -1,9 +1,14 @@
-/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2021-02-26; d48b) */
+/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2021-04-13; bb7c) */
 /* eslint-env browser */
 
 (function (window, overwriteOptions, baseUrl, apiUrlPrefix, version, saGlobal) {
-  if (!window) return;
   try {
+    // Only load our script once, customers can still send multiple page views
+    // with the sa_pageview function if they turn off auto collect.
+    var loadedVariable = saGlobal + "_loaded";
+    if (!window || window[loadedVariable] === true) return;
+    window[loadedVariable] = true;
+
     /////////////////////
     // PREDEFINED VARIABLES FOR BETTER MINIFICATION
     //
@@ -67,6 +72,7 @@
       ua: userAgent,
     };
     if (bot) payload.bot = true;
+
 
     // Use User-Agent Client Hints for better privacy
     // https://web.dev/user-agent-client-hints/
