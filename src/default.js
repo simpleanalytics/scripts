@@ -1,8 +1,13 @@
 /* eslint-env browser */
 
 (function (window, overwriteOptions, baseUrl, apiUrlPrefix, version, saGlobal) {
-  if (!window) return;
   try {
+    // Only load our script once, customers can still send multiple page views
+    // with the sa_pageview function if they turn off auto collect.
+    var loadedVariable = saGlobal + "_loaded";
+    if (!window || window[loadedVariable] === true) return;
+    window[loadedVariable] = true;
+
     /////////////////////
     // PREDEFINED VARIABLES FOR BETTER MINIFICATION
     //
