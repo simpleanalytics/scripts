@@ -80,6 +80,10 @@
     };
     if (bot) payload.bot = true;
 
+    /** if sri **/
+    payload.sri = true;
+    /** endif **/
+
     // Use User-Agent Client Hints for better privacy
     // https://web.dev/user-agent-client-hints/
     if (uaData) {
