@@ -6,17 +6,31 @@ RED=`tput setaf 1`
 GREEN=`tput setaf 2`
 RESET=`tput sgr0`
 
-scripts_path='./dist/latest/custom'
-remote_path='app@external.simpleanalytics.com:/var/www/default'
+SCRIPTS_LATEST_PATH='./dist/latest/custom'
+REMOTE_PATH='app@external.simpleanalytics.com:/var/www/default'
 
 if ! [[ $PWD = */scripts ]] || ! [[ -f "./dist/latest/custom/latest.js" ]]; then
   echo -e "==> ${RED}Not in scripts directory, killing script${RESET}"
   exit 1
 fi
 
-echo '==> You are about to deploy to production'
+if [[ `git status --porcelain` ]]; then
+  echo -e "==> ${RED}There are changes in your repo, commit and test them first${RESET}"
+  exit 1
+fi
 
-read -p "==> Are you sure? (y/N)" -n 1 -r
+read -p "==> Specify the latest SRI version: " VERSION
+
+LATEST_FILE="./dist/v$VERSION/latest.js"
+SRI_FILE="./dist/v$VERSION/custom/latest.js"
+
+if [ ! -f "$LATEST_FILE" ] || [ ! -f "$SRI_FILE" ]; then
+  echo "==> Files with version v$VERSION do not exist."
+  exit 1
+fi
+
+echo "==> You are about to deploy to production"
+read -p "==> Are you sure (y/N)? "  -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
   echo '==> Minifying one more time'
@@ -28,21 +42,26 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
     exit 1
   fi
 
-  echo '==> Deploying to production'
-  rsync --rsync-path="sudo rsync" "$scripts_path/e.js" "$remote_path/events.js"
-  rsync --rsync-path="sudo rsync" "$scripts_path/e.js.map" "$remote_path/events.js.map"
-  rsync --rsync-path="sudo rsync" "$scripts_path/latest.js" "$remote_path/latest.js"
-  rsync --rsync-path="sudo rsync" "$scripts_path/latest.js.map" "$remote_path/latest.js.map"
-  rsync --rsync-path="sudo rsync" "$scripts_path/light.js" "$remote_path/light.js"
-  rsync --rsync-path="sudo rsync" "$scripts_path/light.js.map" "$remote_path/light.js.map"
-  rsync --rsync-path="sudo rsync" "$scripts_path/proxy.js" "$remote_path/proxy.js"
-  rsync --rsync-path="sudo rsync" "$scripts_path/proxy.js.map" "$remote_path/proxy.js.map"
-  rsync --rsync-path="sudo rsync" "$scripts_path/../embed.js" "$remote_path/embed.js"
-  rsync --rsync-path="sudo rsync" "$scripts_path/../embed.js.map" "$remote_path/embed.js.map"
+  echo "==> Deploying non SRI v$VERSION files to production"
+  rsync --rsync-path="sudo rsync" "$SCRIPTS_LATEST_PATH/e.js" "$REMOTE_PATH/events.js"
+  rsync --rsync-path="sudo rsync" "$SCRIPTS_LATEST_PATH/e.js.map" "$REMOTE_PATH/events.js.map"
+  rsync --rsync-path="sudo rsync" "$SCRIPTS_LATEST_PATH/latest.js" "$REMOTE_PATH/latest.js"
+  rsync --rsync-path="sudo rsync" "$SCRIPTS_LATEST_PATH/latest.js.map" "$REMOTE_PATH/latest.js.map"
+  rsync --rsync-path="sudo rsync" "$SCRIPTS_LATEST_PATH/light.js" "$REMOTE_PATH/light.js"
+  rsync --rsync-path="sudo rsync" "$SCRIPTS_LATEST_PATH/light.js.map" "$REMOTE_PATH/light.js.map"
+  rsync --rsync-path="sudo rsync" "$SCRIPTS_LATEST_PATH/proxy.js" "$REMOTE_PATH/proxy.js"
+  rsync --rsync-path="sudo rsync" "$SCRIPTS_LATEST_PATH/proxy.js.map" "$REMOTE_PATH/proxy.js.map"
+  rsync --rsync-path="sudo rsync" "$SCRIPTS_LATEST_PATH/../embed.js" "$REMOTE_PATH/embed.js"
+  rsync --rsync-path="sudo rsync" "$SCRIPTS_LATEST_PATH/../embed.js.map" "$REMOTE_PATH/embed.js.map"
+
+  echo "==> Creating v$VERSION folder on server"
+  ssh app@external.simpleanalytics.com mkdir -p "/var/www/default/v$VERSION"
+
+  echo "==> Copying SRI v$VERSION file to server"
+  rsync --quiet --rsync-path="sudo rsync" "./dist/v$VERSION/custom/v$VERSION.js" "$REMOTE_PATH/v$VERSION/app.js"
+  rsync --quiet --rsync-path="sudo rsync" "./dist/v$VERSION/custom/v$VERSION.js.map" "$REMOTE_PATH/v$VERSION/app.js.map"
 
   echo -e "==> ${GREEN}Woop woop! Deployed!${RESET}"
 else
   echo '==> Cancelled by you'
 fi
-
-

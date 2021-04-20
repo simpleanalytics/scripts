@@ -217,6 +217,10 @@ for (const file of files) {
   const { variables, input, output } = file;
   const name = output.toUpperCase();
   const versionFile = `${__dirname}/dist/v${variables.version}/${output}`;
+  const cdnVersionFile = versionFile.replace(
+    /latest\.js/i,
+    `v${variables.version}.js`
+  );
   const latestFile = `${__dirname}/dist/latest/${output}`;
 
   const contents = fs
@@ -241,7 +245,9 @@ for (const file of files) {
     .digest("hex")
     .slice(0, 4);
 
-  const prepend = `/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; ${date}; ${hash}) */\n`;
+  const prepend = `/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; ${date}; ${hash}${
+    variables.sri ? `; SRI-version` : ""
+  }${variables.version ? `; v${variables.version}` : ""}) */\n`;
 
   const originalFileName = finalFileName.replace(".js", ".source.js");
   const { code: codeTemplate, map, warnings } = variables.minify
@@ -303,11 +309,16 @@ for (const file of files) {
   const compiledMap = map ? fillTemplate(map, variables) : null;
 
   if (variables.version && variables.sri) {
-    fs.writeFileSync(versionFile, code);
-    if (compiledMap) fs.writeFileSync(`${versionFile}.map`, compiledMap);
+    const cdnFileName = cdnVersionFile.split("/").pop();
+    fs.writeFileSync(cdnVersionFile, code);
+    if (compiledMap)
+      fs.writeFileSync(
+        `${cdnVersionFile}.map`,
+        compiledMap.replace(/latest\.source\.js/gi, cdnFileName)
+      );
   }
 
-  fs.writeFileSync(latestFile, code);
+  fs.writeFileSync(latestFile, code.replace(/; SRI-version/i, ""));
   if (compiledMap) fs.writeFileSync(`${latestFile}.map`, compiledMap);
 
   const bytes = new TextEncoder("utf-8").encode(code).length;

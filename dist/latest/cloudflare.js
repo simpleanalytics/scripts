@@ -1,4 +1,4 @@
-/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2021-04-20; e8aa) */
+/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2021-04-20; e8aa; v2) */
 /* eslint-env browser */
 
 (function (window, overwriteOptions, baseUrl, apiUrlPrefix, version, saGlobal) {
