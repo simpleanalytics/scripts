@@ -1,4 +1,4 @@
-/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2021-04-20; 9833) */
+/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2021-04-20; e8aa) */
 /* eslint-env browser */
 
 (function (window, overwriteOptions, baseUrl, apiUrlPrefix, version, saGlobal) {
@@ -42,6 +42,7 @@
     var Height = "Height";
     var Width = "Width";
     var scroll = "scroll";
+    var trueText = "true";
     var uaData = nav.userAgentData;
     var scrollHeight = scroll + Height;
     var offsetHeight = "offset" + Height;
@@ -273,8 +274,9 @@
     // Should we record Do Not Track visits?
     var collectDnt = isBoolean(overwriteOptions.collectDnt)
       ? overwriteOptions.collectDnt
-      : attr(scriptElement, "ignore-dnt") == "true" ||
-        attr(scriptElement, "skip-dnt") == "true";
+      : attr(scriptElement, "ignore-dnt") == trueText ||
+        attr(scriptElement, "skip-dnt") == trueText ||
+        attr(scriptElement, "collect-dnt") == trueText;
 
     // Customers can overwrite their hostname, here we check for that
     var definedHostname =
