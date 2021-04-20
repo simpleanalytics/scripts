@@ -1,4 +1,4 @@
-/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2021-04-13; bb7c) */
+/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2021-04-20; 9833) */
 /* eslint-env browser */
 
 (function (window, overwriteOptions, baseUrl, apiUrlPrefix, version, saGlobal) {
@@ -19,10 +19,10 @@
     var https = "https:";
     var pageviewsText = "pageview";
     var errorText = "error";
+    var slash = "/";
     var protocol = https + "//";
     var con = window.console;
     var doNotTrack = "doNotTrack";
-    var slash = "/";
     var nav = window.navigator;
     var loc = window.location;
     var locationHostname = loc.hostname;
@@ -118,6 +118,10 @@
       return typeof func == "function";
     };
 
+    var isString = function (string) {
+      return typeof string == "string";
+    };
+
     var assign = function () {
       var to = {};
       var arg = arguments;
@@ -159,7 +163,7 @@
 
         // Prepend a slash when it's missing
         var ignorePage =
-          ignorePageRaw[0] == "/" ? ignorePageRaw : "/" + ignorePageRaw;
+          ignorePageRaw[0] == slash ? ignorePageRaw : slash + ignorePageRaw;
 
         try {
           if (
@@ -181,6 +185,7 @@
     // Send data via image
     var sendData = function (data, callback) {
       data = assign(payload, data);
+
       var image = new Image();
       if (callback) {
         image.onerror = callback;
@@ -200,7 +205,9 @@
               encodeURIComponentFunc(data[key])
             );
           })
-          .join("&");
+          .join("&") +
+        "&time=" +
+        Date.now();
     };
 
     /////////////////////
@@ -292,7 +299,7 @@
     // Make sure ignore pages is an array
     var ignorePages = Array.isArray(ignorePagesRaw)
       ? ignorePagesRaw
-      : typeof ignorePagesRaw == "string" && ignorePagesRaw.length
+      : isString(ignorePagesRaw) && ignorePagesRaw.length
       ? ignorePagesRaw.split(/, ?/)
       : [];
 
@@ -531,7 +538,7 @@
 
       // Check if referrer is the same as current real hostname (not the defined hostname!)
       var sameSite = referrer
-        ? doc.referrer.split("/")[2] == locationHostname
+        ? doc.referrer.split(slash)[2] == locationHostname
         : false;
 
       // We set unique variable based on pushstate or back navigation, if no match we check the referrer
@@ -663,7 +670,7 @@
 
       event = ("" + event).replace(/[^a-z0-9]+/gi, "_").replace(/(^_|_$)/g, "");
 
-      if (event)
+      if (event) {
         sendData(
           assign(source, bot ? { bot: true } : {}, {
             type: "event",
@@ -673,6 +680,7 @@
           }),
           callback
         );
+      }
     };
 
     var defaultEventFunc = function (event, callback) {
@@ -691,7 +699,11 @@
     window[functionName] = defaultEventFunc;
 
     // Post events from the queue of the user defined function
-    for (var event in queue) sendEvent(queue[event]);
+    for (var event in queue) {
+      Array.isArray(queue[event])
+        ? sendEvent.apply(null, queue[event])
+        : sendEvent(queue[event]);
+    }
   } catch (e) {
     sendError(e);
   }
