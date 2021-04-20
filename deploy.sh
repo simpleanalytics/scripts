@@ -16,7 +16,7 @@ fi
 
 echo '==> You are about to deploy to production'
 
-read -p "==> Are you sure? " -n 1 -r
+read -p "==> Are you sure? (y/N)" -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
   echo '==> Minifying one more time'
