@@ -43,6 +43,7 @@
     var Height = "Height";
     var Width = "Width";
     var scroll = "scroll";
+    var trueText = "true";
     var uaData = nav.userAgentData;
     var scrollHeight = scroll + Height;
     var offsetHeight = "offset" + Height;
@@ -296,8 +297,9 @@
     // Should we record Do Not Track visits?
     var collectDnt = isBoolean(overwriteOptions.collectDnt)
       ? overwriteOptions.collectDnt
-      : attr(scriptElement, "ignore-dnt") == "true" ||
-        attr(scriptElement, "skip-dnt") == "true";
+      : attr(scriptElement, "ignore-dnt") == trueText ||
+        attr(scriptElement, "skip-dnt") == trueText ||
+        attr(scriptElement, "collect-dnt") == trueText;
     /** endif **/
 
     // Customers can overwrite their hostname, here we check for that
