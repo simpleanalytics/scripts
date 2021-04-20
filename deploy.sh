@@ -6,6 +6,7 @@ RED=`tput setaf 1`
 GREEN=`tput setaf 2`
 RESET=`tput sgr0`
 
+SERVER_NAME="external.simpleanalytics.com"
 SCRIPTS_LATEST_PATH='./dist/latest/custom'
 REMOTE_PATH='app@external.simpleanalytics.com:/var/www/default'
 
@@ -29,7 +30,7 @@ if [ ! -f "$LATEST_FILE" ] || [ ! -f "$SRI_FILE" ]; then
   exit 1
 fi
 
-echo "==> You are about to deploy to production"
+echo "==> You are about to deploy to $SERVER_NAME"
 read -p "==> Are you sure (y/N)? "  -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
@@ -42,7 +43,7 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
     exit 1
   fi
 
-  echo "==> Deploying non SRI v$VERSION files to production"
+  echo "==> Deploying non SRI v$VERSION files to $SERVER_NAME"
   rsync --rsync-path="sudo rsync" "$SCRIPTS_LATEST_PATH/e.js" "$REMOTE_PATH/events.js"
   rsync --rsync-path="sudo rsync" "$SCRIPTS_LATEST_PATH/e.js.map" "$REMOTE_PATH/events.js.map"
   rsync --rsync-path="sudo rsync" "$SCRIPTS_LATEST_PATH/latest.js" "$REMOTE_PATH/latest.js"
@@ -54,14 +55,14 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
   rsync --rsync-path="sudo rsync" "$SCRIPTS_LATEST_PATH/../embed.js" "$REMOTE_PATH/embed.js"
   rsync --rsync-path="sudo rsync" "$SCRIPTS_LATEST_PATH/../embed.js.map" "$REMOTE_PATH/embed.js.map"
 
-  echo "==> Creating v$VERSION folder on server"
+  echo "==> Creating v$VERSION folder on $SERVER_NAME"
   ssh app@external.simpleanalytics.com mkdir -p "/var/www/default/v$VERSION"
 
-  echo "==> Copying SRI v$VERSION file to server"
+  echo "==> Copying SRI v$VERSION file to $SERVER_NAME"
   rsync --quiet --rsync-path="sudo rsync" "./dist/v$VERSION/custom/v$VERSION.js" "$REMOTE_PATH/v$VERSION/app.js"
   rsync --quiet --rsync-path="sudo rsync" "./dist/v$VERSION/custom/v$VERSION.js.map" "$REMOTE_PATH/v$VERSION/app.js.map"
 
-  echo -e "==> ${GREEN}Woop woop! Deployed!${RESET}"
+  echo -e "==> ${GREEN}Woop woop! Deployed to $SERVER_NAME!${RESET}"
 else
   echo '==> Cancelled by you'
 fi
