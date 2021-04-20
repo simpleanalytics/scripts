@@ -310,7 +310,13 @@ for (const file of files) {
 
   if (variables.version && variables.sri) {
     const cdnFileName = cdnVersionFile.split("/").pop();
-    fs.writeFileSync(cdnVersionFile, code);
+    fs.writeFileSync(
+      cdnVersionFile,
+      code.replace(
+        /sourceMappingURL=latest\.js\.map/gi,
+        `sourceMappingURL=${cdnFileName}.map`
+      )
+    );
     if (compiledMap)
       fs.writeFileSync(
         `${cdnVersionFile}.map`,
