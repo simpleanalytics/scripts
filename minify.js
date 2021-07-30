@@ -250,7 +250,11 @@ for (const file of files) {
   }${variables.version ? `; v${variables.version}` : ""}) */\n`;
 
   const originalFileName = finalFileName.replace(".js", ".source.js");
-  const { code: codeTemplate, map, warnings } = variables.minify
+  const {
+    code: codeTemplate,
+    map,
+    warnings,
+  } = variables.minify
     ? UglifyJS.minify(
         {
           [originalFileName]: rawCode,
