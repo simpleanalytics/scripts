@@ -1,4 +1,4 @@
-/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2021-04-20; e8aa; v2) */
+/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2021-07-30; b6b7; v2) */
 /* eslint-env browser */
 
 (function (window, overwriteOptions, baseUrl, apiUrlPrefix, version, saGlobal) {
@@ -263,7 +263,8 @@
     //
 
     // Find the script element where options can be set on
-    var scriptElement = doc.querySelector('script[src*="' + baseUrl + '"]');
+    var scriptElement =
+      doc.currentScript || doc.querySelector('script[src*="' + baseUrl + '"]');
     var attr = function (scriptElement, attribute) {
       return scriptElement && scriptElement.getAttribute("data-" + attribute);
     };
