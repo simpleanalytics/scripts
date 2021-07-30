@@ -6,6 +6,7 @@
   "scripts": {
     "minify": "node minify.js",
     "watch": "node_modules/.bin/nodemon minify.js --ignore dist",
+    "build": "node minify.js",
     "pretest": "npm run minify -- testing",
     "test": "if [ ! $BROWSERSTACK_USERNAME ]; then node -r dotenv/config ./test/index.js; else node ./test/index.js; fi",
     "posttest": "npm run minify"

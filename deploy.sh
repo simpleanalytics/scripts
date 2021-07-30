@@ -46,6 +46,7 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
   echo "==> Deploying non SRI v$VERSION files to $SERVER_NAME"
   rsync --rsync-path="sudo rsync" "$SCRIPTS_LATEST_PATH/e.js" "$REMOTE_PATH/events.js"
   rsync --rsync-path="sudo rsync" "$SCRIPTS_LATEST_PATH/e.js.map" "$REMOTE_PATH/events.js.map"
+  rsync --rsync-path="sudo rsync" "$SCRIPTS_LATEST_PATH/latest.dev.js" "$REMOTE_PATH/latest.dev.js"
   rsync --rsync-path="sudo rsync" "$SCRIPTS_LATEST_PATH/latest.js" "$REMOTE_PATH/latest.js"
   rsync --rsync-path="sudo rsync" "$SCRIPTS_LATEST_PATH/latest.js.map" "$REMOTE_PATH/latest.js.map"
   rsync --rsync-path="sudo rsync" "$SCRIPTS_LATEST_PATH/light.js" "$REMOTE_PATH/light.js"

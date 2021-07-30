@@ -285,7 +285,8 @@
     //
 
     // Find the script element where options can be set on
-    var scriptElement = doc.querySelector('script[src*="' + baseUrl + '"]');
+    var scriptElement =
+      doc.currentScript || doc.querySelector('script[src*="' + baseUrl + '"]');
     var attr = function (scriptElement, attribute) {
       return scriptElement && scriptElement.getAttribute("data-" + attribute);
     };
