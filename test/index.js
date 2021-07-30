@@ -141,9 +141,8 @@ const getDeviceName = ({
     suiteInstance.addTest(
       new Mocha.Test(`Testing ${browser.name}`, async function () {
         if (getSeleniumVersion(browser))
-          browser["browserstack.selenium_version"] = getSeleniumVersion(
-            browser
-          );
+          browser["browserstack.selenium_version"] =
+            getSeleniumVersion(browser);
         browser.supportsSendBeacon = getSupportsSendBeacon(browser);
         browser.supportsPushState = getSupportsPushState(browser);
         browser.supportsClientHints = getSupportsClientHints(browser);
