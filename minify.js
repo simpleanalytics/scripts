@@ -211,6 +211,18 @@ const files = [
       url: "docs.simpleanalytics.com/embed-graph-on-your-site",
     },
   },
+  {
+    type: "js",
+    input: `${__dirname}/src/auto-events.js`,
+    output: `auto-events.js`,
+    variables: {
+      minify: true,
+      version: 1,
+      sri: false,
+      script: "auto-events.js",
+      url: "docs.simpleanalytics.com/automated-events",
+    },
+  },
 ];
 
 for (const file of files) {
