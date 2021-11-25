@@ -53,8 +53,6 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
   rsync --rsync-path="sudo rsync" "$SCRIPTS_LATEST_PATH/light.js.map" "$REMOTE_PATH/light.js.map"
   rsync --rsync-path="sudo rsync" "$SCRIPTS_LATEST_PATH/proxy.js" "$REMOTE_PATH/proxy.js"
   rsync --rsync-path="sudo rsync" "$SCRIPTS_LATEST_PATH/proxy.js.map" "$REMOTE_PATH/proxy.js.map"
-  rsync --rsync-path="sudo rsync" "$SCRIPTS_LATEST_PATH/../embed.js" "$REMOTE_PATH/embed.js"
-  rsync --rsync-path="sudo rsync" "$SCRIPTS_LATEST_PATH/../embed.js.map" "$REMOTE_PATH/embed.js.map"
 
   echo "==> Creating v$VERSION folder on $SERVER_NAME"
   ssh app@external.simpleanalytics.com mkdir -p "/var/www/default/v$VERSION"

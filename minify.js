@@ -8,7 +8,7 @@ const GREEN = "\x1b[32m%s\x1b[0m";
 const YELLOW = "\x1b[33m%s\x1b[0m";
 const RED = "\x1b[31m%s\x1b[0m";
 
-const VERSION = 7;
+const VERSION = 8;
 
 Handlebars.registerHelper("or", function (param1, param2) {
   return param1 || param2;
@@ -88,7 +88,7 @@ const LIGHT = {
   ignorednt: false,
 };
 
-const files = [
+const templates = [
   {
     type: "js",
     input: `${__dirname}/src/default.js`,
@@ -201,18 +201,6 @@ const files = [
   },
   {
     type: "js",
-    input: `${__dirname}/src/embed.js`,
-    output: `embed.js`,
-    variables: {
-      minify: true,
-      version: 1,
-      sri: false,
-      script: "embed.js",
-      url: "docs.simpleanalytics.com/embed-graph-on-your-site",
-    },
-  },
-  {
-    type: "js",
     input: `${__dirname}/src/auto-events.js`,
     output: `auto-events.js`,
     variables: {
@@ -224,6 +212,19 @@ const files = [
     },
   },
 ];
+
+// Add both SRI files and non SRI files if variables.sri = true
+const files = templates.reduce((list, template) => {
+  if (template.variables?.sri) {
+    list.push(
+      { ...template, variables: { ...template.variables, sri: true } },
+      { ...template, variables: { ...template.variables, sri: false } }
+    );
+  } else {
+    list.push(template);
+  }
+  return list;
+}, []);
 
 for (const file of files) {
   const { variables, input, output } = file;
@@ -262,6 +263,7 @@ for (const file of files) {
   }${variables.version ? `; v${variables.version}` : ""}) */\n`;
 
   const originalFileName = finalFileName.replace(".js", ".source.js");
+
   const {
     code: codeTemplate,
     map,
@@ -318,9 +320,9 @@ for (const file of files) {
 
   if (variables.version && variables.sri) {
     fs.mkdirSync(path.dirname(versionFile), { recursive: true });
+  } else {
+    fs.mkdirSync(path.dirname(latestFile), { recursive: true });
   }
-
-  fs.mkdirSync(path.dirname(latestFile), { recursive: true });
 
   const compiledMap = map ? fillTemplate(map, variables) : null;
 
@@ -333,20 +335,29 @@ for (const file of files) {
         `sourceMappingURL=${cdnFileName}.map`
       )
     );
-    if (compiledMap)
+    if (compiledMap) {
       fs.writeFileSync(
         `${cdnVersionFile}.map`,
         compiledMap.replace(/latest\.source\.js/gi, cdnFileName)
       );
+    }
+  } else {
+    fs.writeFileSync(latestFile, code.replace(/; SRI-version/i, ""));
+    if (compiledMap) fs.writeFileSync(`${latestFile}.map`, compiledMap);
   }
 
-  fs.writeFileSync(latestFile, code.replace(/; SRI-version/i, ""));
-  if (compiledMap) fs.writeFileSync(`${latestFile}.map`, compiledMap);
-
   const bytes = new TextEncoder("utf-8").encode(code).length;
+  const bytesZeroFilled = (bytes + "").padStart(5, " ");
+
+  // Add white space in console
+  const sourceName = input.split("/").pop();
+  const fill1 = " ".repeat(Math.max(0, 16 - name.length));
+  const fill2 = " ".repeat(Math.max(0, 14 - sourceName.length));
 
   console.log(
-    `[MINIFY][${name}] Minified ${input.split("/").pop()} into ${bytes} bytes`
+    `[MINIFY] ${name.toLowerCase()} ${fill1}Minified ${sourceName} ${fill2} ${bytesZeroFilled} bytes ${
+      variables.sri ? " (SRI)" : ""
+    }`
   );
 }
 
