@@ -215,7 +215,7 @@ const templates = [
 
 // Add both SRI files and non SRI files if variables.sri = true
 const files = templates.reduce((list, template) => {
-  if (template.variables?.sri) {
+  if (template.variables.sri) {
     list.push(
       { ...template, variables: { ...template.variables, sri: true } },
       { ...template, variables: { ...template.variables, sri: false } }
