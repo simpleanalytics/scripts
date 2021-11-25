@@ -773,9 +773,11 @@
 
     // Post events from the queue of the user defined function
     for (var event in queue) {
-      Array.isArray(queue[event])
-        ? sendEvent.apply(null, queue[event])
-        : sendEvent(queue[event]);
+      if (Object.prototype.hasOwnProperty.call(queue, event)) {
+        Array.isArray(queue[event])
+          ? sendEvent.apply(null, queue[event])
+          : sendEvent(queue[event]);
+      }
     }
     /** endif **/
   } catch (e) {
