@@ -1,4 +1,4 @@
-/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2021-07-30; b6b7; v2) */
+/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2021-11-25; 1e80; v2) */
 /* eslint-env browser */
 
 (function (window, overwriteOptions, baseUrl, apiUrlPrefix, version, saGlobal) {
@@ -703,9 +703,11 @@
 
     // Post events from the queue of the user defined function
     for (var event in queue) {
-      Array.isArray(queue[event])
-        ? sendEvent.apply(null, queue[event])
-        : sendEvent(queue[event]);
+      if (Object.prototype.hasOwnProperty.call(queue, event)) {
+        Array.isArray(queue[event])
+          ? sendEvent.apply(null, queue[event])
+          : sendEvent(queue[event]);
+      }
     }
   } catch (e) {
     sendError(e);
