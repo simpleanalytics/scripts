@@ -83,6 +83,8 @@
 
     /** if sri **/
     payload.sri = true;
+    /** else **/
+    payload.sri = false;
     /** endif **/
 
     // Use User-Agent Client Hints for better privacy
