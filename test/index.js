@@ -18,15 +18,13 @@ const {
 } = require("./constants/browserstack");
 
 const localBrowserFilter = ({ browser, browser_version, os, os_version }) =>
-  browser === "chrome" && version(browser_version) == 88;
-// && os == "OS X"
-// && os_version == "Lion"; // os === "ios"
+  browser === "firefox" && version(browser_version) == 94;
 
 const getSeleniumVersion = ({ browser, os, browser_version }) => {
   const isMobile = ["ios", "android"].includes(os);
   if ((browser === "chrome" && version(browser_version) < 50) || isMobile)
     return false;
-  return "4.0.0-alpha-2";
+  return "4.0.0";
 };
 
 const getSupportsSendBeacon = ({ browser, os }) => {
