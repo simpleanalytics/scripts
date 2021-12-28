@@ -1,4 +1,4 @@
-/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2021-12-28; 4fce; v2) */
+/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2021-12-28; b9e3; v2) */
 /* eslint-env browser */
 
 (function (window, overwriteOptions, baseUrl, apiUrlPrefix, version, saGlobal) {
@@ -158,7 +158,7 @@
 
     // Send data via image
     var sendData = function (data, callback) {
-      data = assign(payload, data);
+      data = assign(payload, page, data);
 
       var image = new Image();
       if (callback) {
@@ -477,7 +477,6 @@
 
       sendData(
         assign(
-          page,
           deleteSourceInfo
             ? {
                 referrer: sameSite ? referrer : null,
@@ -501,24 +500,20 @@
       if (!path || lastSendPath == path) return;
 
       lastSendPath = path;
+      page.path = path;
 
-      var data = {
-        path: path,
-        viewport_width:
-          Math.max(documentElement[clientWidth] || 0, window.innerWidth || 0) ||
-          null,
-        viewport_height:
-          Math.max(
-            documentElement[clientHeight] || 0,
-            window.innerHeight || 0
-          ) || null,
-      };
+      page.viewport_width =
+        Math.max(documentElement[clientWidth] || 0, window.innerWidth || 0) ||
+        null;
+      page.viewport_height =
+        Math.max(documentElement[clientHeight] || 0, window.innerHeight || 0) ||
+        null;
 
-      if (nav[language]) data[language] = nav[language];
+      if (nav[language]) page[language] = nav[language];
 
       if (screen) {
-        data.screen_width = screen.width;
-        data.screen_height = screen.height;
+        page.screen_width = screen.width;
+        page.screen_height = screen.height;
       }
 
       // If a user does refresh we need to delete the referrer because otherwise it count double
@@ -546,9 +541,7 @@
         : false;
 
       // We set unique variable based on pushstate or back navigation, if no match we check the referrer
-      data.unique = isPushState || userNavigated ? false : !sameSite;
-
-      page = data;
+      page.unique = isPushState || userNavigated ? false : !sameSite;
 
       var triggerSendPageView = function () {
         fetchedHighEntropyValues = true;
