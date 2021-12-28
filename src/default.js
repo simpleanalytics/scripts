@@ -59,42 +59,6 @@
     /** endif **/
 
     /////////////////////
-    // PAYLOAD FOR BOTH PAGE VIEWS AND EVENTS
-    //
-
-    /** if botdetection **/
-    var bot =
-      nav.webdriver ||
-      window.__nightmare ||
-      "callPhantom" in window ||
-      "_phantom" in window ||
-      "phantom" in window ||
-      isBotAgent;
-
-    /** else **/
-    var bot = isBotAgent;
-    /** endif **/
-
-    var payload = {
-      version: version,
-      ua: userAgent,
-    };
-    if (bot) payload.bot = true;
-
-    /** if sri **/
-    payload.sri = true;
-    /** else **/
-    payload.sri = false;
-    /** endif **/
-
-    // Use User-Agent Client Hints for better privacy
-    // https://web.dev/user-agent-client-hints/
-    if (uaData) {
-      payload.mobile = uaData.mobile;
-      payload.brands = stringify(uaData.brands);
-    }
-
-    /////////////////////
     // HELPER FUNCTIONS
     //
 
@@ -338,11 +302,49 @@
       : [];
     /** endif **/
 
+    // Customers can ignore certain pages
+    var ignorePagesRaw =
+      overwriteOptions.ignorePages || attr(scriptElement, "ignore-pages");
+
     /////////////////////
-    // ADD HOSTNAME TO PAYLOAD
+    // PAYLOAD FOR BOTH PAGE VIEWS AND EVENTS
     //
 
-    payload.hostname = definedHostname;
+    /** if botdetection **/
+    var bot =
+      nav.webdriver ||
+      window.__nightmare ||
+      "callPhantom" in window ||
+      "_phantom" in window ||
+      "phantom" in window ||
+      isBotAgent;
+    /** else **/
+    var bot = isBotAgent;
+    /** endif **/
+
+    var payload = {
+      version: version,
+      ua: userAgent,
+      https: loc.protocol == https,
+      timezone: timezone,
+      hostname: definedHostname,
+      page_id: uuid(),
+      session_id: uuid(),
+    };
+    if (bot) payload.bot = true;
+
+    /** if sri **/
+    payload.sri = true;
+    /** else **/
+    payload.sri = false;
+    /** endif **/
+
+    // Use User-Agent Client Hints for better privacy
+    // https://web.dev/user-agent-client-hints/
+    if (uaData) {
+      payload.mobile = uaData.mobile;
+      payload.brands = stringify(uaData.brands);
+    }
 
     /////////////////////
     // ADD WARNINGS
@@ -381,7 +383,6 @@
     //
 
     var page = {};
-    var lastPageId = uuid();
     var lastSendPath;
 
     // We don't want to end up with sensitive data so we clean the referrer URL
@@ -412,7 +413,7 @@
     var sendBeaconText = "sendBeacon";
 
     var sendOnLeave = function (id, push) {
-      var append = { type: "append", original_id: push ? id : lastPageId };
+      var append = { type: "append", original_id: push ? id : payload.page_id };
 
       /** if duration **/
       append[duration] = Math.round((now() - start - msHidden) / thousand);
@@ -425,6 +426,7 @@
       /** endif **/
 
       if (push || !(sendBeaconText in nav)) {
+        // sendData will assign payload to request
         sendData(append);
       } else {
         nav[sendBeaconText](
@@ -520,9 +522,8 @@
 
     // Send page view and append data to it
     var sendPageView = function (isPushState, deleteSourceInfo, sameSite) {
-      if (isPushState) sendOnLeave("" + lastPageId, true);
-      lastPageId = uuid();
-      page.id = lastPageId;
+      if (isPushState) sendOnLeave("" + payload.page_id, true);
+      payload.page_id = uuid();
 
       var currentPage = definedHostname + getPath();
 
@@ -535,8 +536,7 @@
               }
             : source,
           {
-            https: loc.protocol == https,
-            timezone: timezone,
+            id: payload.page_id,
             type: pageviewsText,
           }
         )
@@ -661,6 +661,7 @@
             event = new Event(type);
           } else {
             // Fix for IE
+            // https://github.com/simpleanalytics/scripts/issues/8
             event = doc.createEvent("Event");
             event.initEvent(type, true, true);
           }
@@ -718,7 +719,6 @@
     // EVENTS
     //
 
-    var sessionId = uuid();
     var validTypes = ["string", "number"];
 
     var sendEvent = function (event, callbackRaw) {
@@ -747,11 +747,9 @@
 
       if (event) {
         sendData(
-          assign(source, bot ? { bot: true } : {}, {
+          assign(source, {
             type: "event",
             event: event,
-            page_id: page.id,
-            session_id: sessionId,
           }),
           callback
         );
