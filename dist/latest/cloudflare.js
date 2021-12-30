@@ -1,4 +1,4 @@
-/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2021-12-30; 6aec; v8) */
+/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2021-12-30; 1332; v8) */
 /* eslint-env browser */
 
 (function (window, overwriteOptions, baseUrl, apiUrlPrefix, version, saGlobal) {
@@ -174,6 +174,7 @@
             .filter(Boolean)
         );
 
+
       var image = new Image();
       if (callback) {
         image.onerror = callback;
@@ -339,6 +340,7 @@
     /////////////////////
     // ADD WARNINGS
     //
+
 
     // Warn when no document.doctype is defined (this breaks some documentElement dimensions)
     if (!doc.doctype) warn("Add DOCTYPE html for more accurate dimensions");
