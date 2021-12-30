@@ -22,8 +22,8 @@ fi
 
 read -p "==> Specify the latest SRI version: " VERSION
 
-LATEST_FILE="./dist/v$VERSION/latest.js"
-SRI_FILE="./dist/v$VERSION/custom/latest.js"
+LATEST_FILE="./dist/v$VERSION/v$VERSION.js"
+SRI_FILE="./dist/v$VERSION/custom/v$VERSION.js"
 
 if [ ! -f "$LATEST_FILE" ] || [ ! -f "$SRI_FILE" ]; then
   echo "==> Files with version v$VERSION do not exist."
