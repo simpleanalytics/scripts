@@ -3,8 +3,8 @@
   if (typeof window === "undefined") return;
 
   var log = function (message, type) {
-    var logger = type === "warn" ? console.warn : console.log;
-    return logger("Simple Analytics auto events:", message);
+    var logger = type === "warn" ? console.warn : console.info;
+    return logger && logger("Simple Analytics auto events:", message);
   };
 
   var doc = window.document;
@@ -29,6 +29,8 @@
         })
         .filter(Boolean);
     else if (type === "array") return defaultValue;
+
+    return value || defaultValue;
   };
 
   var collectTypes = setting("collect", "array", [
@@ -63,6 +65,8 @@
     downloadsFullUrl: fullUrls,
   };
 
+  var saGlobal = setting("saGlobal", "string", "sa_event");
+
   // For minifying the script
   var optionsLink = options;
 
@@ -80,7 +84,7 @@
         sent = true;
       };
 
-      if (window.sa_event) {
+      if (window[saGlobal] && window[saGlobal + "_loaded"]) {
         var hostname = element.hostname;
         var pathname = element.pathname;
         var useTitle = false;
@@ -118,13 +122,13 @@
           "_" +
           event.replace(/[^a-z0-9]+/gi, "_").replace(/(^_+|_+$)/g, "");
 
-        sa_event(clean, callback);
+        window[saGlobal](clean, callback);
 
         log("collected " + clean);
 
         return window.setTimeout(callback, 5000);
       } else {
-        log("sa_event is not defined", "warn");
+        log(saGlobal + " is not defined", "warn");
         return callback();
       }
     } catch (error) {

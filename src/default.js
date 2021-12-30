@@ -52,6 +52,7 @@
     var pagehide = "pagehide";
     var platformText = "platform";
     var platformVersionText = "platformVersion";
+    var docsUrl = "https://docs.simpleanalytics.com";
     var isBotAgent =
       /(bot|spider|crawl)/i.test(userAgent) && !/(cubot)/i.test(userAgent);
     /** if screen **/
@@ -270,10 +271,9 @@
     /** endif **/
 
     // Customers can overwrite their hostname, here we check for that
-    var definedHostname =
-      overwriteOptions.hostname ||
-      attr(scriptElement, "hostname") ||
-      locationHostname;
+    var overwrittenHostname =
+      overwriteOptions.hostname || attr(scriptElement, "hostname");
+    var definedHostname = overwrittenHostname || locationHostname;
 
     /** if (or spa hash) **/
     // Some customers want to collect page views manually
@@ -363,20 +363,39 @@
     // Don't track when Do Not Track is set to true
     /** if ignorednt **/
     if (!collectDnt && doNotTrack in nav && nav[doNotTrack] == "1")
-      return warn(notSending + "when " + doNotTrack + " is enabled");
+      return warn(
+        notSending +
+          "when " +
+          doNotTrack +
+          " is enabled. See " +
+          docsUrl +
+          "/dnt"
+      );
     /** else **/
     if (doNotTrack in nav && nav[doNotTrack] == "1")
-      return warn(notSending + "when " + doNotTrack + " is enabled");
+      return warn(
+        notSending +
+          "when " +
+          doNotTrack +
+          " is enabled. See " +
+          docsUrl +
+          "/dnt"
+      );
     /** endif **/
 
-    /** unless testing **/
-    // Don't track when localhost or when it's an IP address
+    // Warn when sending from localhost and not having a hostname set
     if (
-      locationHostname.indexOf(".") == -1 ||
-      /^[0-9]+$/.test(locationHostname.replace(/\./g, ""))
+      (locationHostname.indexOf(".") == -1 ||
+        /^[0-9.:]+$/.test(locationHostname)) &&
+      !overwrittenHostname
     )
-      return warn(notSending + "from " + locationHostname);
-    /** endunless **/
+      warn(
+        "Set a hostname when sending data from " +
+          locationHostname +
+          ". See " +
+          docsUrl +
+          "/overwrite-domain-name"
+      );
 
     /////////////////////
     // SETUP INITIAL VARIABLES

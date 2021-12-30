@@ -120,8 +120,8 @@ const templates = [
     variables: {
       ...DEFAULTS,
       minify: false,
-      version: 2,
-      scriptName: "cloudflare_2",
+      version: VERSION,
+      scriptName: `cloudflare_${VERSION}`,
       sri: false,
       baseUrl: "{{cloudFlareCustomDomain}}",
       overwriteOptions: {
@@ -202,12 +202,22 @@ const templates = [
   {
     type: "js",
     input: `${__dirname}/src/auto-events.js`,
+    output: `custom/auto-events.js`,
+    variables: {
+      version: VERSION,
+      sri: true,
+      minify: true,
+      url: "docs.simpleanalytics.com/automated-events",
+    },
+  },
+  {
+    type: "js",
+    input: `${__dirname}/src/auto-events.js`,
     output: `auto-events.js`,
     variables: {
+      version: VERSION,
+      sri: true,
       minify: true,
-      version: 1,
-      sri: false,
-      script: "auto-events.js",
       url: "docs.simpleanalytics.com/automated-events",
     },
   },

@@ -44,6 +44,8 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
   fi
 
   echo "==> Deploying non SRI v$VERSION files to $SERVER_NAME"
+  rsync --rsync-path="sudo rsync" "$SCRIPTS_LATEST_PATH/auto-events.js" "$REMOTE_PATH/auto-events.js"
+  rsync --rsync-path="sudo rsync" "$SCRIPTS_LATEST_PATH/auto-events.js.map" "$REMOTE_PATH/auto-events.js.map"
   rsync --rsync-path="sudo rsync" "$SCRIPTS_LATEST_PATH/e.js" "$REMOTE_PATH/events.js"
   rsync --rsync-path="sudo rsync" "$SCRIPTS_LATEST_PATH/e.js.map" "$REMOTE_PATH/events.js.map"
   rsync --rsync-path="sudo rsync" "$SCRIPTS_LATEST_PATH/latest.dev.js" "$REMOTE_PATH/latest.dev.js"
@@ -60,6 +62,10 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
   echo "==> Copying SRI v$VERSION file to $SERVER_NAME"
   rsync --quiet --rsync-path="sudo rsync" "./dist/v$VERSION/custom/v$VERSION.js" "$REMOTE_PATH/v$VERSION/app.js"
   rsync --quiet --rsync-path="sudo rsync" "./dist/v$VERSION/custom/v$VERSION.js.map" "$REMOTE_PATH/v$VERSION/app.js.map"
+  rsync --quiet --rsync-path="sudo rsync" "./dist/v$VERSION/custom/light.js" "$REMOTE_PATH/v$VERSION/light.js"
+  rsync --quiet --rsync-path="sudo rsync" "./dist/v$VERSION/custom/light.js.map" "$REMOTE_PATH/v$VERSION/light.js.map"
+  rsync --quiet --rsync-path="sudo rsync" "./dist/v$VERSION/custom/auto-events.js" "$REMOTE_PATH/v$VERSION/auto-events.js"
+  rsync --quiet --rsync-path="sudo rsync" "./dist/v$VERSION/custom/auto-events.js.map" "$REMOTE_PATH/v$VERSION/auto-events.js.map"
 
   echo -e "==> ${GREEN}Woop woop! Deployed to $SERVER_NAME!${RESET}"
 else
