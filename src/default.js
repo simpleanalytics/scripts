@@ -53,6 +53,7 @@
     var platformText = "platform";
     var platformVersionText = "platformVersion";
     var docsUrl = "https://docs.simpleanalytics.com";
+    var allowParams;
     var isBotAgent =
       /(bot|spider|crawl)/i.test(userAgent) && !/(cubot)/i.test(userAgent);
     /** if screen **/
@@ -120,17 +121,18 @@
       return !!value === value;
     };
 
-    var getParams = function (regex) {
+    var getParams = function (regex, returnArray) {
       // From the search we grab the utm_source and ref and save only that
       var matches = loc.search.match(
         new RegExp("[?&](" + regex + ")=([^?&]+)", "gi")
       );
       var match = matches
         ? matches.map(function (m) {
-            return m.split("=")[1];
+            return m.split(/[?&=]/).slice(-2);
           })
         : [];
-      if (match && match[0]) return match[0];
+
+      if (match[0]) return returnArray ? match[0] : match[0][1];
     };
 
     /** if ignorepages **/
@@ -165,6 +167,17 @@
     // Send data via image
     var sendData = function (data, callback) {
       data = assign(payload, page, data);
+
+      if (allowParams)
+        data.params = stringify(
+          allowParams
+            .map(function (param) {
+              var params = getParams(param, true);
+              if (!params) return;
+              return { key: params[0], value: params[1] };
+            })
+            .filter(Boolean)
+        );
 
       var image = new Image();
       /** if events **/
@@ -283,6 +296,16 @@
     );
     /** endif **/
 
+    /** if (or ignorepages allowparams) **/
+    var convertCommaSeparatedToArray = function (csv) {
+      return Array.isArray(csv)
+        ? csv
+        : isString(csv) && csv.length
+        ? csv.split(/, ?/)
+        : [];
+    };
+    /** endif **/
+
     /** if events **/
     // Event function name
     var functionName =
@@ -291,20 +314,22 @@
 
     /** if ignorepages **/
     // Customers can ignore certain pages
-    var ignorePagesRaw =
-      overwriteOptions.ignorePages || attr(scriptElement, "ignore-pages");
-
-    // Make sure ignore pages is an array
-    var ignorePages = Array.isArray(ignorePagesRaw)
-      ? ignorePagesRaw
-      : isString(ignorePagesRaw) && ignorePagesRaw.length
-      ? ignorePagesRaw.split(/, ?/)
-      : [];
+    var ignorePages = convertCommaSeparatedToArray(
+      overwriteOptions.ignorePages || attr(scriptElement, "ignore-pages")
+    );
     /** endif **/
 
-    // Customers can ignore certain pages
-    var ignorePagesRaw =
-      overwriteOptions.ignorePages || attr(scriptElement, "ignore-pages");
+    /** if allowparams **/
+    // Customers can allow params
+    allowParams = convertCommaSeparatedToArray(
+      overwriteOptions.allowParams || attr(scriptElement, "allow-params")
+    );
+    /** endif **/
+
+    // By default we allow source, medium in the URLs. With strictUtm enabled
+    // we only allow it with the utm_ prefix: utm_source, utm_medium, ...
+    var strictUtm =
+      overwriteOptions.strictUtm || attr(scriptElement, "strict-utm");
 
     /////////////////////
     // PAYLOAD FOR BOTH PAGE VIEWS AND EVENTS
@@ -411,10 +436,10 @@
         .replace(/^https?:\/\/((m|l|w{2,3}([0-9]+)?)\.)?([^?#]+)(.*)$/, "$4")
         .replace(/^([^/]+)$/, "$1") || undefinedVar;
 
-    // The prefix utm_ is optional
-    var utmRegexPrefix = "(utm_)?";
+    // The prefix utm_ is optional with strictUtm disabled
+    var utmRegexPrefix = "(utm_)" + (strictUtm ? "" : "?");
     var source = {
-      source: getParams(utmRegexPrefix + "source|ref"),
+      source: getParams(utmRegexPrefix + "source" + (strictUtm ? "" : "|ref")),
       medium: getParams(utmRegexPrefix + "medium"),
       campaign: getParams(utmRegexPrefix + "campaign"),
       term: getParams(utmRegexPrefix + "term"),
