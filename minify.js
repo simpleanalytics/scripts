@@ -25,6 +25,8 @@ const MINIFY_OPTIONS = {
 };
 
 const fillTemplate = (template, { overwriteOptions = null } = {}) => {
+  if (!template)
+    throw new Error("Parsing of the JavaScript failed, please use ES5 only.");
   return template
     .replace(
       /\{\{\s?nginxHost\s?\}\}/gi,
@@ -69,6 +71,7 @@ const DEFAULTS = {
   saGlobal: "sa_event",
   url: "docs.simpleanalytics.com/script",
   scriptName: "script",
+  allowparams: true,
 };
 
 const LIGHT = {
@@ -86,6 +89,7 @@ const LIGHT = {
   errorhandling: false,
   warnings: false,
   ignorednt: false,
+  allowparams: false,
 };
 
 const templates = [
@@ -95,7 +99,7 @@ const templates = [
     output: `hello.js`,
     variables: {
       ...DEFAULTS,
-      scriptName: "cdn_hello",
+      scriptName: `cdn_hello_${VERSION}`,
       sri: false,
       baseUrl: "simpleanalyticscdn.com",
       apiUrlPrefix: "queue.",
@@ -202,7 +206,7 @@ const templates = [
   {
     type: "js",
     input: `${__dirname}/src/auto-events.js`,
-    output: `custom/auto-events.js`,
+    output: "custom/auto-events.js",
     variables: {
       version: VERSION,
       sri: true,
