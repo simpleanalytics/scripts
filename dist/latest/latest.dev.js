@@ -1,3 +1,4 @@
+/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2021-12-30; e91c; v8) */
 /* eslint-env browser */
 
 (function (window, overwriteOptions, baseUrl, apiUrlPrefix, version, saGlobal) {
@@ -17,9 +18,7 @@
     // version stays small.
     var https = "https:";
     var pageviewsText = "pageview";
-    /** if errorhandling **/
     var errorText = "error";
-    /** endif **/
     var slash = "/";
     var protocol = https + "//";
     var con = window.console;
@@ -56,9 +55,7 @@
     var allowParams;
     var isBotAgent =
       /(bot|spider|crawl)/i.test(userAgent) && !/(cubot)/i.test(userAgent);
-    /** if screen **/
     var screen = window.screen;
-    /** endif **/
 
     /////////////////////
     // HELPER FUNCTIONS
@@ -135,7 +132,6 @@
       if (match[0]) return returnArray ? match[0] : match[0][1];
     };
 
-    /** if ignorepages **/
     // Ignore pages specified in data-ignore-pages
     var shouldIgnore = function (path) {
       for (var i in ignorePages) {
@@ -158,7 +154,6 @@
       }
       return false;
     };
-    /** endif **/
 
     /////////////////////
     // SEND DATA VIA OUR PIXEL
@@ -179,17 +174,13 @@
             .filter(Boolean)
         );
 
-      /** if dev **/
       data.dev = true;
-      /** endif **/
 
       var image = new Image();
-      /** if events **/
       if (callback) {
         image.onerror = callback;
         image.onload = callback;
       }
-      /** endif **/
       image.src =
         fullApiUrl +
         "/simple.gif?" +
@@ -209,7 +200,6 @@
         Date.now();
     };
 
-    /** if errorhandling **/
     /////////////////////
     // ERROR FUNCTIONS
     //
@@ -236,25 +226,18 @@
       },
       false
     );
-    /** endif **/
 
     /////////////////////
     // INITIALIZE VALUES
     //
 
-    /** if spa **/
     var pushState = "pushState";
     var dis = window.dispatchEvent;
-    /** endif **/
 
-    /** if duration **/
     var duration = "duration";
     var start = now();
-    /** endif **/
 
-    /** if scroll **/
     var scrolled = 0;
-    /** endif **/
 
     // This code could error on (incomplete) implementations, that's why we use try...catch
     var timezone;
@@ -278,29 +261,24 @@
     // Script mode, this can be hash mode for example
     var mode = overwriteOptions.mode || attr(scriptElement, "mode");
 
-    /** if ignorednt **/
     // Should we record Do Not Track visits?
     var collectDnt = isBoolean(overwriteOptions.collectDnt)
       ? overwriteOptions.collectDnt
       : attr(scriptElement, "ignore-dnt") == trueText ||
         attr(scriptElement, "skip-dnt") == trueText ||
         attr(scriptElement, "collect-dnt") == trueText;
-    /** endif **/
 
     // Customers can overwrite their hostname, here we check for that
     var overwrittenHostname =
       overwriteOptions.hostname || attr(scriptElement, "hostname");
     var definedHostname = overwrittenHostname || locationHostname;
 
-    /** if (or spa hash) **/
     // Some customers want to collect page views manually
     var autoCollect = !(
       attr(scriptElement, "auto-collect") == "false" ||
       overwriteOptions.autoCollect === false
     );
-    /** endif **/
 
-    /** if (or ignorepages allowparams) **/
     var convertCommaSeparatedToArray = function (csv) {
       return Array.isArray(csv)
         ? csv
@@ -308,27 +286,20 @@
         ? csv.split(/, ?/)
         : [];
     };
-    /** endif **/
 
-    /** if events **/
     // Event function name
     var functionName =
       overwriteOptions.saGlobal || attr(scriptElement, "sa-global") || saGlobal;
-    /** endif **/
 
-    /** if ignorepages **/
     // Customers can ignore certain pages
     var ignorePages = convertCommaSeparatedToArray(
       overwriteOptions.ignorePages || attr(scriptElement, "ignore-pages")
     );
-    /** endif **/
 
-    /** if allowparams **/
     // Customers can allow params
     allowParams = convertCommaSeparatedToArray(
       overwriteOptions.allowParams || attr(scriptElement, "allow-params")
     );
-    /** endif **/
 
     // By default we allow source, medium in the URLs. With strictUtm enabled
     // we only allow it with the utm_ prefix: utm_source, utm_medium, ...
@@ -339,7 +310,6 @@
     // PAYLOAD FOR BOTH PAGE VIEWS AND EVENTS
     //
 
-    /** if botdetection **/
     var bot =
       nav.webdriver ||
       window.__nightmare ||
@@ -347,9 +317,6 @@
       "_phantom" in window ||
       "phantom" in window ||
       isBotAgent;
-    /** else **/
-    var bot = isBotAgent;
-    /** endif **/
 
     var payload = {
       version: version,
@@ -362,11 +329,7 @@
     };
     if (bot) payload.bot = true;
 
-    /** if sri **/
-    payload.sri = true;
-    /** else **/
     payload.sri = false;
-    /** endif **/
 
     // Use User-Agent Client Hints for better privacy
     // https://web.dev/user-agent-client-hints/
@@ -379,14 +342,10 @@
     // ADD WARNINGS
     //
 
-    /** if dev **/
     warn("Using latest.dev.js, please change to latest.js on production.");
-    /** endif **/
 
-    /** if warnings **/
     // Warn when no document.doctype is defined (this breaks some documentElement dimensions)
     if (!doc.doctype) warn("Add DOCTYPE html for more accurate dimensions");
-    /** endif **/
 
     // When a customer overwrites the hostname, we need to know what the original
     // hostname was to hide that domain from referrer traffic
@@ -394,7 +353,6 @@
       payload.hostname_original = locationHostname;
 
     // Don't track when Do Not Track is set to true
-    /** if ignorednt **/
     if (!collectDnt && doNotTrack in nav && nav[doNotTrack] == "1")
       return warn(
         notSending +
@@ -404,17 +362,6 @@
           docsUrl +
           "/dnt"
       );
-    /** else **/
-    if (doNotTrack in nav && nav[doNotTrack] == "1")
-      return warn(
-        notSending +
-          "when " +
-          doNotTrack +
-          " is enabled. See " +
-          docsUrl +
-          "/dnt"
-      );
-    /** endif **/
 
     // Warn when sending from localhost and not having a hostname set
     if (
@@ -467,15 +414,11 @@
     var sendOnLeave = function (id, push) {
       var append = { type: "append", original_id: push ? id : payload.page_id };
 
-      /** if duration **/
       append[duration] = Math.round((now() - start - msHidden) / thousand);
       msHidden = 0;
       start = now();
-      /** endif **/
 
-      /** if scroll **/
       append.scrolled = Math.max(0, scrolled, position());
-      /** endif **/
 
       if (push || !(sendBeaconText in nav)) {
         // sendData will assign payload to request
@@ -488,7 +431,6 @@
       }
     };
 
-    /** if duration **/
     var hiddenStart;
     window.addEventListener(
       "visibilitychange",
@@ -500,11 +442,9 @@
       },
       false
     );
-    /** endif **/
 
     addEventListenerFunc(pagehide, sendOnLeave, false);
 
-    /** if scroll **/
     var body = doc.body || {};
     var position = function () {
       try {
@@ -539,7 +479,6 @@
         false
       );
     });
-    /** endif **/
 
     /////////////////////
     // ACTUAL PAGE VIEW LOGIC
@@ -556,18 +495,14 @@
         // Do nothing
       }
 
-      /** if ignorepages **/
       // Ignore pages specified in data-ignore-pages
       if (shouldIgnore(path)) {
         warn(notSending + "because " + path + " is ignored");
         return;
       }
-      /** endif **/
 
-      /** if hash **/
       // Add hash to path when script is put in to hash mode
       if (mode == "hash" && loc.hash) path += loc.hash.split("?")[0];
-      /** endif **/
 
       return path;
     };
@@ -606,23 +541,19 @@
       lastSendPath = path;
       page.path = path;
 
-      /** if screen **/
       page.viewport_width =
         Math.max(documentElement[clientWidth] || 0, window.innerWidth || 0) ||
         null;
       page.viewport_height =
         Math.max(documentElement[clientHeight] || 0, window.innerHeight || 0) ||
         null;
-      /** endif **/
 
       if (nav[language]) page[language] = nav[language];
 
-      /** if screen **/
       if (screen) {
         page.screen_width = screen.width;
         page.screen_height = screen.height;
       }
-      /** endif **/
 
       // If a user does refresh we need to delete the referrer because otherwise it count double
       var perf = window.performance;
@@ -648,10 +579,8 @@
         ? doc.referrer.split(slash)[2] == locationHostname
         : false;
 
-      /** if uniques **/
       // We set unique variable based on pushstate or back navigation, if no match we check the referrer
       page.unique = isPushState || userNavigated ? false : !sameSite;
-      /** endif **/
 
       var triggerSendPageView = function () {
         fetchedHighEntropyValues = true;
@@ -681,7 +610,6 @@
       }
     };
 
-    /** if spa **/
     /////////////////////
     // AUTOMATED PAGE VIEW COLLECTION
     //
@@ -730,9 +658,7 @@
         false
       );
     }
-    /** endif **/
 
-    /** if hash **/
     // When in hash mode, we record a pageview based on the onhashchange function
     if (autoCollect && mode == "hash" && "onhashchange" in window) {
       addEventListenerFunc(
@@ -743,19 +669,13 @@
         false
       );
     }
-    /** endif **/
 
-    /** if (or spa hash) **/
     if (autoCollect) pageview();
     else
       window.sa_pageview = function (path) {
         pageview(0, path);
       };
-    /** else **/
-    pageview();
-    /** endif **/
 
-    /** if events **/
     /////////////////////
     // EVENTS
     //
@@ -820,19 +740,14 @@
           : sendEvent(queue[event]);
       }
     }
-    /** endif **/
   } catch (e) {
-    /** if errorhandling **/
     sendError(e);
-    /** else **/
-    warn(e);
-    /** endif **/
   }
 })(
   window,
-  "{{overwriteOptions}}",
-  "{{baseUrl}}",
-  "{{apiUrlPrefix}}",
-  "{{scriptName}}",
-  "{{saGlobal}}"
+  {},
+  "simpleanalyticscdn.com",
+  "queue.",
+  "cdn_latest_dev_8",
+  "sa_event"
 );
