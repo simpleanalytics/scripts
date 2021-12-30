@@ -1,4 +1,4 @@
-/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2021-11-25; 49af; v2) */
+/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2021-12-30; 26ba; v8) */
 /* eslint-env browser */
 
 (function (window, overwriteOptions, baseUrl, apiUrlPrefix, version, saGlobal) {
@@ -51,37 +51,10 @@
     var pagehide = "pagehide";
     var platformText = "platform";
     var platformVersionText = "platformVersion";
+    var docsUrl = "https://docs.simpleanalytics.com";
     var isBotAgent =
       /(bot|spider|crawl)/i.test(userAgent) && !/(cubot)/i.test(userAgent);
     var screen = window.screen;
-
-    /////////////////////
-    // PAYLOAD FOR BOTH PAGE VIEWS AND EVENTS
-    //
-
-    var bot =
-      nav.webdriver ||
-      window.__nightmare ||
-      "callPhantom" in window ||
-      "_phantom" in window ||
-      "phantom" in window ||
-      isBotAgent;
-
-
-    var payload = {
-      version: version,
-      ua: userAgent,
-    };
-    if (bot) payload.bot = true;
-
-    payload.sri = false;
-
-    // Use User-Agent Client Hints for better privacy
-    // https://web.dev/user-agent-client-hints/
-    if (uaData) {
-      payload.mobile = uaData.mobile;
-      payload.brands = stringify(uaData.brands);
-    }
 
     /////////////////////
     // HELPER FUNCTIONS
@@ -186,7 +159,7 @@
 
     // Send data via image
     var sendData = function (data, callback) {
-      data = assign(payload, data);
+      data = assign(payload, page, data);
 
       var image = new Image();
       if (callback) {
@@ -281,10 +254,9 @@
         attr(scriptElement, "collect-dnt") == trueText;
 
     // Customers can overwrite their hostname, here we check for that
-    var definedHostname =
-      overwriteOptions.hostname ||
-      attr(scriptElement, "hostname") ||
-      locationHostname;
+    var overwrittenHostname =
+      overwriteOptions.hostname || attr(scriptElement, "hostname");
+    var definedHostname = overwrittenHostname || locationHostname;
 
     // Some customers want to collect page views manually
     var autoCollect = !(
@@ -307,11 +279,41 @@
       ? ignorePagesRaw.split(/, ?/)
       : [];
 
+    // Customers can ignore certain pages
+    var ignorePagesRaw =
+      overwriteOptions.ignorePages || attr(scriptElement, "ignore-pages");
+
     /////////////////////
-    // ADD HOSTNAME TO PAYLOAD
+    // PAYLOAD FOR BOTH PAGE VIEWS AND EVENTS
     //
 
-    payload.hostname = definedHostname;
+    var bot =
+      nav.webdriver ||
+      window.__nightmare ||
+      "callPhantom" in window ||
+      "_phantom" in window ||
+      "phantom" in window ||
+      isBotAgent;
+
+    var payload = {
+      version: version,
+      ua: userAgent,
+      https: loc.protocol == https,
+      timezone: timezone,
+      hostname: definedHostname,
+      page_id: uuid(),
+      session_id: uuid(),
+    };
+    if (bot) payload.bot = true;
+
+    payload.sri = false;
+
+    // Use User-Agent Client Hints for better privacy
+    // https://web.dev/user-agent-client-hints/
+    if (uaData) {
+      payload.mobile = uaData.mobile;
+      payload.brands = stringify(uaData.brands);
+    }
 
     /////////////////////
     // ADD WARNINGS
@@ -327,21 +329,34 @@
 
     // Don't track when Do Not Track is set to true
     if (!collectDnt && doNotTrack in nav && nav[doNotTrack] == "1")
-      return warn(notSending + "when " + doNotTrack + " is enabled");
+      return warn(
+        notSending +
+          "when " +
+          doNotTrack +
+          " is enabled. See " +
+          docsUrl +
+          "/dnt"
+      );
 
-    // Don't track when localhost or when it's an IP address
+    // Warn when sending from localhost and not having a hostname set
     if (
-      locationHostname.indexOf(".") == -1 ||
-      /^[0-9]+$/.test(locationHostname.replace(/\./g, ""))
+      (locationHostname.indexOf(".") == -1 ||
+        /^[0-9.:]+$/.test(locationHostname)) &&
+      !overwrittenHostname
     )
-      return warn(notSending + "from " + locationHostname);
+      warn(
+        "Set a hostname when sending data from " +
+          locationHostname +
+          ". See " +
+          docsUrl +
+          "/overwrite-domain-name"
+      );
 
     /////////////////////
     // SETUP INITIAL VARIABLES
     //
 
     var page = {};
-    var lastPageId = uuid();
     var lastSendPath;
 
     // We don't want to end up with sensitive data so we clean the referrer URL
@@ -372,7 +387,7 @@
     var sendBeaconText = "sendBeacon";
 
     var sendOnLeave = function (id, push) {
-      var append = { type: "append", original_id: push ? id : lastPageId };
+      var append = { type: "append", original_id: push ? id : payload.page_id };
 
       append[duration] = Math.round((now() - start - msHidden) / thousand);
       msHidden = 0;
@@ -381,6 +396,7 @@
       append.scrolled = Math.max(0, scrolled, position());
 
       if (push || !(sendBeaconText in nav)) {
+        // sendData will assign payload to request
         sendData(append);
       } else {
         nav[sendBeaconText](
@@ -468,23 +484,20 @@
 
     // Send page view and append data to it
     var sendPageView = function (isPushState, deleteSourceInfo, sameSite) {
-      if (isPushState) sendOnLeave("" + lastPageId, true);
-      lastPageId = uuid();
-      page.id = lastPageId;
+      if (isPushState) sendOnLeave("" + payload.page_id, true);
+      payload.page_id = uuid();
 
       var currentPage = definedHostname + getPath();
 
       sendData(
         assign(
-          page,
           deleteSourceInfo
             ? {
                 referrer: sameSite ? referrer : null,
               }
             : source,
           {
-            https: loc.protocol == https,
-            timezone: timezone,
+            id: payload.page_id,
             type: pageviewsText,
           }
         )
@@ -501,24 +514,20 @@
       if (!path || lastSendPath == path) return;
 
       lastSendPath = path;
+      page.path = path;
 
-      var data = {
-        path: path,
-        viewport_width:
-          Math.max(documentElement[clientWidth] || 0, window.innerWidth || 0) ||
-          null,
-        viewport_height:
-          Math.max(
-            documentElement[clientHeight] || 0,
-            window.innerHeight || 0
-          ) || null,
-      };
+      page.viewport_width =
+        Math.max(documentElement[clientWidth] || 0, window.innerWidth || 0) ||
+        null;
+      page.viewport_height =
+        Math.max(documentElement[clientHeight] || 0, window.innerHeight || 0) ||
+        null;
 
-      if (nav[language]) data[language] = nav[language];
+      if (nav[language]) page[language] = nav[language];
 
       if (screen) {
-        data.screen_width = screen.width;
-        data.screen_height = screen.height;
+        page.screen_width = screen.width;
+        page.screen_height = screen.height;
       }
 
       // If a user does refresh we need to delete the referrer because otherwise it count double
@@ -546,9 +555,7 @@
         : false;
 
       // We set unique variable based on pushstate or back navigation, if no match we check the referrer
-      data.unique = isPushState || userNavigated ? false : !sameSite;
-
-      page = data;
+      page.unique = isPushState || userNavigated ? false : !sameSite;
 
       var triggerSendPageView = function () {
         fetchedHighEntropyValues = true;
@@ -598,6 +605,7 @@
             event = new Event(type);
           } else {
             // Fix for IE
+            // https://github.com/simpleanalytics/scripts/issues/8
             event = doc.createEvent("Event");
             event.initEvent(type, true, true);
           }
@@ -647,7 +655,6 @@
     // EVENTS
     //
 
-    var sessionId = uuid();
     var validTypes = ["string", "number"];
 
     var sendEvent = function (event, callbackRaw) {
@@ -676,11 +683,9 @@
 
       if (event) {
         sendData(
-          assign(source, bot ? { bot: true } : {}, {
+          assign(source, {
             type: "event",
             event: event,
-            page_id: page.id,
-            session_id: sessionId,
           }),
           callback
         );
@@ -718,6 +723,6 @@
   {"saGlobal":INSTALL_OPTIONS.sa_global,"mode":INSTALL_OPTIONS.hash_mode ? 'hash' : null,"collectDnt":INSTALL_OPTIONS.collect_dnt},
   INSTALL_OPTIONS.custom_domain || "queue.simpleanalyticscdn.com",
   "",
-  "cloudflare_2",
+  "cloudflare_8",
   "sa_event"
 );
