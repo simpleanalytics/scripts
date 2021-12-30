@@ -1,4 +1,4 @@
-/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2021-12-28; b9e3; v2) */
+/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2021-12-30; 26ba; v8) */
 /* eslint-env browser */
 
 (function (window, overwriteOptions, baseUrl, apiUrlPrefix, version, saGlobal) {
@@ -51,6 +51,7 @@
     var pagehide = "pagehide";
     var platformText = "platform";
     var platformVersionText = "platformVersion";
+    var docsUrl = "https://docs.simpleanalytics.com";
     var isBotAgent =
       /(bot|spider|crawl)/i.test(userAgent) && !/(cubot)/i.test(userAgent);
     var screen = window.screen;
@@ -253,10 +254,9 @@
         attr(scriptElement, "collect-dnt") == trueText;
 
     // Customers can overwrite their hostname, here we check for that
-    var definedHostname =
-      overwriteOptions.hostname ||
-      attr(scriptElement, "hostname") ||
-      locationHostname;
+    var overwrittenHostname =
+      overwriteOptions.hostname || attr(scriptElement, "hostname");
+    var definedHostname = overwrittenHostname || locationHostname;
 
     // Some customers want to collect page views manually
     var autoCollect = !(
@@ -329,14 +329,28 @@
 
     // Don't track when Do Not Track is set to true
     if (!collectDnt && doNotTrack in nav && nav[doNotTrack] == "1")
-      return warn(notSending + "when " + doNotTrack + " is enabled");
+      return warn(
+        notSending +
+          "when " +
+          doNotTrack +
+          " is enabled. See " +
+          docsUrl +
+          "/dnt"
+      );
 
-    // Don't track when localhost or when it's an IP address
+    // Warn when sending from localhost and not having a hostname set
     if (
-      locationHostname.indexOf(".") == -1 ||
-      /^[0-9]+$/.test(locationHostname.replace(/\./g, ""))
+      (locationHostname.indexOf(".") == -1 ||
+        /^[0-9.:]+$/.test(locationHostname)) &&
+      !overwrittenHostname
     )
-      return warn(notSending + "from " + locationHostname);
+      warn(
+        "Set a hostname when sending data from " +
+          locationHostname +
+          ". See " +
+          docsUrl +
+          "/overwrite-domain-name"
+      );
 
     /////////////////////
     // SETUP INITIAL VARIABLES
@@ -709,6 +723,6 @@
   {"saGlobal":INSTALL_OPTIONS.sa_global,"mode":INSTALL_OPTIONS.hash_mode ? 'hash' : null,"collectDnt":INSTALL_OPTIONS.collect_dnt},
   INSTALL_OPTIONS.custom_domain || "queue.simpleanalyticscdn.com",
   "",
-  "cloudflare_2",
+  "cloudflare_8",
   "sa_event"
 );
