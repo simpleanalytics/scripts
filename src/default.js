@@ -404,16 +404,6 @@
           docsUrl +
           "/dnt"
       );
-    /** else **/
-    if (doNotTrack in nav && nav[doNotTrack] == "1")
-      return warn(
-        notSending +
-          "when " +
-          doNotTrack +
-          " is enabled. See " +
-          docsUrl +
-          "/dnt"
-      );
     /** endif **/
 
     // Warn when sending from localhost and not having a hostname set
