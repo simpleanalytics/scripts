@@ -14,6 +14,14 @@ Simple Analytics is a privacy friendly analytics tool with a strong mission: nev
 
 As our public scripts are very important in our mission to privacy we decided to make the source code available. We use the MIT license which is short and to the point. It lets you do almost anything you want with this project, like making and distributing closed source versions. See [LICENSE](LICENSE) for more info.
 
+## Contribute
+
+If you want to contribute, you probabaly want to contribute to our [`/src/default.js`](src/default.js) or [`/src/auto-events.js`](src/auto-events.js) files. These files compile into a few versions of our script by [`minify.js`](minify.js). They end up on [our CDN](https://scripts.simpleanalyticscdn.com/latest.js), custom domains, and [the Cloudflare app](https://www.cloudflare.com/apps/simpleanalytics).
+
+In `default.js` you see some weird syntax in the comments. For example, `/** if ignorepages **/` _\[some code\]_ `/** endif **/`. These comments are converted to handlebars like this: `{{#if ignorepages }}` _\[some code\]_ `{{/if}}`. In this case, [`ignorepages` is a variable](https://github.com/simpleanalytics/scripts/blob/3874b44ce5f1b0b8a7d50fb512fdcf5285a0138f/minify.js#L66) used in `minify.js` that takes care of what functionality to show in what script. Our main script is the `latest.js` script which includes all features. We also have a `light.js` script that obviously doesn't.
+
+If you contribute, make sure to use `npm run build`, copy the script to a website, and check if it works correctly.
+
 ## Run this locally
 
 Just run `npm run watch` and every file will be validated and minified on save. We minify our scripts with [UglifyJS](http://lisperator.net/uglifyjs/), a well known JavaScript minifier.
