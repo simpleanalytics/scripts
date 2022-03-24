@@ -136,6 +136,52 @@
     }
   };
 
+  function collectLink(link, onclick) {
+    var collect = false;
+
+    // Collect download clicks
+    if (
+      optionsLink.downloads &&
+      /^https?:\/\//i.test(link.href) &&
+      new RegExp(
+        ".(" + (optionsLink.downloadsExtensions || []).join("|") + ")",
+        "i"
+      ).test(link.pathname)
+    ) {
+      collect = "download";
+
+      // Collect outbound links clicks
+    } else if (
+      optionsLink.outbound &&
+      /^https?:\/\//i.test(link.href) &&
+      link.hostname !== window.location.hostname
+    ) {
+      collect = "outbound";
+
+      // Collect email clicks
+    } else if (optionsLink.emails && /^mailto:/i.test(link.href)) {
+      collect = "email";
+    }
+
+    if (!collect) return;
+
+    if (onclick) {
+      var onClickAttribute = "saAutomatedLink(this, '" + collect + "');";
+
+      if (
+        !link.hasAttribute("target") ||
+        link.getAttribute("target") === "_self"
+      )
+        onClickAttribute += " return false;";
+
+      link.setAttribute("onclick", onClickAttribute);
+    } else {
+      link.on("click", function () {
+        saAutomatedLink(collect);
+      });
+    }
+  }
+
   function onDOMContentLoaded() {
     try {
       var a = document.getElementsByTagName("a");
@@ -143,45 +189,12 @@
       // Loop over all links on the page
       for (var i = 0; i < a.length; i++) {
         var link = a[i];
-        var collect = false;
 
         // We don't want to overwrite website behaviour so we check for the onclick attribute
         if (!link.getAttribute("onclick")) {
-          // Collect download clicks
-          if (
-            optionsLink.downloads &&
-            /^https?:\/\//i.test(link.href) &&
-            new RegExp(
-              ".(" + (optionsLink.downloadsExtensions || []).join("|") + ")",
-              "i"
-            ).test(link.pathname)
-          ) {
-            collect = "download";
-
-            // Collect outbound links clicks
-          } else if (
-            optionsLink.outbound &&
-            /^https?:\/\//i.test(link.href) &&
-            link.hostname !== window.location.hostname
-          ) {
-            collect = "outbound";
-
-            // Collect email clicks
-          } else if (optionsLink.emails && /^mailto:/i.test(link.href)) {
-            collect = "email";
-          }
-
-          if (collect) {
-            var onClickAttribute = "saAutomatedLink(this, '" + collect + "');";
-
-            if (
-              !link.hasAttribute("target") ||
-              link.getAttribute("target") === "_self"
-            )
-              onClickAttribute += " return false;";
-
-            link.setAttribute("onclick", onClickAttribute);
-          }
+          collectLink(link, true);
+        } else {
+          collectLink(link, false);
         }
       }
     } catch (error) {
