@@ -346,6 +346,7 @@
       "callPhantom" in window ||
       "_phantom" in window ||
       "phantom" in window ||
+      window.__polypane ||
       isBotAgent;
     /** else **/
     var bot = isBotAgent;
