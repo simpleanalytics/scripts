@@ -333,7 +333,8 @@
     // By default we allow source, medium in the URLs. With strictUtm enabled
     // we only allow it with the utm_ prefix: utm_source, utm_medium, ...
     var strictUtm =
-      overwriteOptions.strictUtm || attr(scriptElement, "strict-utm");
+      overwriteOptions.strictUtm ||
+      attr(scriptElement, "strict-utm") == trueText;
 
     /////////////////////
     // PAYLOAD FOR BOTH PAGE VIEWS AND EVENTS
