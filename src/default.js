@@ -481,8 +481,6 @@
     // We don't put msHidden in if duration block, because it's used outside of that functionality
     var msHidden = 0;
 
-    var sendBeaconText = "sendBeacon";
-
     var sendOnLeave = function (id, push) {
       var append = { type: "append", original_id: push ? id : payload.page_id };
 
@@ -496,11 +494,11 @@
       append.scrolled = Math.max(0, scrolled, position());
       /** endif **/
 
-      if (push || !(sendBeaconText in nav)) {
+      if (push || nav.sendBeacon) {
         // sendData will assign payload to request
         sendData(append);
       } else {
-        nav[sendBeaconText](
+        nav.sendBeacon(
           fullApiUrl + "/append",
           stringify(assign(payload, append))
         );
