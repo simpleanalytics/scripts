@@ -166,47 +166,51 @@
 
     // Send data via image
     var sendData = function (data, callback) {
-      data = assign(payload, page, data);
+      return braveCallback(function (isBrave) {
+        data = assign(payload, page, data);
 
-      if (allowParams)
-        data.params = stringify(
-          allowParams
-            .map(function (param) {
-              var params = getParams(param, true);
-              if (!params) return;
-              return { key: params[0], value: params[1] };
+        if (allowParams)
+          data.params = stringify(
+            allowParams
+              .map(function (param) {
+                var params = getParams(param, true);
+                if (!params) return;
+                return { key: params[0], value: params[1] };
+              })
+              .filter(Boolean)
+          );
+
+        if (isBrave) data.brave = true;
+
+        /** if dev **/
+        data.dev = true;
+        /** endif **/
+
+        var image = new Image();
+        /** if events **/
+        if (callback) {
+          image.onerror = callback;
+          image.onload = callback;
+        }
+        /** endif **/
+        image.src =
+          fullApiUrl +
+          "/simple.gif?" +
+          Object.keys(data)
+            .filter(function (key) {
+              return data[key] != undefinedVar;
             })
-            .filter(Boolean)
-        );
-
-      /** if dev **/
-      data.dev = true;
-      /** endif **/
-
-      var image = new Image();
-      /** if events **/
-      if (callback) {
-        image.onerror = callback;
-        image.onload = callback;
-      }
-      /** endif **/
-      image.src =
-        fullApiUrl +
-        "/simple.gif?" +
-        Object.keys(data)
-          .filter(function (key) {
-            return data[key] != undefinedVar;
-          })
-          .map(function (key) {
-            return (
-              encodeURIComponentFunc(key) +
-              "=" +
-              encodeURIComponentFunc(data[key])
-            );
-          })
-          .join("&") +
-        "&time=" +
-        Date.now();
+            .map(function (key) {
+              return (
+                encodeURIComponentFunc(key) +
+                "=" +
+                encodeURIComponentFunc(data[key])
+              );
+            })
+            .join("&") +
+          "&time=" +
+          Date.now();
+      });
     };
 
     /** if errorhandling **/
@@ -335,6 +339,19 @@
     var strictUtm =
       overwriteOptions.strictUtm ||
       attr(scriptElement, "strict-utm") == trueText;
+
+    var braveCallback = function (callback) {
+      if (!nav.brave) callback(false);
+      else
+        nav.brave
+          .isBrave()
+          .then(function () {
+            callback(true);
+          })
+          .catch(function () {
+            callback(false);
+          });
+    };
 
     /////////////////////
     // PAYLOAD FOR BOTH PAGE VIEWS AND EVENTS

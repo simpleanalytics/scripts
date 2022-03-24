@@ -8,7 +8,7 @@ const GREEN = "\x1b[32m%s\x1b[0m";
 const YELLOW = "\x1b[33m%s\x1b[0m";
 const RED = "\x1b[31m%s\x1b[0m";
 
-const VERSION = 8;
+const VERSION = 9;
 
 Handlebars.registerHelper("or", function (param1, param2) {
   return param1 || param2;
