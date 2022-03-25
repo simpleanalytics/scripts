@@ -370,6 +370,14 @@ for (const file of files) {
 
   const compiledMap = map ? fillTemplate(map, variables) : null;
   const isCustom = /^custom\//.test(output);
+  const replaceMap = [
+    `sourceMappingURL=v${variables.version}.js.map`,
+    `sourceMappingURL=app.js.map`,
+  ];
+  const replaceVersion = [
+    new RegExp(`"v${variables.version}.js"`, "g"),
+    `"app.js"`,
+  ];
 
   if (variables.version && variables.sri) {
     const cdnFileName = cdnVersionFile.split("/").pop();
@@ -378,11 +386,7 @@ for (const file of files) {
       /sourceMappingURL=latest\.js\.map/gi,
       `sourceMappingURL=${cdnFileName}.map`
     );
-    if (isCustom)
-      write = write.replace(
-        `sourceMappingURL=v${variables.version}.js.map`,
-        `sourceMappingURL=app.js.map`
-      );
+    if (isCustom) write = write.replace(...replaceMap);
     fs.writeFileSync(cdnVersionFile, write);
 
     if (compiledMap) {
@@ -391,33 +395,21 @@ for (const file of files) {
         cdnFileName
       );
 
-      if (isCustom)
-        writeCompiled = writeCompiled.replace(
-          new RegExp(`"v${variables.version}.js"`, "g"),
-          `"app.js"`
-        );
+      if (isCustom) writeCompiled = writeCompiled.replace(...replaceVersion);
 
       fs.writeFileSync(`${cdnVersionFile}.map`, writeCompiled);
     }
   } else {
     let write = code.replace(/; SRI-version/i, "");
 
-    if (isCustom)
-      write = write.replace(
-        `sourceMappingURL=v${variables.version}.js.map`,
-        `sourceMappingURL=app.js.map`
-      );
+    if (isCustom) write = write.replace(...replaceMap);
 
     fs.writeFileSync(latestFile, write);
 
     if (compiledMap) {
       let writeCompiled = compiledMap;
 
-      if (isCustom)
-        writeCompiled = writeCompiled.replace(
-          new RegExp(`"v${variables.version}.js"`, "g"),
-          `"app.js"`
-        );
+      if (isCustom) writeCompiled = writeCompiled.replace(...replaceVersion);
 
       fs.writeFileSync(`${latestFile}.map`, writeCompiled);
     }
