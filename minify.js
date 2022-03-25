@@ -239,7 +239,7 @@ const templates = [
     output: "custom/auto-events.js",
     variables: {
       version: VERSION,
-      sri: true,
+      sri: false,
       minify: true,
       url: "docs.simpleanalytics.com/automated-events",
     },
@@ -250,7 +250,7 @@ const templates = [
     output: `auto-events.js`,
     variables: {
       version: VERSION,
-      sri: true,
+      sri: false,
       minify: true,
       url: "docs.simpleanalytics.com/automated-events",
     },
@@ -369,25 +369,58 @@ for (const file of files) {
   }
 
   const compiledMap = map ? fillTemplate(map, variables) : null;
+  const isCustom = /^custom\//.test(output);
 
   if (variables.version && variables.sri) {
     const cdnFileName = cdnVersionFile.split("/").pop();
-    fs.writeFileSync(
-      cdnVersionFile,
-      code.replace(
-        /sourceMappingURL=latest\.js\.map/gi,
-        `sourceMappingURL=${cdnFileName}.map`
-      )
+
+    let write = code.replace(
+      /sourceMappingURL=latest\.js\.map/gi,
+      `sourceMappingURL=${cdnFileName}.map`
     );
-    if (compiledMap) {
-      fs.writeFileSync(
-        `${cdnVersionFile}.map`,
-        compiledMap.replace(/latest\.source\.js/gi, cdnFileName)
+    if (isCustom)
+      write = write.replace(
+        `sourceMappingURL=v${variables.version}.js.map`,
+        `sourceMappingURL=app.js.map`
       );
+    fs.writeFileSync(cdnVersionFile, write);
+
+    if (compiledMap) {
+      let writeCompiled = compiledMap.replace(
+        /latest\.source\.js/gi,
+        cdnFileName
+      );
+
+      if (isCustom)
+        writeCompiled = writeCompiled.replace(
+          new RegExp(`"v${variables.version}.js"`, "g"),
+          `"app.js"`
+        );
+
+      fs.writeFileSync(`${cdnVersionFile}.map`, writeCompiled);
     }
   } else {
-    fs.writeFileSync(latestFile, code.replace(/; SRI-version/i, ""));
-    if (compiledMap) fs.writeFileSync(`${latestFile}.map`, compiledMap);
+    let write = code.replace(/; SRI-version/i, "");
+
+    if (isCustom)
+      write = write.replace(
+        `sourceMappingURL=v${variables.version}.js.map`,
+        `sourceMappingURL=app.js.map`
+      );
+
+    fs.writeFileSync(latestFile, write);
+
+    if (compiledMap) {
+      let writeCompiled = compiledMap;
+
+      if (isCustom)
+        writeCompiled = writeCompiled.replace(
+          new RegExp(`"v${variables.version}.js"`, "g"),
+          `"app.js"`
+        );
+
+      fs.writeFileSync(`${latestFile}.map`, writeCompiled);
+    }
   }
 
   const bytes = new TextEncoder("utf-8").encode(code).length;
