@@ -239,7 +239,7 @@ const templates = [
     output: "custom/auto-events.js",
     variables: {
       version: VERSION,
-      sri: false,
+      sri: true,
       minify: true,
       url: "docs.simpleanalytics.com/automated-events",
     },
@@ -250,7 +250,7 @@ const templates = [
     output: `auto-events.js`,
     variables: {
       version: VERSION,
-      sri: false,
+      sri: true,
       minify: true,
       url: "docs.simpleanalytics.com/automated-events",
     },
@@ -273,11 +273,7 @@ const files = templates.reduce((list, template) => {
 for (const file of files) {
   const { variables, input, output } = file;
   const name = output.toUpperCase();
-  const versionFile = `${__dirname}/dist/v${variables.version}/${output}`;
-  const cdnVersionFile = versionFile.replace(
-    /latest\.js/i,
-    `v${variables.version}.js`
-  );
+  let versionFile = `${__dirname}/dist/v${variables.version}/${output}`;
   const latestFile = `${__dirname}/dist/latest/${output}`;
 
   const contents = fs
@@ -370,24 +366,25 @@ for (const file of files) {
 
   const compiledMap = map ? fillTemplate(map, variables) : null;
   const isCustom = /^custom\//.test(output);
-  const replaceMap = [
-    `sourceMappingURL=v${variables.version}.js.map`,
-    `sourceMappingURL=app.js.map`,
-  ];
-  const replaceVersion = [
-    new RegExp(`"v${variables.version}.js"`, "g"),
-    `"app.js"`,
-  ];
 
   if (variables.version && variables.sri) {
-    const cdnFileName = cdnVersionFile.split("/").pop();
+    let cdnFileName = versionFile.split("/").pop();
+
+    // Skip custom vX.js SRI file, we use app.js for that.
+    if (cdnFileName === "latest.js" && isCustom) continue;
+
+    // Rewrite latest.js to app.js in vX folder
+    if (cdnFileName === "latest.js" && !isCustom) {
+      cdnFileName = "app.js";
+      versionFile = versionFile.replace("latest.js", "app.js");
+    }
 
     let write = code.replace(
       /sourceMappingURL=latest\.js\.map/gi,
       `sourceMappingURL=${cdnFileName}.map`
     );
-    if (isCustom) write = write.replace(...replaceMap);
-    fs.writeFileSync(cdnVersionFile, write);
+
+    fs.writeFileSync(versionFile, write);
 
     if (compiledMap) {
       let writeCompiled = compiledMap.replace(
@@ -395,21 +392,15 @@ for (const file of files) {
         cdnFileName
       );
 
-      if (isCustom) writeCompiled = writeCompiled.replace(...replaceVersion);
-
-      fs.writeFileSync(`${cdnVersionFile}.map`, writeCompiled);
+      fs.writeFileSync(`${versionFile}.map`, writeCompiled);
     }
   } else {
     let write = code.replace(/; SRI-version/i, "");
-
-    if (isCustom) write = write.replace(...replaceMap);
 
     fs.writeFileSync(latestFile, write);
 
     if (compiledMap) {
       let writeCompiled = compiledMap;
-
-      if (isCustom) writeCompiled = writeCompiled.replace(...replaceVersion);
 
       fs.writeFileSync(`${latestFile}.map`, writeCompiled);
     }
