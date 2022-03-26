@@ -334,6 +334,12 @@
     );
     /** endif **/
 
+    /** if pathoverwriter **/
+    // Customers can overwrite certain values
+    var pathOverwriter =
+      overwriteOptions.pathOverwriter || attr(scriptElement, "path-overwriter");
+    /** endif **/
+
     // By default we allow source, medium in the URLs. With strictUtm enabled
     // we only allow it with the utm_ prefix: utm_source, utm_medium, ...
     var strictUtm =
@@ -572,6 +578,13 @@
       } catch (e) {
         // Do nothing
       }
+
+      /** if pathoverwriter **/
+      var pathOverwriterFunction = window[pathOverwriter];
+      if (isFunction(pathOverwriterFunction)) {
+        path = pathOverwriterFunction.call(window, path);
+      }
+      /** endif **/
 
       /** if ignorepages **/
       // Ignore pages specified in data-ignore-pages

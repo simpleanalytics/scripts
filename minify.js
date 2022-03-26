@@ -72,6 +72,7 @@ const DEFAULTS = {
   url: "docs.simpleanalytics.com/script",
   scriptName: "script",
   allowparams: true,
+  pathoverwriter: true,
   dev: false,
 };
 
@@ -91,6 +92,7 @@ const LIGHT = {
   warnings: false,
   ignorednt: false,
   allowparams: false,
+  pathoverwriter: false,
 };
 
 const templates = [
