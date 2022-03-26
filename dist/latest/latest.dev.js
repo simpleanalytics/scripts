@@ -1,4 +1,4 @@
-/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2021-12-30; e91c; v8) */
+/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2022-03-26; a46d; v9) */
 /* eslint-env browser */
 
 (function (window, overwriteOptions, baseUrl, apiUrlPrefix, version, saGlobal) {
@@ -161,43 +161,47 @@
 
     // Send data via image
     var sendData = function (data, callback) {
-      data = assign(payload, page, data);
+      return braveCallback(function (isBrave) {
+        data = assign(payload, page, data);
 
-      if (allowParams)
-        data.params = stringify(
-          allowParams
-            .map(function (param) {
-              var params = getParams(param, true);
-              if (!params) return;
-              return { key: params[0], value: params[1] };
+        if (allowParams)
+          data.params = stringify(
+            allowParams
+              .map(function (param) {
+                var params = getParams(param, true);
+                if (!params) return;
+                return { key: params[0], value: params[1] };
+              })
+              .filter(Boolean)
+          );
+
+        if (isBrave) data.brave = true;
+
+        data.dev = true;
+
+        var image = new Image();
+        if (callback) {
+          image.onerror = callback;
+          image.onload = callback;
+        }
+        image.src =
+          fullApiUrl +
+          "/simple.gif?" +
+          Object.keys(data)
+            .filter(function (key) {
+              return data[key] != undefinedVar;
             })
-            .filter(Boolean)
-        );
-
-      data.dev = true;
-
-      var image = new Image();
-      if (callback) {
-        image.onerror = callback;
-        image.onload = callback;
-      }
-      image.src =
-        fullApiUrl +
-        "/simple.gif?" +
-        Object.keys(data)
-          .filter(function (key) {
-            return data[key] != undefinedVar;
-          })
-          .map(function (key) {
-            return (
-              encodeURIComponentFunc(key) +
-              "=" +
-              encodeURIComponentFunc(data[key])
-            );
-          })
-          .join("&") +
-        "&time=" +
-        Date.now();
+            .map(function (key) {
+              return (
+                encodeURIComponentFunc(key) +
+                "=" +
+                encodeURIComponentFunc(data[key])
+              );
+            })
+            .join("&") +
+          "&time=" +
+          Date.now();
+      });
     };
 
     /////////////////////
@@ -301,10 +305,28 @@
       overwriteOptions.allowParams || attr(scriptElement, "allow-params")
     );
 
+    // Customers can overwrite certain values
+    var pathOverwriter =
+      overwriteOptions.pathOverwriter || attr(scriptElement, "path-overwriter");
+
     // By default we allow source, medium in the URLs. With strictUtm enabled
     // we only allow it with the utm_ prefix: utm_source, utm_medium, ...
     var strictUtm =
-      overwriteOptions.strictUtm || attr(scriptElement, "strict-utm");
+      overwriteOptions.strictUtm ||
+      attr(scriptElement, "strict-utm") == trueText;
+
+    var braveCallback = function (callback) {
+      if (!nav.brave) callback(false);
+      else
+        nav.brave
+          .isBrave()
+          .then(function () {
+            callback(true);
+          })
+          .catch(function () {
+            callback(false);
+          });
+    };
 
     /////////////////////
     // PAYLOAD FOR BOTH PAGE VIEWS AND EVENTS
@@ -316,6 +338,7 @@
       "callPhantom" in window ||
       "_phantom" in window ||
       "phantom" in window ||
+      window.__polypane ||
       isBotAgent;
 
     var payload = {
@@ -409,8 +432,6 @@
     // We don't put msHidden in if duration block, because it's used outside of that functionality
     var msHidden = 0;
 
-    var sendBeaconText = "sendBeacon";
-
     var sendOnLeave = function (id, push) {
       var append = { type: "append", original_id: push ? id : payload.page_id };
 
@@ -420,11 +441,11 @@
 
       append.scrolled = Math.max(0, scrolled, position());
 
-      if (push || !(sendBeaconText in nav)) {
+      if (push || nav.sendBeacon) {
         // sendData will assign payload to request
         sendData(append);
       } else {
-        nav[sendBeaconText](
+        nav.sendBeacon(
           fullApiUrl + "/append",
           stringify(assign(payload, append))
         );
@@ -493,6 +514,11 @@
         path = overwrite || decodeURIComponentFunc(loc.pathname);
       } catch (e) {
         // Do nothing
+      }
+
+      var pathOverwriterFunction = window[pathOverwriter];
+      if (isFunction(pathOverwriterFunction)) {
+        path = pathOverwriterFunction.call(window, path);
       }
 
       // Ignore pages specified in data-ignore-pages
@@ -626,7 +652,7 @@
           var arg = arguments;
           var rv = orig.apply(this, arg);
           var event;
-          if (typeof Event == "function") {
+          if (isFunction(Event)) {
             event = new Event(type);
           } else {
             // Fix for IE
@@ -748,6 +774,6 @@
   {},
   "simpleanalyticscdn.com",
   "queue.",
-  "cdn_latest_dev_8",
+  "cdn_latest_dev_9",
   "sa_event"
 );
