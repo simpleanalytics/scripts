@@ -500,7 +500,7 @@
       append.scrolled = Math.max(0, scrolled, position());
       /** endif **/
 
-      if (push || nav.sendBeacon) {
+      if (push || !nav.sendBeacon) {
         // sendData will assign payload to request
         sendData(append);
       } else {
