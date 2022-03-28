@@ -1,4 +1,4 @@
-/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2022-03-26; 1684; v9) */
+/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2022-03-28; 5073; v9) */
 /* eslint-env browser */
 
 (function (window, overwriteOptions, baseUrl, apiUrlPrefix, version, saGlobal) {
@@ -441,7 +441,7 @@
 
       append.scrolled = Math.max(0, scrolled, position());
 
-      if (push || nav.sendBeacon) {
+      if (push || !nav.sendBeacon) {
         // sendData will assign payload to request
         sendData(append);
       } else {
