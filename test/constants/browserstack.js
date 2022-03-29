@@ -28,7 +28,6 @@ module.exports.BS_CAPABILITIES = {
   "browserstack.debug": "false",
   "browserstack.console": "disable",
   "browserstack.networkLogs": "false",
-  "browserstack.timezone": "Europe/Amsterdam",
   "browserstack.ie.noFlash": "true",
   "browserstack.user": this.BROWSERSTACK_USERNAME,
   "browserstack.key": this.BROWSERSTACK_ACCESS_KEY,

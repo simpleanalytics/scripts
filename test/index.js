@@ -17,8 +17,12 @@ const {
   BROWSERSTACK_ACCESS_KEY,
 } = require("./constants/browserstack");
 
-const localBrowserFilter = ({ browser, browser_version, os, os_version }) =>
-  browser === "firefox" && os === "Windows";
+const localBrowserFilter = ({ device, browser }) => browser === "firefox"; // device === "Samsung Galaxy S22 Ultra";
+
+const getMajorVersion = (version) => {
+  const major = `${version}`.split(".")[0];
+  return parseInt(major, 10);
+};
 
 const getSeleniumVersion = ({ browser, os, browser_version }) => {
   const isMobile = ["ios", "android"].includes(os);
@@ -26,6 +30,20 @@ const getSeleniumVersion = ({ browser, os, browser_version }) => {
     return false;
   if (browser === "firefox" && version(browser_version) >= 94) return "4.0.0";
   return "4.0.0-alpha-2";
+};
+
+const getAppiumVersion = ({ device, os, os_version }) => {
+  const osMajorVersion = getMajorVersion(os_version);
+  if (os === "android" && device.includes("Samsung") && osMajorVersion >= 12)
+    return "1.22.0";
+  return false;
+};
+
+const setTimezoneSupport = ({ device, os, os_version }) => {
+  const osMajorVersion = getMajorVersion(os_version);
+  if (os === "android" && device.includes("Samsung") && osMajorVersion >= 12)
+    return false;
+  return true;
 };
 
 const getSupportsSendBeacon = ({ browser, os }) => {
@@ -139,9 +157,16 @@ const getDeviceName = ({
   for (const browser of browsers) {
     suiteInstance.addTest(
       new Mocha.Test(`Testing ${browser.name}`, async function () {
-        if (getSeleniumVersion(browser))
-          browser["browserstack.selenium_version"] =
-            getSeleniumVersion(browser);
+        const seleniumVersion = getSeleniumVersion(browser);
+        if (seleniumVersion) {
+          browser["browserstack.selenium_version"] = seleniumVersion;
+        }
+
+        const appiumVersion = getAppiumVersion(browser);
+        if (appiumVersion) {
+          browser["browserstack.appium_version"] = appiumVersion;
+        }
+
         browser.supportsSendBeacon = getSupportsSendBeacon(browser);
         browser.supportsPushState = getSupportsPushState(browser);
         browser.supportsClientHints = getSupportsClientHints(browser);
@@ -150,6 +175,12 @@ const getDeviceName = ({
         log(`Waiting to get ${browser.name}...`);
 
         const driverOptions = { ...BS_CAPABILITIES, ...browser };
+
+        const timezoneSupport = setTimezoneSupport(browser);
+        if (timezoneSupport) {
+          driverOptions["browserstack.timezone"] = "Europe/Amsterdam";
+        }
+
         let driver = await getDriverWithTimeout(driverOptions);
 
         // Try again with new device when driver is not available
