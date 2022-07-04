@@ -367,10 +367,11 @@
     var bot =
       nav.webdriver ||
       window.__nightmare ||
-      "callPhantom" in window ||
-      "_phantom" in window ||
-      "phantom" in window ||
+      window.callPhantom window ||
+      window._phantom window ||
+      window.phantom ||
       window.__polypane ||
+      window._bot ||
       isBotAgent;
     /** else **/
     var bot = isBotAgent;
