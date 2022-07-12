@@ -34,9 +34,9 @@ echo "==> You are about to deploy to $SERVER_NAME"
 read -p "==> Are you sure (y/N)? "  -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
-  echo '==> Minifying one more time'
+  echo '==> Compiling one more time'
 
-  npm run minify
+  npm run compile
 
   if [[ `git status --porcelain` ]]; then
     echo -e "==> ${RED}There are changes in your repo, commit and test them first${RESET}"

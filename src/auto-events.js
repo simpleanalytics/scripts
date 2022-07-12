@@ -67,7 +67,7 @@
 
   var saGlobal = setting("saGlobal", "string", "sa_event");
 
-  // For minifying the script
+  // For compiling the script
   var optionsLink = options;
 
   if (typeof optionsLink === "undefined")

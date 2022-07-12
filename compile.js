@@ -73,6 +73,7 @@ const DEFAULTS = {
   scriptName: "script",
   allowparams: true,
   pathoverwriter: true,
+  nonuniquehostnames: true,
   dev: false,
 };
 
@@ -93,6 +94,7 @@ const LIGHT = {
   ignorednt: false,
   allowparams: false,
   pathoverwriter: false,
+  nonuniquehostnames: false,
 };
 
 const templates = [
@@ -332,12 +334,11 @@ for (const file of files) {
         code: prepend + rawCode,
       };
 
-  if (!codeTemplate)
-    console.warn(RED, `[MINIFY][${name}] codeTemplate is undefined`);
-  if (!template) console.warn(RED, `[MINIFY][${name}] template is undefined`);
+  if (!codeTemplate) console.warn(RED, `[${name}] codeTemplate is undefined`);
+  if (!template) console.warn(RED, `[${name}] template is undefined`);
 
   for (const warning of warnings || [])
-    console.warn(YELLOW, `[MINIFY][${name}] ${warning}`);
+    console.warn(YELLOW, `[${name}] ${warning}`);
 
   const code = fillTemplate(codeTemplate, variables);
 
@@ -353,7 +354,7 @@ for (const file of files) {
     const { index, lineNumber, description } = error;
     console.log(
       RED,
-      `[MINIFY][${name}][ERROR] ${input
+      `[${name}][ERROR] ${input
         .split("/")
         .pop()} ${description} at line ${lineNumber} position ${index}`
     );
@@ -417,10 +418,10 @@ for (const file of files) {
   const fill2 = " ".repeat(Math.max(0, 14 - sourceName.length));
 
   console.log(
-    `[MINIFY] ${name.toLowerCase()} ${fill1}Minified ${sourceName} ${fill2} ${bytesZeroFilled} bytes ${
+    ` ${name.toLowerCase()} ${fill1}Compiled ${sourceName} ${fill2} ${bytesZeroFilled} bytes ${
       variables.sri ? " (SRI)" : ""
     }`
   );
 }
 
-console.log(GREEN, `[MINIFY] Done minifying all files`);
+console.log(GREEN, ` Done compiling all files`);
