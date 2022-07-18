@@ -76,7 +76,7 @@ module.exports.navigate = async ({ name, useLocalIp, driver, commands }) => {
       await this.sleep(sleepMs);
     } else if (tab) {
       log(`open new tab (${name})`);
-      await driver.findElement(By.tagName("body")).sendKeys(Key.CONTROL + "t");
+      await driver.findElement(By.css("body")).sendKeys(Key.CONTROL + "t");
     } else if (close) {
       log(`close (${name})`, close);
       await driver.close();
