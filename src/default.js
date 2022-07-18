@@ -297,11 +297,6 @@
     // INITIALIZE VALUES
     //
 
-    /** if spa **/
-    var pushState = "pushState";
-    var dis = window.dispatchEvent;
-    /** endif **/
-
     /** if duration **/
     var duration = "duration";
     var start = now();
@@ -847,6 +842,8 @@
 
     var his = window.history;
     var hisPushState = his ? his.pushState : undefinedVar;
+    var dis = window.dispatchEvent;
+    var pushStateText = "pushState";
 
     // Overwrite history pushState function to
     // allow listening on the pushState event
