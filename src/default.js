@@ -868,10 +868,10 @@
         };
       };
 
-      his.pushState = stateListener(pushState);
+      his.pushState = stateListener(pushStateText);
 
       addEventListenerFunc(
-        pushState,
+        pushStateText,
         function () {
           pageview(1);
         },
