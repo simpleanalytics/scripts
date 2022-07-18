@@ -4,6 +4,7 @@
   "description": "Simple Analytics visitor facing scripts",
   "main": "compile.js",
   "scripts": {
+    "playground": "./playground.sh",
     "watch": "node_modules/.bin/nodemon compile.js --ignore dist",
     "build": "node compile.js",
     "pretest": "npm run build -- testing",

@@ -73,7 +73,9 @@ const DEFAULTS = {
   scriptName: "script",
   allowparams: true,
   pathoverwriter: true,
+  metadata: true,
   nonuniquehostnames: true,
+  ignoremetrics: true,
   dev: false,
 };
 
@@ -94,7 +96,9 @@ const LIGHT = {
   ignorednt: false,
   allowparams: false,
   pathoverwriter: false,
+  metadata: false,
   nonuniquehostnames: false,
+  ignoremetrics: false,
 };
 
 const templates = [
@@ -147,8 +151,8 @@ const templates = [
       ...DEFAULTS,
       version: VERSION,
       scriptName: `cdn_latest_${VERSION}`,
-      baseUrl: "simpleanalyticscdn.com",
-      apiUrlPrefix: "queue.",
+      baseUrl: "localhost:8001",
+      apiUrlPrefix: "",
     },
   },
   {

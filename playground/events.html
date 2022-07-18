@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Simple Analytics</title>
+    <meta name="robots" content="noindex,nofollow" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- Simple Analytics events queue -->
+    <script>
+      window.sa_event =
+        window.sa_event ||
+        function () {
+          var a = [].slice.call(arguments);
+          window.sa_event.q
+            ? window.sa_event.q.push(a)
+            : (window.sa_event.q = [a]);
+        };
+
+      sa_event(
+        "before_script_load",
+        {
+          date: new Date(),
+          modified_at: new Date().toISOString().slice(0, 16) + "Z",
+          deletedAt: new Date().toISOString().slice(0, 16).replace("T", " "),
+          false: false,
+          true: true,
+          null: null,
+          undefined: undefined,
+          zero: 0,
+          one: 1,
+          minus_one: -1,
+        },
+        () => {
+          console.info(
+            "Simple Analytics auto events: collected before_script_load"
+          );
+        }
+      );
+    </script>
+
+    <style>
+      /* Basics */
+      body,
+      html {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+      }
+      body {
+        background: #eef9ff;
+        word-break: break-word;
+        display: flex;
+        justify-content: center;
+        color: #415659;
+        font-family: "Space Grotesk", Arial, sans-serif;
+        font-weight: 400;
+      }
+      main {
+        margin: auto;
+      }
+      * {
+        box-sizing: border-box;
+      }
+
+      /* Fonts */
+      @font-face {
+        font-family: "Space Grotesk";
+        font-weight: 500;
+        src: url("https://assets.simpleanalytics.com/fonts/SpaceGrotesk-Medium.woff2")
+            format("woff2"),
+          url("https://assets.simpleanalytics.com/fonts/SpaceGrotesk-Medium.woff")
+            format("woff");
+      }
+      @font-face {
+        font-family: "Space Grotesk";
+        font-weight: 400;
+        src: url("https://assets.simpleanalytics.com/fonts/SpaceGrotesk-Regular.woff2")
+            format("woff2"),
+          url("https://assets.simpleanalytics.com/fonts/SpaceGrotesk-Regular.woff")
+            format("woff");
+      }
+      h1,
+      h2,
+      h3,
+      h4 {
+        margin: 0 0 1rem 0;
+        line-height: 1.5;
+        font-weight: 500;
+      }
+      p {
+        font-size: 1rem;
+        line-height: 150%;
+      }
+      a {
+        color: #415659;
+      }
+      a:hover {
+        text-decoration: none;
+      }
+
+      /* Layouts */
+      main {
+        padding: 2rem;
+        flex: 0 1 auto;
+        text-align: center;
+      }
+
+      textarea,
+      input {
+        border: 1px solid #232e2f;
+        border-radius: 5px;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        body {
+          background: #2a3638;
+        }
+        textarea,
+        input {
+          background: #232e2f;
+        }
+        body,
+        a,
+        textarea,
+        input {
+          color: #a4bdc0;
+        }
+      }
+
+      textarea {
+        width: 550px;
+        max-width: 100%;
+        height: 160px;
+        padding: 0.5rem;
+        margin: 1rem;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <svg
+        width="70"
+        height="70"
+        viewBox="0 0 400 400"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        style="margin-bottom: 1rem"
+      >
+        <circle cx="200" cy="200" r="200" fill="#FF4F64" />
+        <path d="M132.414 201.448H100V298.69H132.414V201.448Z" fill="white" />
+        <path
+          d="M210.206 143.103H177.793V298.69H210.206V143.103Z"
+          fill="white"
+        />
+        <path d="M288 88H255.586V298.69H288V88Z" fill="white" />
+      </svg>
+
+      <h2>Automated events</h2>
+
+      <p>A test site to test automated events for Simple Analytics.</p>
+
+      <p>
+        <a href="https://example.com" target="_blank" rel="nofollow noopener"
+          >Outbound link</a
+        ><br />
+        <a href="mailto:user@example.com">Email link</a><br />
+        <a href="/file.pdf">Download PDF link</a><br />
+        <a
+          href="https://example.com"
+          data-sa-link-event="navigated_to_example_com"
+          >data-sa-link-event</a
+        >
+      </p>
+
+      <textarea readonly>Loading JavaScript...</textarea>
+
+      <p>
+        In the above console you should see "Auto events" and "Normal embed"
+        script is loaded.<br />
+        Further you should see events show up when you click the links.
+      </p>
+    </main>
+
+    <!-- Some test code for this page specifically -->
+    <script>
+      document.querySelector("textarea").value = "";
+
+      var logger = {
+        log: console.log,
+        error: console.error,
+        warn: console.warn,
+        info: console.info,
+      };
+
+      function log(type = "info", ...text) {
+        logger[type](...text);
+        write(type, ...text);
+      }
+
+      function write(type = "info", ...params) {
+        var line = params
+          .map((param) => {
+            if (!param) return `${param}`;
+            if (typeof param === "object") return JSON.stringify(param);
+            return param;
+          })
+          .join(" ");
+        document.querySelector(
+          "textarea"
+        ).value += `${type.toUpperCase()}: ${line}\n`;
+      }
+
+      console.log = function () {
+        write("log", ...arguments);
+        logger.log.apply(console, arguments);
+      };
+      console.error = function () {
+        write("error", ...arguments);
+        logger.error.apply(console, arguments);
+      };
+      console.warn = function () {
+        write("warn", ...arguments);
+        logger.warn.apply(console, arguments);
+      };
+      console.info = function () {
+        write("info", ...arguments);
+        logger.info.apply(console, arguments);
+      };
+
+      function scriptLoaded(type, ok) {
+        if (ok) {
+          log("info", `${type} script is loaded`);
+        } else {
+          log("error", `${type} script is blocked on your computer`);
+        }
+      }
+    </script>
+
+    <script>
+      function appendMetadata(data) {
+        console.info({ data });
+        if (data.type === "pageview")
+          return {
+            page_id: 123,
+          };
+        else
+          return {
+            event_id: 124,
+            modified_at: null,
+          };
+      }
+    </script>
+
+    <!-- Normal collect script -->
+    <script
+      async
+      data-allow-params="project"
+      data-metadata-collector="appendMetadata"
+      data-hostname="playground.simpleanalytics.com"
+      data-ignore-metrics="referrer,utm,country,session,timeonpage,scrolled,useragent,screensize,viewportsize,language"
+      onerror="scriptLoaded('Normal embed', false)"
+      onload="scriptLoaded('Normal embed', true)"
+      src="/dist/latest/latest.js"
+    ></script>
+
+    <!-- Auto events script -->
+    <script
+      async
+      data-hostname="playground.simpleanalytics.com"
+      data-collect="outbound,emails,downloads"
+      data-extensions="pdf,csv,docx,xlsx,zip,doc,xls"
+      data-use-title="true"
+      data-full-urls="false"
+      onerror="scriptLoaded('Auto events', false)"
+      onload="scriptLoaded('Auto events', true)"
+      src="/dist/latest/auto-events.js"
+    ></script>
+
+    <script>
+      (function () {
+        function saLoadedLinkEvents() {
+          document
+            .querySelectorAll("a[data-sa-link-event]")
+            .forEach(function (element) {
+              var href = element.getAttribute("href");
+              var eventName = element.getAttribute("data-sa-link-event");
+              if (!href || !window.sa_event || !window.sa_event_loaded) return;
+
+              element.addEventListener("click", function (event) {
+                var target = element.getAttribute("target");
+                if (target === "_blank") {
+                  event.preventDefault();
+                  window.sa_event(eventName, function () {
+                    window.location.href = href;
+                  });
+                  return false;
+                } else {
+                  window.sa_event(eventName);
+                  return true;
+                }
+              });
+            });
+        }
+
+        if (
+          document.readyState === "ready" ||
+          document.readyState === "complete"
+        ) {
+          saLoadedLinkEvents();
+        } else {
+          document.addEventListener("readystatechange", function (event) {
+            if (event.target.readyState === "complete") saLoadedLinkEvents();
+          });
+        }
+      })();
+    </script>
+  </body>
+</html>

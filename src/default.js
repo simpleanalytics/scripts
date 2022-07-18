@@ -2,12 +2,6 @@
 
 (function (window, overwriteOptions, baseUrl, apiUrlPrefix, version, saGlobal) {
   try {
-    // Only load our script once, customers can still send multiple page views
-    // with the sa_pageview function if they turn off auto collect.
-    var loadedVariable = saGlobal + "_loaded";
-    if (!window || window[loadedVariable] === true) return;
-    window[loadedVariable] = true;
-
     /////////////////////
     // PREDEFINED VARIABLES FOR BETTER MINIFICATION
     //
@@ -15,8 +9,13 @@
     // This seems like a lot of repetition, but it makes our script available for
     // multple destination which prevents us to need multiple scripts. The minified
     // version stays small.
+    var undefinedVar = undefined;
+    var trueVar = true;
+    var falseVar = false;
+    var trueText = "true";
     var https = "https:";
-    var pageviewsText = "pageview";
+    var pageviewText = "pageview";
+    var eventText = "event";
     /** if errorhandling **/
     var errorText = "error";
     /** endif **/
@@ -30,20 +29,18 @@
     var doc = window.document;
     var userAgent = nav.userAgent;
     var notSending = "Not sending request ";
-    var fetchedHighEntropyValues = false;
+    var fetchedHighEntropyValues = falseVar;
     var encodeURIComponentFunc = encodeURIComponent;
     var decodeURIComponentFunc = decodeURIComponent;
     var stringify = JSON.stringify;
     var thousand = 1000;
     var addEventListenerFunc = window.addEventListener;
     var fullApiUrl = protocol + apiUrlPrefix + baseUrl;
-    var undefinedVar = undefined;
     var documentElement = doc.documentElement || {};
     var language = "language";
     var Height = "Height";
     var Width = "Width";
     var scroll = "scroll";
-    var trueText = "true";
     var uaData = nav.userAgentData;
     var scrollHeight = scroll + Height;
     var offsetHeight = "offset" + Height;
@@ -67,6 +64,28 @@
     // A simple log function so the user knows why a request is not being send
     var warn = function (message) {
       if (con && con.warn) con.warn("Simple Analytics:", message);
+    };
+
+    var hasProp = function (obj, prop) {
+      return Object.prototype.hasOwnProperty.call(obj, prop);
+    };
+
+    var convertCommaSeparatedToArray = function (csv) {
+      return Array.isArray(csv)
+        ? csv
+        : isString(csv) && csv.length
+        ? csv.split(/, ?/)
+        : [];
+    };
+
+    var collectMetricByString = function (metricAbbreviation) {
+      /** if ignoremetrics **/
+      return !ignoreMetrics.find(function (item) {
+        return new RegExp("^" + metricAbbreviation).test(item);
+      });
+      /** else **/
+      return true;
+      /** endif **/
     };
 
     var now = Date.now;
@@ -101,14 +120,18 @@
       return typeof string == "string";
     };
 
+    var isObject = function (object) {
+      return object && object.constructor === Object;
+    };
+
     var assign = function () {
       var to = {};
       var arg = arguments;
       for (var index = 0; index < arg.length; index++) {
         var nextSource = arg[index];
-        if (nextSource) {
+        if (isObject(nextSource)) {
           for (var nextKey in nextSource) {
-            if (Object.prototype.hasOwnProperty.call(nextSource, nextKey)) {
+            if (hasProp(nextSource, nextKey)) {
               to[nextKey] = nextSource[nextKey];
             }
           }
@@ -116,6 +139,22 @@
       }
       return to;
     };
+
+    /** if metadata **/
+    var appendMetadata = function (metadata, data) {
+      if (isObject(window[saGlobal + "_metadata"])) metadata = assign(metadata);
+      var metadataCollectorFunction = window[metadataCollector];
+      if (!isFunction(metadataCollectorFunction)) return metadata;
+      try {
+        return assign(
+          metadata,
+          metadataCollectorFunction.call(window, assign(data, metadata))
+        );
+      } catch (error) {
+        warn(errorText + " in your metadata function: " + error);
+      }
+    };
+    /** endif **/
 
     var isBoolean = function (value) {
       return !!value === value;
@@ -151,14 +190,25 @@
             ignorePage === path ||
             new RegExp(ignorePage.replace(/\*/gi, "(.*)"), "gi").test(path)
           )
-            return true;
+            return trueVar;
         } catch (error) {
-          return false;
+          return falseVar;
         }
       }
-      return false;
+      return falseVar;
     };
     /** endif **/
+
+    /////////////////////
+    // Warn when using script twice
+    //
+
+    // Only load our script once, customers can still send multiple page views
+    // with the sa_pageview function if they turn off auto collect.
+    var loadedVariable = saGlobal + "_loaded";
+    if (!window || window[loadedVariable] === trueVar)
+      return warn(notSending + "twice");
+    window[loadedVariable] = trueVar;
 
     /////////////////////
     // SEND DATA VIA OUR PIXEL
@@ -169,21 +219,22 @@
       return braveCallback(function (isBrave) {
         data = assign(payload, page, data);
 
-        if (allowParams)
-          data.params = stringify(
-            allowParams
-              .map(function (param) {
-                var params = getParams(param, true);
-                if (!params) return;
-                return { key: params[0], value: params[1] };
-              })
-              .filter(Boolean)
-          );
+        if (allowParams) {
+          var found = falseVar;
+          var object = {};
+          allowParams.map(function (param) {
+            var params = getParams(param, trueVar);
+            if (!params) return;
+            found = trueVar;
+            object[params[0]] = params[1];
+          });
+          if (found) data.params = stringify(object);
+        }
 
-        if (isBrave) data.brave = true;
+        if (isBrave) data.brave = trueVar;
 
         /** if dev **/
-        data.dev = true;
+        data.dev = trueVar;
         /** endif **/
 
         var image = new Image();
@@ -238,7 +289,7 @@
           sendError(event.message);
         }
       },
-      false
+      falseVar
     );
     /** endif **/
 
@@ -259,14 +310,6 @@
     /** if scroll **/
     var scrolled = 0;
     /** endif **/
-
-    // This code could error on (incomplete) implementations, that's why we use try...catch
-    var timezone;
-    try {
-      timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    } catch (e) {
-      /* Do nothing */
-    }
 
     /////////////////////
     // GET SETTINGS
@@ -300,18 +343,8 @@
     // Some customers want to collect page views manually
     var autoCollect = !(
       attr(scriptElement, "auto-collect") == "false" ||
-      overwriteOptions.autoCollect === false
+      overwriteOptions.autoCollect === falseVar
     );
-    /** endif **/
-
-    /** if (or ignorepages allowparams) **/
-    var convertCommaSeparatedToArray = function (csv) {
-      return Array.isArray(csv)
-        ? csv
-        : isString(csv) && csv.length
-        ? csv.split(/, ?/)
-        : [];
-    };
     /** endif **/
 
     /** if events **/
@@ -334,10 +367,32 @@
     );
     /** endif **/
 
+    /** if ignoremetrics **/
+    // Customers can skip data points
+    ignoreMetrics = convertCommaSeparatedToArray(
+      overwriteOptions.ignoreMetrics || attr(scriptElement, "skip-datapoints")
+    );
+    /** endif **/
+
+    /** if nonuniquehostnames **/
+    // Customers can allow params
+    var nonUniqueHostnames = convertCommaSeparatedToArray(
+      overwriteOptions.nonUniqueHostnames ||
+        attr(scriptElement, "non-unique-hostnames")
+    );
+    /** endif **/
+
     /** if pathoverwriter **/
     // Customers can overwrite certain values
     var pathOverwriter =
       overwriteOptions.pathOverwriter || attr(scriptElement, "path-overwriter");
+    /** endif **/
+
+    /** if metadata **/
+    // Customers can add metadata to events and pageviews via a function
+    var metadataCollector =
+      overwriteOptions.metadataCollector ||
+      attr(scriptElement, "metadata-collector");
     /** endif **/
 
     // By default we allow source, medium in the URLs. With strictUtm enabled
@@ -347,17 +402,28 @@
       attr(scriptElement, "strict-utm") == trueText;
 
     var braveCallback = function (callback) {
-      if (!nav.brave) callback(false);
+      if (!nav.brave) callback(falseVar);
       else
         nav.brave
           .isBrave()
           .then(function () {
-            callback(true);
+            callback(trueVar);
           })
           .catch(function () {
-            callback(false);
+            callback(falseVar);
           });
     };
+
+    // This code could error on (incomplete) implementations, that's why we use try...catch
+    var timezone;
+    try {
+      // c = countries
+      timezone = collectMetricByString("c")
+        ? Intl.DateTimeFormat().resolvedOptions().timeZone
+        : undefinedVar;
+    } catch (e) {
+      /* Do nothing */
+    }
 
     /////////////////////
     // PAYLOAD FOR BOTH PAGE VIEWS AND EVENTS
@@ -367,8 +433,8 @@
     var bot =
       nav.webdriver ||
       window.__nightmare ||
-      window.callPhantom window ||
-      window._phantom window ||
+      window.callPhantom ||
+      window._phantom ||
       window.phantom ||
       window.__polypane ||
       window._bot ||
@@ -377,21 +443,27 @@
     var bot = isBotAgent;
     /** endif **/
 
+    // t = timeonpage, scro = scrolled
+    var collectDataOnLeave =
+      collectMetricByString("t") || collectMetricByString("scro");
+
     var payload = {
       version: version,
-      ua: userAgent,
+      // us = useragent
+      ua: collectMetricByString("us") ? userAgent : undefinedVar,
       https: loc.protocol == https,
       timezone: timezone,
       hostname: definedHostname,
-      page_id: uuid(),
-      session_id: uuid(),
+      page_id: collectDataOnLeave ? uuid() : undefinedVar,
+      // se = sessions
+      session_id: collectMetricByString("se") ? uuid() : undefinedVar,
     };
-    if (bot) payload.bot = true;
+    if (bot) payload.bot = trueVar;
 
     /** if sri **/
-    payload.sri = true;
+    payload.sri = trueVar;
     /** else **/
-    payload.sri = false;
+    payload.sri = falseVar;
     /** endif **/
 
     // Use User-Agent Client Hints for better privacy
@@ -411,7 +483,7 @@
 
     /** if warnings **/
     // Warn when no document.doctype is defined (this breaks some documentElement dimensions)
-    if (!doc.doctype) warn("Add DOCTYPE html for more accurate dimensions");
+    if (!doc.doctype) warn("Add DOCTYPE html for accurate dimensions");
     /** endif **/
 
     // When a customer overwrites the hostname, we need to know what the original
@@ -449,7 +521,7 @@
       !overwrittenHostname
     )
       warn(
-        "Set a hostname when sending data from " +
+        "Set hostname on " +
           locationHostname +
           ". See " +
           docsUrl +
@@ -472,14 +544,24 @@
 
     // The prefix utm_ is optional with strictUtm disabled
     var utmRegexPrefix = "(utm_)" + (strictUtm ? "" : "?");
-    var source = {
-      source: getParams(utmRegexPrefix + "source" + (strictUtm ? "" : "|ref")),
-      medium: getParams(utmRegexPrefix + "medium"),
-      campaign: getParams(utmRegexPrefix + "campaign"),
-      term: getParams(utmRegexPrefix + "term"),
-      content: getParams(utmRegexPrefix + "content"),
-      referrer: referrer,
-    };
+
+    // ut = utms
+    var source = collectMetricByString("ut")
+      ? {
+          source: getParams(
+            utmRegexPrefix + "source" + (strictUtm ? "" : "|ref")
+          ),
+          medium: getParams(utmRegexPrefix + "medium"),
+          campaign: getParams(utmRegexPrefix + "campaign"),
+          term: getParams(utmRegexPrefix + "term"),
+          content: getParams(utmRegexPrefix + "content"),
+        }
+      : {};
+
+    // r = referrers
+    if (collectMetricByString("r")) {
+      source.referrer = referrer;
+    }
 
     /////////////////////
     // TIME ON PAGE AND SCROLLED LOGIC
@@ -489,16 +571,24 @@
     var msHidden = 0;
 
     var sendOnLeave = function (id, push) {
+      if (!collectDataOnLeave) return;
+
       var append = { type: "append", original_id: push ? id : payload.page_id };
 
       /** if duration **/
-      append[duration] = Math.round((now() - start - msHidden) / thousand);
+      // t = timeonpage
+      if (collectMetricByString("t")) {
+        append[duration] = Math.round((now() - start - msHidden) / thousand);
+      }
       msHidden = 0;
       start = now();
       /** endif **/
 
       /** if scroll **/
-      append.scrolled = Math.max(0, scrolled, position());
+      // scro = scrolled
+      if (collectMetricByString("scro")) {
+        append.scrolled = Math.max(0, scrolled, position());
+      }
       /** endif **/
 
       if (push || !nav.sendBeacon) {
@@ -514,7 +604,7 @@
 
     /** if duration **/
     var hiddenStart;
-    window.addEventListener(
+    addEventListenerFunc(
       "visibilitychange",
       function () {
         if (doc.hidden) {
@@ -522,11 +612,11 @@
           hiddenStart = now();
         } else msHidden += now() - hiddenStart;
       },
-      false
+      falseVar
     );
     /** endif **/
 
-    addEventListenerFunc(pagehide, sendOnLeave, false);
+    addEventListenerFunc(pagehide, sendOnLeave, falseVar);
 
     /** if scroll **/
     var body = doc.body || {};
@@ -560,7 +650,7 @@
         function () {
           if (scrolled < position()) scrolled = position();
         },
-        false
+        falseVar
       );
     });
     /** endif **/
@@ -590,7 +680,7 @@
       /** if ignorepages **/
       // Ignore pages specified in data-ignore-pages
       if (shouldIgnore(path)) {
-        warn(notSending + "because " + path + " is ignored");
+        warn(notSending + ", ignored " + path);
         return;
       }
       /** endif **/
@@ -604,9 +694,14 @@
     };
 
     // Send page view and append data to it
-    var sendPageView = function (isPushState, deleteSourceInfo, sameSite) {
-      if (isPushState) sendOnLeave("" + payload.page_id, true);
-      payload.page_id = uuid();
+    var sendPageView = function (
+      isPushState,
+      deleteSourceInfo,
+      sameSite,
+      metadata
+    ) {
+      if (isPushState) sendOnLeave("" + payload.page_id, trueVar);
+      if (collectDataOnLeave) payload.page_id = uuid();
 
       var currentPage = definedHostname + getPath();
 
@@ -619,7 +714,11 @@
             : source,
           {
             id: payload.page_id,
-            type: pageviewsText,
+            type: pageviewText,
+
+            /** if metadata **/
+            metadata: stringify(metadata || []),
+            /** endif **/
           }
         )
       );
@@ -627,7 +726,7 @@
       referrer = currentPage;
     };
 
-    var pageview = function (isPushState, pathOverwrite) {
+    var pageview = function (isPushState, pathOverwrite, metadata) {
       // Obfuscate personal data in URL by dropping the search and hash
       var path = getPath(pathOverwrite);
 
@@ -638,18 +737,27 @@
       page.path = path;
 
       /** if screen **/
-      page.viewport_width =
-        Math.max(documentElement[clientWidth] || 0, window.innerWidth || 0) ||
-        null;
-      page.viewport_height =
-        Math.max(documentElement[clientHeight] || 0, window.innerHeight || 0) ||
-        null;
+      // v = viewportsizes
+      if (collectMetricByString("v")) {
+        page.viewport_width =
+          Math.max(documentElement[clientWidth] || 0, window.innerWidth || 0) ||
+          null;
+        page.viewport_height =
+          Math.max(
+            documentElement[clientHeight] || 0,
+            window.innerHeight || 0
+          ) || null;
+      }
       /** endif **/
 
-      if (nav[language]) page[language] = nav[language];
+      // l = language
+      if (collectMetricByString("l")) {
+        if (nav[language]) page[language] = nav[language];
+      }
 
       /** if screen **/
-      if (screen) {
+      // sc = screensizes
+      if (screen && collectMetricByString("sc")) {
         page.screen_width = screen.width;
         page.screen_height = screen.height;
       }
@@ -657,36 +765,56 @@
 
       // If a user does refresh we need to delete the referrer because otherwise it count double
       var perf = window.performance;
-      var navigation = "navigation";
+      var navigationText = "navigation";
 
       // Check if back, forward or reload buttons are being used in modern browsers
       var userNavigated =
         perf &&
         perf.getEntriesByType &&
-        perf.getEntriesByType(navigation)[0] &&
-        perf.getEntriesByType(navigation)[0].type
+        perf.getEntriesByType(navigationText)[0] &&
+        perf.getEntriesByType(navigationText)[0].type
           ? ["reload", "back_forward"].indexOf(
-              perf.getEntriesByType(navigation)[0].type
+              perf.getEntriesByType(navigationText)[0].type
             ) > -1
           : // Check if back, forward or reload buttons are being use in older browsers
             // 1: TYPE_RELOAD, 2: TYPE_BACK_FORWARD
             perf &&
-            perf[navigation] &&
-            [1, 2].indexOf(perf[navigation].type) > -1;
+            perf[navigationText] &&
+            [1, 2].indexOf(perf[navigationText].type) > -1;
 
       // Check if referrer is the same as current real hostname (not the defined hostname!)
+      /** if nonuniquehostnames **/
+      var currentReferrerHostname = doc.referrer.split(slash)[2];
+      var sameSite = referrer
+        ? nonUniqueHostnames.indexOf(currentReferrerHostname) > -1 ||
+          currentReferrerHostname == locationHostname
+        : falseVar;
+      /** else **/
       var sameSite = referrer
         ? doc.referrer.split(slash)[2] == locationHostname
-        : false;
+        : falseVar;
+      /** endif **/
 
       /** if uniques **/
       // We set unique variable based on pushstate or back navigation, if no match we check the referrer
-      page.unique = isPushState || userNavigated ? false : !sameSite;
+      page.unique = isPushState || userNavigated ? falseVar : !sameSite;
+      /** endif **/
+
+      /** if metadata **/
+      metadata = appendMetadata(metadata, {
+        type: pageviewText,
+        path: page.path,
+      });
       /** endif **/
 
       var triggerSendPageView = function () {
-        fetchedHighEntropyValues = true;
-        sendPageView(isPushState, isPushState || userNavigated, sameSite);
+        fetchedHighEntropyValues = trueVar;
+        sendPageView(
+          isPushState,
+          isPushState || userNavigated,
+          sameSite,
+          metadata
+        );
       };
 
       if (!fetchedHighEntropyValues) {
@@ -735,7 +863,7 @@
             // Fix for IE
             // https://github.com/simpleanalytics/scripts/issues/8
             event = doc.createEvent("Event");
-            event.initEvent(type, true, true);
+            event.initEvent(type, trueVar, trueVar);
           }
           event.arguments = arg;
           dis(event);
@@ -750,7 +878,7 @@
         function () {
           pageview(1);
         },
-        false
+        falseVar
       );
 
       addEventListenerFunc(
@@ -758,7 +886,7 @@
         function () {
           pageview(1);
         },
-        false
+        falseVar
       );
     }
     /** endif **/
@@ -771,17 +899,24 @@
         function () {
           pageview(1);
         },
-        false
+        falseVar
       );
     }
     /** endif **/
 
     /** if (or spa hash) **/
     if (autoCollect) pageview();
-    else
+    else {
+      /** if metadata **/
+      window.sa_pageview = function (path, metadata) {
+        pageview(0, path, metadata);
+      };
+      /** else **/
       window.sa_pageview = function (path) {
         pageview(0, path);
       };
+      /** endif **/
+    }
     /** else **/
     pageview();
     /** endif **/
@@ -793,12 +928,14 @@
 
     var validTypes = ["string", "number"];
 
-    var sendEvent = function (event, callbackRaw) {
+    var sendEvent = function (event, metadata, callbackRaw) {
+      if (!callbackRaw && isFunction(metadata)) callbackRaw = metadata;
+
       var eventIsFunction = isFunction(event);
       var callback = isFunction(callbackRaw) ? callbackRaw : function () {};
 
       if (validTypes.indexOf(typeof event) < 0 && !eventIsFunction) {
-        warn("event is not a string: " + event);
+        warn(eventText + " isn't a string: " + event);
         return callback();
       }
 
@@ -806,22 +943,29 @@
         if (eventIsFunction) {
           event = event();
           if (validTypes.indexOf(typeof event) < 0) {
-            warn("event function output is not a string: " + event);
+            warn(eventText + " function output isn't a string: " + event);
             return callback();
           }
         }
       } catch (error) {
-        warn("in your event function: " + error.message);
+        warn(errorText + " in your event function: " + error);
         return callback();
       }
 
       event = ("" + event).replace(/[^a-z0-9]+/gi, "_").replace(/(^_|_$)/g, "");
 
+      /** if metadata **/
+      metadata = appendMetadata(metadata, { type: eventText, event: event });
+      /** endif **/
+
       if (event) {
         sendData(
           assign(source, {
-            type: "event",
+            type: eventText,
             event: event,
+            /** if metadata **/
+            metadata: stringify(metadata || []),
+            /** endif **/
           }),
           callback
         );
@@ -845,7 +989,7 @@
 
     // Post events from the queue of the user defined function
     for (var event in queue) {
-      if (Object.prototype.hasOwnProperty.call(queue, event)) {
+      if (hasProp(queue, event)) {
         Array.isArray(queue[event])
           ? sendEvent.apply(null, queue[event])
           : sendEvent(queue[event]);
