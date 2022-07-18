@@ -2,7 +2,7 @@ const { expect } = require("chai");
 const UUIDvalidate = require("uuid-validate");
 const { getRequests } = require("./helpers");
 
-module.exports = async ({ os }) => {
+module.exports = async ({ os, browser }) => {
   const requests = getRequests(global.REQUESTS, {
     body: { type: "event" },
   });
@@ -50,6 +50,11 @@ module.exports = async ({ os }) => {
         /[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/.test(request.body.hostname),
         "Hostname should be an IP on iOS"
       ).to.be.true;
+    } else if (os === "OS X" && browser === "safari") {
+      expect(
+        request.body.hostname,
+        "Hostname should be bs-local.com on OS X Safari"
+      ).to.equal("bs-local.com");
     } else {
       expect(
         request.body.hostname,

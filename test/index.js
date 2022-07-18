@@ -28,6 +28,8 @@ const getSeleniumVersion = ({ browser, os, browser_version }) => {
   const isMobile = ["ios", "android"].includes(os);
   if ((browser === "chrome" && version(browser_version) < 50) || isMobile)
     return false;
+  if (os === "OS X" && browser === "chrome") return "3.14.0";
+  if (os === "Windows" && browser === "ie") return "3.14.0";
   if (browser === "firefox" && version(browser_version) >= 94) return "4.0.0";
   return "4.0.0-alpha-2";
 };
