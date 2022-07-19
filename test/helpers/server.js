@@ -84,6 +84,8 @@ const route = async (req, res) => {
   let onload = "";
   if (event === "function") {
     onload = `sa_event(function() { return "function" + "output"; });`;
+  } else if (event === "metadata") {
+    onload = `sa_event("${event}", { date: new Date(), bool: false, int: 20301, string: "hi'/301%20uas@#*0" });`;
   } else if (event) {
     onload = `sa_event("${event}");`;
   } else if (bool(push)) {

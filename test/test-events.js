@@ -7,7 +7,7 @@ module.exports = async ({ os, browser }) => {
     body: { type: "event" },
   });
 
-  expect(requests, "There should be two event requests").to.have.lengthOf(2);
+  expect(requests, "There should be two event requests").to.have.lengthOf(3);
 
   expect(requests[0].body.event, "Event should be 'event_123'").to.equal(
     "event_123"
@@ -16,6 +16,15 @@ module.exports = async ({ os, browser }) => {
   expect(requests[1].body.event, "Event should be 'functionoutput'").to.equal(
     "functionoutput"
   );
+
+  expect(requests[2].body.metadata, "Event should have metadata").to.contain(
+    '","bool":false,"int":20301,"string":"hi\'/301%20uas@#*0"}'
+  );
+
+  expect(
+    new Date(JSON.parse(requests[2].body.metadata).date),
+    "Event should have a date in the last 60 seconds"
+  ).to.greaterThan(new Date(Date.now() - 60000));
 
   requests.map((request) => {
     expect(

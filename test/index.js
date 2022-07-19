@@ -313,10 +313,11 @@ const getDeviceName = ({
           { script: "/latest/hello.js", event: "-- event 123 &&" },
           { wait: "/simple.gif", params: { body: { type: "event" } } },
           { script: "/latest/hello.js", event: "function" },
+          { script: "/latest/hello.js", event: "metadata" },
           {
             wait: "/simple.gif",
             params: { body: { type: "event" } },
-            amount: 2,
+            amount: 3,
           },
         ];
 
