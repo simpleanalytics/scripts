@@ -200,138 +200,141 @@ const getDeviceName = ({
       )
     );
 
-  for (const browser of browsers) {
-    suiteInstance.addTest(
-      new Mocha.Test(`Testing ${browser.name}`, async function () {
-        const seleniumVersion = getSeleniumVersion(browser);
-        if (seleniumVersion) {
-          browser["browserstack.selenium_version"] = seleniumVersion;
-        }
+  for (const [index, browser] of browsers.entries()) {
+    const total = browsers.length;
+    const testName = `Testing ${browser.name} (${index + 1}/${total})`;
 
-        const appiumVersion = getAppiumVersion(browser);
-        if (appiumVersion) {
-          browser["browserstack.appium_version"] = appiumVersion;
-        }
+    const test = async function () {
+      const seleniumVersion = getSeleniumVersion(browser);
+      if (seleniumVersion) {
+        browser["browserstack.selenium_version"] = seleniumVersion;
+      }
 
-        browser.supportsSendBeacon = getSupportsSendBeacon(browser);
-        browser.supportsPushState = getSupportsPushState(browser);
-        browser.supportsClientHints = getSupportsClientHints(browser);
-        browser.useLocalIp = browser.os === "ios";
+      const appiumVersion = getAppiumVersion(browser);
+      if (appiumVersion) {
+        browser["browserstack.appium_version"] = appiumVersion;
+      }
 
-        log(`Waiting to get ${browser.name}...`);
+      browser.supportsSendBeacon = getSupportsSendBeacon(browser);
+      browser.supportsPushState = getSupportsPushState(browser);
+      browser.supportsClientHints = getSupportsClientHints(browser);
+      browser.useLocalIp = browser.os === "ios";
 
-        const driverOptions = { ...BS_CAPABILITIES, ...browser };
+      log(`Waiting to get ${browser.name}...`);
 
-        const timezoneSupport = setTimezoneSupport(browser);
-        if (timezoneSupport) {
-          driverOptions["browserstack.timezone"] = "Europe/Amsterdam";
-        }
+      const driverOptions = { ...BS_CAPABILITIES, ...browser };
 
-        let driver = await getDriverWithTimeout(driverOptions);
+      const timezoneSupport = setTimezoneSupport(browser);
+      if (timezoneSupport) {
+        driverOptions["browserstack.timezone"] = "Europe/Amsterdam";
+      }
 
-        // Try again with new device when driver is not available
+      let driver = await getDriverWithTimeout(driverOptions);
+
+      // Try again with new device when driver is not available
+      if (!driver || typeof driver.get !== "function") {
+        driver = await getDriverWithTimeout(driverOptions);
+
+        // Device seems unavailable so this test will fail
         if (!driver || typeof driver.get !== "function") {
-          driver = await getDriverWithTimeout(driverOptions);
-
-          // Device seems unavailable so this test will fail
-          if (!driver || typeof driver.get !== "function") {
-            expect(true, `Getting driver for ${browser.name}`).to.be.false;
-            return;
-          }
+          expect(true, `Getting driver for ${browser.name}`).to.be.false;
+          return;
         }
+      }
 
-        let commands = [];
+      let commands = [];
 
-        if (browser.supportsSendBeacon) {
-          commands = [
-            {
-              script: "/latest/latest.js",
-              push: browser.supportsPushState,
-              beacon: browser.supportsSendBeacon,
-            },
-            { wait: "/script.js", amount: 1 },
-            { visit: "/empty" }, // Trigger sendBeacon
-            { wait: "/simple.gif", amount: 3 },
-            { wait: "/append" },
-          ];
-        } else if (browser.supportsPushState) {
-          commands = [
-            { script: "/latest/latest.js", push: browser.supportsPushState },
-            { wait: "/script.js", amount: 1 },
-            { wait: "/simple.gif", amount: 3 },
-          ];
-        } else {
-          commands = [
-            { script: "/latest/latest.js" },
-            { wait: "/script.js", amount: 2 },
-            {
-              wait: "/simple.gif",
-              amount: 2,
-              params: { body: { type: "pageview" } },
-              timeout: browser.browser === "ie" ? 10000 : null,
-            },
-          ];
-        }
-
-        // Empty global REQUESTS
-        global.REQUESTS = [];
-
-        await navigate({
-          ...browser,
-          commands,
-          driver,
-        });
-
-        // console.log(JSON.stringify(global.REQUESTS, null, 2));
-
-        if (browser.supportsSendBeacon) {
-          log("Testing beacon");
-          await require("./test-beacon")(browser);
-        } else if (browser.supportsPushState) {
-          log("Testing one beacon");
-          await require("./test-one-beacon")(browser);
-        }
-
-        if (browser.supportsPushState) {
-          log("Testing push state");
-          await require("./test-pushstate")(browser);
-        } else {
-          log("Testing no push state");
-          await require("./test-no-pushstate")(browser);
-        }
-
-        if (browser.supportsClientHints) {
-          log("We can't test client hints because they only work on https");
-        }
-
-        log("Testing events");
-
-        // Empty global REQUESTS
-        global.REQUESTS = [];
-
+      if (browser.supportsSendBeacon) {
         commands = [
-          { script: "/latest/hello.js", event: "-- event 123 &&" },
-          { wait: "/simple.gif", params: { body: { type: "event" } } },
-          { script: "/latest/hello.js", event: "function" },
-          { script: "/latest/hello.js", event: "metadata" },
+          {
+            script: "/latest/latest.js",
+            push: browser.supportsPushState,
+            beacon: browser.supportsSendBeacon,
+          },
+          { wait: "/script.js", amount: 1 },
+          { visit: "/empty" }, // Trigger sendBeacon
+          { wait: "/simple.gif", amount: 3 },
+          { wait: "/append" },
+        ];
+      } else if (browser.supportsPushState) {
+        commands = [
+          { script: "/latest/latest.js", push: browser.supportsPushState },
+          { wait: "/script.js", amount: 1 },
+          { wait: "/simple.gif", amount: 3 },
+        ];
+      } else {
+        commands = [
+          { script: "/latest/latest.js" },
+          { wait: "/script.js", amount: 2 },
           {
             wait: "/simple.gif",
-            params: { body: { type: "event" } },
-            amount: 3,
+            amount: 2,
+            params: { body: { type: "pageview" } },
+            timeout: browser.browser === "ie" ? 10000 : null,
           },
         ];
+      }
 
-        await navigate({
-          ...browser,
-          commands,
-          driver,
-        });
+      // Empty global REQUESTS
+      global.REQUESTS = [];
 
-        await require("./test-events")(browser);
+      await navigate({
+        ...browser,
+        commands,
+        driver,
+      });
 
-        await driver.quit();
-      })
-    );
+      // console.log(JSON.stringify(global.REQUESTS, null, 2));
+
+      if (browser.supportsSendBeacon) {
+        log("Testing beacon");
+        await require("./test-beacon")(browser);
+      } else if (browser.supportsPushState) {
+        log("Testing one beacon");
+        await require("./test-one-beacon")(browser);
+      }
+
+      if (browser.supportsPushState) {
+        log("Testing push state");
+        await require("./test-pushstate")(browser);
+      } else {
+        log("Testing no push state");
+        await require("./test-no-pushstate")(browser);
+      }
+
+      if (browser.supportsClientHints) {
+        log("We can't test client hints because they only work on https");
+      }
+
+      log("Testing events");
+
+      // Empty global REQUESTS
+      global.REQUESTS = [];
+
+      commands = [
+        { script: "/latest/hello.js", event: "-- event 123 &&" },
+        { wait: "/simple.gif", params: { body: { type: "event" } } },
+        { script: "/latest/hello.js", event: "function" },
+        { script: "/latest/hello.js", event: "metadata" },
+        {
+          wait: "/simple.gif",
+          params: { body: { type: "event" } },
+          amount: 3,
+        },
+      ];
+
+      await navigate({
+        ...browser,
+        commands,
+        driver,
+      });
+
+      await require("./test-events")(browser);
+
+      await driver.quit();
+    };
+
+    suiteInstance.addTest(new Mocha.Test(testName, test));
   }
 
   mochaInstance.run(async (amountFailures) => {
