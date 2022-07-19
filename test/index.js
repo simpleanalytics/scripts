@@ -17,7 +17,39 @@ const {
   BROWSERSTACK_ACCESS_KEY,
 } = require("./constants/browserstack");
 
-const localBrowserFilter = ({ device, browser }) => browser === "firefox"; // device === "Samsung Galaxy S22 Ultra";
+const {
+  TEST_BROWSER,
+  TEST_BROWSER_VERSION,
+  TEST_OS,
+  TEST_DEVICE,
+  TEST_OS_VERSION,
+} = process.env;
+
+const localBrowserFilter = ({
+  device,
+  os,
+  os_version,
+  browser,
+  browser_version,
+}) => {
+  if (TEST_DEVICE && TEST_DEVICE.toLowerCase() !== device.toLowerCase())
+    return false;
+  if (TEST_OS && TEST_OS.toLowerCase() !== os.toLowerCase()) return false;
+  if (
+    TEST_OS_VERSION &&
+    TEST_OS_VERSION.toLowerCase() !== os_version.toLowerCase()
+  )
+    return false;
+  if (TEST_BROWSER && TEST_BROWSER.toLowerCase() !== browser.toLowerCase())
+    return false;
+  if (
+    TEST_BROWSER_VERSION &&
+    TEST_BROWSER_VERSION.toLowerCase() !== browser_version.toLowerCase()
+  )
+    return false;
+
+  return true;
+};
 
 const getMajorVersion = (version) => {
   const major = `${version}`.split(".")[0];
@@ -25,12 +57,13 @@ const getMajorVersion = (version) => {
 };
 
 const getSeleniumVersion = ({ browser, os, browser_version }) => {
-  const isMobile = ["ios", "android"].includes(os);
-  if ((browser === "chrome" && version(browser_version) < 50) || isMobile)
-    return false;
+  if (["ios", "android"].includes(os)) return false;
+  if (browser === "chrome" && version(browser_version) < 50) return false;
+
   if (os === "OS X" && browser === "chrome") return "3.14.0";
   if (os === "Windows" && browser === "ie") return "3.5.2";
   if (browser === "firefox" && version(browser_version) >= 94) return "4.0.0";
+
   return "4.0.0-alpha-2";
 };
 
@@ -129,9 +162,20 @@ const getDeviceName = ({
   log("Testing", browsers.length, "browsers:");
   browsers.map((browser) => {
     const name = getDeviceName(browser);
+    const seleniumVersion = getSeleniumVersion(browser);
+    const appiumVersion = getAppiumVersion(browser);
+
     browser.name = name;
     browser.browserName = browser.browser;
-    log(` - ${name}`);
+
+    const words = [" - ", name];
+    if (seleniumVersion || appiumVersion) words.push(" (");
+    if (seleniumVersion) words.push(`selenium: ${seleniumVersion}`);
+    if (seleniumVersion && appiumVersion) words.push(", ");
+    if (appiumVersion) words.push(`appium: ${appiumVersion}`);
+    if (seleniumVersion || appiumVersion) words.push(")");
+    log(words.join(""));
+
     return browser;
   });
 

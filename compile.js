@@ -151,8 +151,8 @@ const templates = [
       ...DEFAULTS,
       version: VERSION,
       scriptName: `cdn_latest_${VERSION}`,
-      baseUrl: "localhost:8001",
-      apiUrlPrefix: "",
+      baseUrl: "simpleanalyticscdn.com",
+      apiUrlPrefix: "queue.",
     },
   },
   {
