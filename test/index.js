@@ -250,6 +250,7 @@ const getDeviceName = ({
             script: "/latest/latest.js",
             push: browser.supportsPushState,
             beacon: browser.supportsSendBeacon,
+            allowparams: "project",
           },
           { wait: "/script.js", amount: 1 },
           { visit: "/empty" }, // Trigger sendBeacon
@@ -258,13 +259,17 @@ const getDeviceName = ({
         ];
       } else if (browser.supportsPushState) {
         commands = [
-          { script: "/latest/latest.js", push: browser.supportsPushState },
+          {
+            script: "/latest/latest.js",
+            push: browser.supportsPushState,
+            allowparams: "project",
+          },
           { wait: "/script.js", amount: 1 },
           { wait: "/simple.gif", amount: 3 },
         ];
       } else {
         commands = [
-          { script: "/latest/latest.js" },
+          { script: "/latest/latest.js", allowparams: "project" },
           { wait: "/script.js", amount: 2 },
           {
             wait: "/simple.gif",

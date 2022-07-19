@@ -1,6 +1,14 @@
 /* eslint-env browser */
 
-(function (window, overwriteOptions, baseUrl, apiUrlPrefix, version, saGlobal) {
+(function (
+  window,
+  overwriteOptions,
+  baseUrl,
+  apiUrlPrefix,
+  version,
+  saGlobal,
+  sendError
+) {
   try {
     /////////////////////
     // PREDEFINED VARIABLES FOR BETTER MINIFICATION
@@ -178,18 +186,38 @@
       return !!value === value;
     };
 
-    var getParams = function (regex, returnArray) {
-      // From the search we grab the utm_source and ref and save only that
-      var matches = loc.search.match(
-        new RegExp("[?&](" + regex + ")=([^?&]+)", "gi")
-      );
-      var match = matches
-        ? matches.map(function (m) {
-            return m.split(/[?&=]/).slice(-2);
-          })
-        : [];
+    // By default we allow source, medium in the URLs. With strictUtm enabled
+    // we only allow it with the utm_ prefix: utm_source, utm_medium, ...
+    var strictUtm =
+      overwriteOptions.strictUtm ||
+      attr(scriptElement, "strict-utm") == trueText;
 
-      if (match[0]) return returnArray ? match[0] : match[0][1];
+    var getQueryParams = function (ignoreSource) {
+      return (
+        loc.search
+          .slice(1)
+          .split("&")
+          .filter(function (keyValue) {
+            var ignore = ignoreSource || !collectMetricByString("ut");
+            var paramsRegexList = allowParams.join("|");
+            if (ignore && !allowParams.length) return falseVar;
+
+            // The prefix "utm_" is optional with "strictUtm" disabled
+            // "ref" is only collected when "strictUtm" is disabled
+            return new RegExp(
+              ignore
+                ? "^(" + paramsRegexList + ")="
+                : "^((utm_)" +
+                  (strictUtm ? "" : "?") +
+                  "(source|medium|content|term|campaign)" +
+                  (strictUtm ? "" : "|ref") +
+                  "|" +
+                  paramsRegexList +
+                  ")="
+            ).test(keyValue);
+          })
+          .join("&") || undefinedVar
+      );
     };
 
     /** if ignorepages **/
@@ -233,23 +261,11 @@
     //
 
     // Send data via image
-    var sendData = function (data, callback) {
+    var sendData = function (data, callback, onlyThisData) {
       return braveCallback(function (isBrave) {
-        data = assign(payload, page, data);
+        data = onlyThisData ? data : assign(payload, page, data);
 
-        if (allowParams) {
-          var found = falseVar;
-          var object = {};
-          allowParams.map(function (param) {
-            var params = getParams(param, trueVar);
-            if (!params) return;
-            found = trueVar;
-            object[params[0]] = params[1];
-          });
-          if (found) data.params = stringify(object);
-        }
-
-        if (isBrave) data.brave = trueVar;
+        if (isBrave && !onlyThisData) data.brave = trueVar;
 
         /** if dev **/
         data.dev = trueVar;
@@ -288,7 +304,8 @@
     //
 
     // Send errors
-    var sendError = function (errorOrMessage) {
+    // no var because it's scoped outside of the try/catch
+    sendError = function (errorOrMessage) {
       errorOrMessage = errorOrMessage.message || errorOrMessage;
       warn(errorOrMessage);
       sendData({
@@ -393,12 +410,6 @@
       overwriteOptions.metadataCollector ||
       attr(scriptElement, "metadata-collector");
     /** endif **/
-
-    // By default we allow source, medium in the URLs. With strictUtm enabled
-    // we only allow it with the utm_ prefix: utm_source, utm_medium, ...
-    var strictUtm =
-      overwriteOptions.strictUtm ||
-      attr(scriptElement, "strict-utm") == trueText;
 
     var braveCallback = function (callback) {
       if (!nav.brave) callback(falseVar);
@@ -541,27 +552,6 @@
         .replace(/^https?:\/\/((m|l|w{2,3}([0-9]+)?)\.)?([^?#]+)(.*)$/, "$4")
         .replace(/^([^/]+)$/, "$1") || undefinedVar;
 
-    // The prefix utm_ is optional with strictUtm disabled
-    var utmRegexPrefix = "(utm_)" + (strictUtm ? "" : "?");
-
-    // ut = utms
-    var source = collectMetricByString("ut")
-      ? {
-          source: getParams(
-            utmRegexPrefix + "source" + (strictUtm ? "" : "|ref")
-          ),
-          medium: getParams(utmRegexPrefix + "medium"),
-          campaign: getParams(utmRegexPrefix + "campaign"),
-          term: getParams(utmRegexPrefix + "term"),
-          content: getParams(utmRegexPrefix + "content"),
-        }
-      : {};
-
-    // r = referrers
-    if (collectMetricByString("r")) {
-      source.referrer = referrer;
-    }
-
     /////////////////////
     // TIME ON PAGE AND SCROLLED LOGIC
     //
@@ -592,12 +582,9 @@
 
       if (push || !nav.sendBeacon) {
         // sendData will assign payload to request
-        sendData(append);
+        sendData(append, undefinedVar, trueVar);
       } else {
-        nav.sendBeacon(
-          fullApiUrl + "/append",
-          stringify(assign(payload, append))
-        );
+        nav.sendBeacon(fullApiUrl + "/append", stringify(append));
       }
     };
 
@@ -704,23 +691,16 @@
 
       var currentPage = definedHostname + getPath();
 
-      sendData(
-        assign(
-          deleteSourceInfo
-            ? {
-                referrer: sameSite ? referrer : null,
-              }
-            : source,
-          {
-            id: payload.page_id,
-            type: pageviewText,
+      sendData({
+        id: payload.page_id,
+        type: pageviewText,
+        referrer: !deleteSourceInfo || sameSite ? referrer : null,
+        query: getQueryParams(deleteSourceInfo),
 
-            /** if metadata **/
-            metadata: stringify(metadata || []),
-            /** endif **/
-          }
-        )
-      );
+        /** if metadata **/
+        metadata: stringify(metadata),
+        /** endif **/
+      });
 
       referrer = currentPage;
     };
@@ -810,7 +790,7 @@
         fetchedHighEntropyValues = trueVar;
         sendPageView(
           isPushState,
-          isPushState || userNavigated,
+          isPushState || userNavigated || !collectMetricByString("r"), // r = referrers
           sameSite,
           metadata
         );
@@ -955,17 +935,19 @@
 
       event = ("" + event).replace(/[^a-z0-9]+/gi, "_").replace(/(^_|_$)/g, "");
 
+      var eventParams = { type: eventText, event: event };
+
       /** if metadata **/
-      metadata = appendMetadata(metadata, { type: eventText, event: event });
+      metadata = appendMetadata(metadata, eventParams);
       /** endif **/
 
       if (event) {
         sendData(
-          assign(source, {
-            type: eventText,
-            event: event,
+          assign(eventParams, {
+            query: getQueryParams(),
+
             /** if metadata **/
-            metadata: stringify(metadata || []),
+            metadata: stringify(metadata),
             /** endif **/
           }),
           callback

@@ -22,6 +22,13 @@ module.exports = async () => {
     pageViewRequests[1].body.unique
   );
 
+  expect(pageViewRequests[0].body.query, "Query should exist").to.equal(
+    "project=project_x&utm_source=utm_source&medium=medium&ref=ref"
+  );
+
+  expect(pageViewRequests[1].body.query, "Query should not exist").to.be
+    .undefined;
+
   pageViewRequests.map((request) => {
     expect(
       request,
@@ -47,6 +54,8 @@ module.exports = async () => {
 
     expect(UUIDvalidate(request.body.id, 4), "id should be a valid UUIDv4").to
       .be.true;
+
+    expect(request.body.version, "Version should exist").to.exist;
 
     expect(
       parseInt(request.body.version, 10),

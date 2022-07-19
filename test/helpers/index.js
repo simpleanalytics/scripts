@@ -63,12 +63,18 @@ module.exports.navigate = async ({ name, useLocalIp, driver, commands }) => {
     push,
     event,
     tab,
+    allowparams,
   } of commands) {
     const searchParams = new URLSearchParams({
       script: script || "",
       beacon: beacon || "",
       event: event || "",
       push: push || "",
+      allowparams: allowparams || "",
+      project: "project_x",
+      utm_source: "utm_source",
+      medium: "medium",
+      ref: "ref",
     }).toString();
 
     if (sleepMs) {
