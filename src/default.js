@@ -57,6 +57,10 @@
     var screen = window.screen;
     /** endif **/
 
+    // Find the script element where options can be set on
+    var scriptElement =
+      doc.currentScript || doc.querySelector('script[src*="' + baseUrl + '"]');
+
     /////////////////////
     // HELPER FUNCTIONS
     //
@@ -70,6 +74,14 @@
       return Object.prototype.hasOwnProperty.call(obj, prop);
     };
 
+    var isString = function (string) {
+      return typeof string == "string";
+    };
+
+    var attr = function (scriptElement, attribute) {
+      return scriptElement && scriptElement.getAttribute("data-" + attribute);
+    };
+
     var convertCommaSeparatedToArray = function (csv) {
       return Array.isArray(csv)
         ? csv
@@ -78,11 +90,21 @@
         : [];
     };
 
+    /** if ignoremetrics **/
+    // Customers can skip data points
+    var ignoreMetrics = convertCommaSeparatedToArray(
+      overwriteOptions.ignoreMetrics || attr(scriptElement, "ignore-metrics")
+    );
+    /** endif **/
+
     var collectMetricByString = function (metricAbbreviation) {
       /** if ignoremetrics **/
-      return !ignoreMetrics.find(function (item) {
-        return new RegExp("^" + metricAbbreviation).test(item);
-      });
+      // Can't use Array.find() here because we need to support IE9
+      return (
+        ignoreMetrics.filter(function (item) {
+          return new RegExp("^" + metricAbbreviation).test(item);
+        }).length === 0
+      );
       /** else **/
       return true;
       /** endif **/
@@ -114,10 +136,6 @@
 
     var isFunction = function (func) {
       return typeof func == "function";
-    };
-
-    var isString = function (string) {
-      return typeof string == "string";
     };
 
     var isObject = function (object) {
@@ -310,13 +328,6 @@
     // GET SETTINGS
     //
 
-    // Find the script element where options can be set on
-    var scriptElement =
-      doc.currentScript || doc.querySelector('script[src*="' + baseUrl + '"]');
-    var attr = function (scriptElement, attribute) {
-      return scriptElement && scriptElement.getAttribute("data-" + attribute);
-    };
-
     // Script mode, this can be hash mode for example
     var mode = overwriteOptions.mode || attr(scriptElement, "mode");
 
@@ -359,13 +370,6 @@
     // Customers can allow params
     allowParams = convertCommaSeparatedToArray(
       overwriteOptions.allowParams || attr(scriptElement, "allow-params")
-    );
-    /** endif **/
-
-    /** if ignoremetrics **/
-    // Customers can skip data points
-    ignoreMetrics = convertCommaSeparatedToArray(
-      overwriteOptions.ignoreMetrics || attr(scriptElement, "skip-datapoints")
     );
     /** endif **/
 
