@@ -18,12 +18,23 @@ const {
 } = require("./constants/browserstack");
 
 const {
-  TEST_BROWSER,
-  TEST_BROWSER_VERSION,
-  TEST_OS,
-  TEST_DEVICE,
-  TEST_OS_VERSION,
+  DEV_BROWSER,
+  DEV_BROWSER_VERSION,
+  DEV_OS,
+  DEV_DEVICE,
+  DEV_OS_VERSION,
+  DEV_DEVICE_LIMIT,
 } = process.env;
+
+const testLimit = DEV_DEVICE_LIMIT
+  ? Math.max(parseInt(DEV_DEVICE_LIMIT, 10), 1)
+  : 1;
+
+const matches = (param, search) => {
+  if (search?.endsWith(".0")) search = search.slice(0, -2);
+  if (param?.endsWith(".0")) param = param.slice(0, -2);
+  return search && search.toLowerCase() !== param.toLowerCase();
+};
 
 const localBrowserFilter = ({
   device,
@@ -32,21 +43,11 @@ const localBrowserFilter = ({
   browser,
   browser_version,
 }) => {
-  if (TEST_DEVICE && TEST_DEVICE.toLowerCase() !== device.toLowerCase())
-    return false;
-  if (TEST_OS && TEST_OS.toLowerCase() !== os.toLowerCase()) return false;
-  if (
-    TEST_OS_VERSION &&
-    TEST_OS_VERSION.toLowerCase() !== os_version.toLowerCase()
-  )
-    return false;
-  if (TEST_BROWSER && TEST_BROWSER.toLowerCase() !== browser.toLowerCase())
-    return false;
-  if (
-    TEST_BROWSER_VERSION &&
-    TEST_BROWSER_VERSION.toLowerCase() !== browser_version.toLowerCase()
-  )
-    return false;
+  if (matches(device, DEV_DEVICE)) return false;
+  if (matches(os, DEV_OS)) return false;
+  if (matches(os_version, DEV_OS_VERSION)) return false;
+  if (matches(browser, DEV_BROWSER)) return false;
+  if (matches(browser_version, DEV_BROWSER_VERSION)) return false;
 
   return true;
 };
@@ -157,7 +158,10 @@ const getDeviceName = ({
   const retrievedBrowsers = await getBrowsers();
   const browsers = CI
     ? retrievedBrowsers
-    : retrievedBrowsers.filter(localBrowserFilter).slice(0, 1);
+    : retrievedBrowsers
+        .sort(() => Math.random() - 0.5) // Shuffle array
+        .filter(localBrowserFilter)
+        .slice(0, testLimit);
 
   log("Testing", browsers.length, "browsers:");
   browsers.map((browser) => {

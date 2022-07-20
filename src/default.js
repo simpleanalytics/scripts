@@ -6,7 +6,7 @@
   baseUrl,
   apiUrlPrefix,
   version,
-  saGlobal,
+  defaultNamespace,
   sendError
 ) {
   try {
@@ -165,9 +165,17 @@
       return to;
     };
 
+    // Define namespace for the library
+    var namespaceText = "namespace";
+    var namespace =
+      overwriteOptions[namespaceText] ||
+      attr(scriptElement, namespaceText) ||
+      defaultNamespace;
+
     /** if metadata **/
+    var metadataObject = window[namespace + "_metadata"];
     var appendMetadata = function (metadata, data) {
-      if (isObject(window[saGlobal + "_metadata"])) metadata = assign(metadata);
+      if (isObject(metadataObject)) metadata = assign(metadata, metadataObject);
       var metadataCollectorFunction = window[metadataCollector];
       if (!isFunction(metadataCollectorFunction)) return metadata;
       try {
@@ -260,9 +268,9 @@
 
     // Only load our script once, customers can still send multiple page views
     // with the sa_pageview function if they turn off auto collect.
-    var loadedVariable = saGlobal + "_loaded";
-    if (!window || window[loadedVariable] === trueVar)
-      return warn(notSending + "twice");
+    var loadedVariable = namespace + "_loaded";
+    if (window[loadedVariable] == trueVar) return warn(notSending + "twice");
+    window.sa_event_loaded = trueVar;
     window[loadedVariable] = trueVar;
 
     /////////////////////
@@ -381,8 +389,10 @@
 
     /** if events **/
     // Event function name
-    var functionName =
-      overwriteOptions.saGlobal || attr(scriptElement, "sa-global") || saGlobal;
+    var eventFunctionName =
+      overwriteOptions.saGlobal ||
+      attr(scriptElement, "sa-global") ||
+      namespace + "_" + eventText;
     /** endif **/
 
     /** if ignorepages **/
@@ -973,15 +983,16 @@
     };
 
     // Set default function if user didn't define a function
-    if (!window[functionName]) window[functionName] = defaultEventFunc;
+    if (!window[eventFunctionName])
+      window[eventFunctionName] = defaultEventFunc;
 
-    var eventFunc = window[functionName];
+    var eventFunc = window[eventFunctionName];
 
     // Read queue of the user defined function
     var queue = eventFunc && eventFunc.q ? eventFunc.q : [];
 
     // Overwrite user defined function
-    window[functionName] = defaultEventFunc;
+    window[eventFunctionName] = defaultEventFunc;
 
     // Post events from the queue of the user defined function
     for (var event in queue) {
@@ -1005,5 +1016,5 @@
   "{{baseUrl}}",
   "{{apiUrlPrefix}}",
   "{{scriptName}}",
-  "{{saGlobal}}"
+  "{{namespace}}"
 );

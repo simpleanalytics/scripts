@@ -68,7 +68,7 @@ const DEFAULTS = {
   errorhandling: true,
   warnings: true,
   ignorednt: true,
-  saGlobal: "sa_event",
+  namespace: "sa",
   url: "docs.simpleanalytics.com/script",
   scriptName: "script",
   allowparams: true,

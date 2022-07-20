@@ -18,7 +18,15 @@ const bool = (input) => {
 
 const route = async (req, res) => {
   const { pathname, query } = url.parse(req.url, true);
-  const { script, redirect = true, beacon, push, event, allowparams } = query;
+  const {
+    browser,
+    script,
+    redirect = true,
+    beacon,
+    push,
+    event,
+    allowparams,
+  } = query;
 
   if (pathname === "/favicon.ico") {
     res.writeHead(404);
@@ -113,7 +121,8 @@ const route = async (req, res) => {
     const attributes = ["defer", "async"];
     if (allowparams) attributes.push(`data-allow-params="${allowparams}"`);
     const attr = attributes.join(" ");
-    const scriptHTML = `<script ${attr} src="http://localhost/script.js?${params}"></script>`;
+    const host = browser === "ie" ? `http://localhost` : ``;
+    const scriptHTML = `<script ${attr} src="${host}/script.js?${params}"></script>`;
     body += scriptHTML;
   }
 

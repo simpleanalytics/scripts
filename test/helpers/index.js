@@ -47,7 +47,13 @@ module.exports.makeUnique = (array = [], keys = []) => {
   }, []);
 };
 
-module.exports.navigate = async ({ name, useLocalIp, driver, commands }) => {
+module.exports.navigate = async ({
+  browser,
+  name,
+  useLocalIp,
+  driver,
+  commands,
+}) => {
   const localhost = `http://` + (await this.getLocalhost({ useLocalIp }));
 
   for (const {
@@ -75,6 +81,7 @@ module.exports.navigate = async ({ name, useLocalIp, driver, commands }) => {
       utm_source: "utm_source",
       medium: "medium",
       ref: "ref",
+      browser,
     }).toString();
 
     if (sleepMs) {
