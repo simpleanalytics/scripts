@@ -58,7 +58,6 @@
     var platformText = "platform";
     var platformVersionText = "platformVersion";
     var docsUrl = "https://docs.simpleanalytics.com";
-    var allowParams;
     var isBotAgent =
       /(bot|spider|crawl)/i.test(userAgent) && !/(cubot)/i.test(userAgent);
     /** if screen **/
@@ -199,22 +198,32 @@
           .split("&")
           .filter(function (keyValue) {
             var ignore = ignoreSource || !collectMetricByString("ut");
+
+            /** if allowparams **/
             var paramsRegexList = allowParams.join("|");
+            var regex = ignore
+              ? "^(" + paramsRegexList + ")="
+              : "^((utm_)" +
+                (strictUtm ? "" : "?") +
+                "(source|medium|content|term|campaign)" +
+                (strictUtm ? "" : "|ref") +
+                "|" +
+                paramsRegexList +
+                ")=";
             if (ignore && !allowParams.length) return falseVar;
+            /** else **/
+            if (ignore) return falseVar;
+            var regex =
+              "^((utm_)" +
+              (strictUtm ? "" : "?") +
+              "(source|medium|content|term|campaign)" +
+              (strictUtm ? "" : "|ref");
+            (")=");
+            /** endif **/
 
             // The prefix "utm_" is optional with "strictUtm" disabled
             // "ref" is only collected when "strictUtm" is disabled
-            return new RegExp(
-              ignore
-                ? "^(" + paramsRegexList + ")="
-                : "^((utm_)" +
-                  (strictUtm ? "" : "?") +
-                  "(source|medium|content|term|campaign)" +
-                  (strictUtm ? "" : "|ref") +
-                  "|" +
-                  paramsRegexList +
-                  ")="
-            ).test(keyValue);
+            return new RegExp(regex).test(keyValue);
           })
           .join("&") || undefinedVar
       );
@@ -385,7 +394,7 @@
 
     /** if allowparams **/
     // Customers can allow params
-    allowParams = convertCommaSeparatedToArray(
+    var allowParams = convertCommaSeparatedToArray(
       overwriteOptions.allowParams || attr(scriptElement, "allow-params")
     );
     /** endif **/
@@ -562,7 +571,11 @@
     var sendOnLeave = function (id, push) {
       if (!collectDataOnLeave) return;
 
-      var append = { type: "append", original_id: push ? id : payload.page_id };
+      var append = {
+        type: "append",
+        hostname: definedHostname,
+        original_id: push ? id : payload.page_id,
+      };
 
       /** if duration **/
       // t = timeonpage

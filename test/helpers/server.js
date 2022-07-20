@@ -53,7 +53,11 @@ const route = async (req, res) => {
   if (pathname === "/empty") {
     res.writeHead(200);
     res.write(
-      `<!DOCTYPE html><html><head><title>Simple Analytics Test</title><body><h1>${pathname}`
+      `<!DOCTYPE html>
+      <html>
+        <head><title>Simple Analytics Test</title></head>
+        <body><h1>Path: ${pathname}</h1></body>
+      <html>`
     );
     return res.end();
   }
@@ -68,6 +72,7 @@ const route = async (req, res) => {
     res.writeHead(200, { "Content-Type": "text/javascript" });
     body = readFileSync(`./dist${script}`, "utf8");
     body = body.replace(/"https:/gi, `"http:`);
+    body = body.replace(/"simpleanalyticscdn.com"/gi, `"localhost"`);
     res.write(body);
     return res.end();
   }
@@ -75,10 +80,9 @@ const route = async (req, res) => {
   res.writeHead(200, { "Content-Type": "text/html" });
   body = `<!DOCTYPE html>
     <html>
-      <head>
-        <title>Simple Analytics Test</title>
-      </head>
-    <body style="height: 300vh;"><h1>${pathname}`;
+      <head><title>Simple Analytics Test</title></head>
+      <body style="height: 300vh;">
+        <h1>Path: ${pathname}</h1>`;
 
   // As this code will run in older browsers, don't try to be smart with ES6
   let onload = "";
@@ -89,7 +93,7 @@ const route = async (req, res) => {
   } else if (event) {
     onload = `sa_event("${event}");`;
   } else if (bool(push)) {
-    onload = `window.history.pushState({ "page_id": 2 }, "Push State", "/pushstate");`;
+    onload = `window.history.pushState({ "page_id": 2 }, "Push State", "/pushstate?project=project_x");`;
   } else if (bool(redirect)) {
     const params = new URLSearchParams({
       redirect: false,
@@ -108,9 +112,9 @@ const route = async (req, res) => {
     const params = script ? new URLSearchParams({ script }).toString() : "";
     const attributes = ["defer", "async"];
     if (allowparams) attributes.push(`data-allow-params="${allowparams}"`);
-    body += `<script ${attributes.join(
-      " "
-    )} src="/script.js?${params}"></script>`;
+    const attr = attributes.join(" ");
+    const scriptHTML = `<script ${attr} src="http://localhost/script.js?${params}"></script>`;
+    body += scriptHTML;
   }
 
   body += `</body></html>`;

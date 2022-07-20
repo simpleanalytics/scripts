@@ -26,8 +26,9 @@ module.exports = async () => {
     "project=project_x&utm_source=utm_source&medium=medium&ref=ref"
   );
 
-  expect(pageViewRequests[1].body.query, "Query should not exist").to.be
-    .undefined;
+  expect(pageViewRequests[1].body.query, "Query should not exist").to.equal(
+    "project=project_x"
+  );
 
   pageViewRequests.map((request) => {
     expect(

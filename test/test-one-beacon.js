@@ -28,7 +28,6 @@ module.exports = async () => {
     request.body,
     "All required keys should be present"
   ).to.include.all.keys([
-    "version",
     "hostname",
     "duration",
     "scrolled",
