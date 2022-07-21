@@ -174,7 +174,7 @@ const getDeviceName = ({
   // Do not filter browsers when running as CI
   const retrievedBrowsers = await getBrowsers();
   const browsers = CI
-    ? retrievedBrowsers.slice(0, 1)
+    ? retrievedBrowsers.slice(1, 2)
     : retrievedBrowsers
         .sort(() => Math.random() - 0.5) // Shuffle array
         .filter(localBrowserFilter)
@@ -256,15 +256,7 @@ const getDeviceName = ({
         driverOptions["browserstack.timezone"] = "Amsterdam";
       }
 
-      let driver;
-      if (CI) {
-        driver = new Builder()
-          .usingServer("http://hub-cloud.browserstack.com/wd/hub")
-          .withCapabilities(driverOptions)
-          .build();
-      } else {
-        driver = await getDriverWithTimeout(driverOptions);
-      }
+      let driver = await getDriverWithTimeout(driverOptions);
 
       // // Try again with new device when driver is not available
       // if (!driver || typeof driver.get !== "function") {

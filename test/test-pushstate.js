@@ -65,7 +65,7 @@ module.exports = async () => {
 
     // We replace "https:" with "http:" string in server.js
     // that's why we expect local request to be https
-    expect([true, "true"], "HTTPS should be a boolean").to.include(
+    expect([false, "false"], "HTTPS should be a boolean").to.include(
       request.body.https
     );
   });
