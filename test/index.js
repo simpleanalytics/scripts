@@ -1,9 +1,9 @@
 const Mocha = require("mocha");
 const { expect } = require("chai");
 
-// const browserstack = require("browserstack-local");
+const browserstack = require("browserstack-local");
 const { Builder } = require("selenium-webdriver");
-// const { promisify } = require("util");
+const { promisify } = require("util");
 const { DEBUG, CI } = require("./constants");
 const { version, navigate } = require("./helpers");
 const getBrowsers = require("./helpers/get-browsers");
@@ -157,19 +157,18 @@ const getDeviceName = ({
     : `${os} ${os_version} with ${browser} ${browser_version}`;
 
 (async () => {
-  // const BrowserStackLocal = new browserstack.Local();
-  // const startLocal = promisify(BrowserStackLocal.start).bind(BrowserStackLocal);
-  // const stopLocal = promisify(BrowserStackLocal.stop).bind(BrowserStackLocal);
-  // let stopServer;
+  const BrowserStackLocal = new browserstack.Local();
+  const startLocal = promisify(BrowserStackLocal.start).bind(BrowserStackLocal);
+  const stopLocal = promisify(BrowserStackLocal.stop).bind(BrowserStackLocal);
+  let stopServer;
 
-  await server();
-
-  // if (!CI) {
-  //   stopServer = (await server()).done;
-  //   await startLocal(BS_LOCAL_OPTIONS);
-  // }
-
-  // log("Is BrowserStack Local running?", BrowserStackLocal.isRunning());
+  if (CI) {
+    await server();
+  } else {
+    stopServer = (await server()).done;
+    await startLocal(BS_LOCAL_OPTIONS);
+    log("Is BrowserStack Local running?", BrowserStackLocal.isRunning());
+  }
 
   // Do not filter browsers when running as CI
   const retrievedBrowsers = await getBrowsers();
@@ -257,6 +256,8 @@ const getDeviceName = ({
       }
 
       let driver = await getDriverWithTimeout(driverOptions);
+
+      console.log({ driver, driverGet: driver?.get });
 
       // // Try again with new device when driver is not available
       // if (!driver || typeof driver.get !== "function") {
@@ -371,10 +372,10 @@ const getDeviceName = ({
 
   mochaInstance.run(async (amountFailures) => {
     // Stop local server and BrowserStack Local
-    // if (!CI) {
-    //   await stopLocal();
-    //   await stopServer();
-    // }
+    if (!CI) {
+      await stopLocal();
+      await stopServer();
+    }
 
     // Exit with exit code when having failures
     process.exit(STOP_ON_FAIL ? amountFailures > 0 : false);
