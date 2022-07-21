@@ -46,12 +46,12 @@ jobs:
           node-version: ${{ matrix.node-version }}
 
       - name: Run npm ci
-        run: npm ci
+        run: sudo npm run ci
 
       - name: Run npm test with BrowserStack Local
         uses: ianwalter/bsl@2.1.1
         with:
-          args: sudo node ./test/index.js
+          args: node ./test/index.js
         env:
           CI: true
           NODE_ENV: test
