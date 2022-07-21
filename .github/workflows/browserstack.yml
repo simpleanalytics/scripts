@@ -1,4 +1,4 @@
-name: SA Public Scripts CI
+name: Browserstack
 
 on:
   pull_request:
@@ -16,7 +16,20 @@ jobs:
         node-version: [16.16]
 
     steps:
-      - uses: actions/checkout@v1
+      - name: "BrowserStack Env Setup"
+        uses: "browserstack/github-actions/setup-env@master"
+        with:
+          username: ${{ secrets.BROWSERSTACK_USERNAME }}
+          access-key: ${{ secrets.BROWSERSTACK_ACCESS_KEY }}
+
+      - name: "Start BrowserStackLocal Tunnel"
+        uses: "browserstack/github-actions/setup-local@master"
+        with:
+          local-testing: "start"
+          local-logging-level: "all-logs"
+          local-identifier: "random"
+
+      - uses: actions/checkout@v2
 
       - name: Prettier Action on PR
         if: github.event_name == 'pull_request'
@@ -49,9 +62,7 @@ jobs:
         run: sudo npm ci
 
       - name: Run npm test with BrowserStack Local
-        uses: ianwalter/bsl@3.0.0
-        with:
-          args: node ./test/index.js
+        run: node ./test/index.js
         env:
           CI: true
           NODE_ENV: test
@@ -59,3 +70,8 @@ jobs:
           LOCATION: ${{ secrets.LOCATION }}
           BROWSERSTACK_USERNAME: ${{ secrets.BROWSERSTACK_USERNAME }}
           BROWSERSTACK_ACCESS_KEY: ${{ secrets.BROWSERSTACK_ACCESS_KEY }}
+
+      - name: "Stop BrowserStackLocal"
+        uses: "browserstack/github-actions/setup-local@master"
+        with:
+          local-testing: "stop"
