@@ -1,7 +1,7 @@
 const url = require("url");
 const http = require("http");
 const { readFileSync } = require("fs");
-const { SERVER_PORT, DEBUG } = require("../constants");
+const { SERVER_PORT, DEBUG, CI } = require("../constants");
 const { getJSONBody } = require("./request");
 
 const log = (...messages) =>
@@ -79,8 +79,16 @@ const route = async (req, res) => {
   if (pathname === "/script.js" && script) {
     res.writeHead(200, { "Content-Type": "text/javascript" });
     body = readFileSync(`./dist${script}`, "utf8");
-    body = body.replace(/"https:/gi, `"http:`);
-    body = body.replace(/"simpleanalyticscdn.com"/gi, `"localhost"`);
+    if (CI) {
+      body = body.replace(/"https:\/\/queue\."/g, '"http://"');
+      body = body.replace(
+        /"simpleanalyticscdn\.com"/g,
+        `"localhost:${SERVER_PORT}"`
+      );
+    } else {
+      body = body.replace(/"https:/gi, `"http:`);
+      body = body.replace(/"simpleanalyticscdn.com"/gi, `"localhost"`);
+    }
     res.write(body);
     return res.end();
   }
