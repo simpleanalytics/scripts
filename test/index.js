@@ -260,7 +260,7 @@ const getDeviceName = ({
       if (CI) {
         driver = new Builder()
           .usingServer("http://hub-cloud.browserstack.com/wd/hub")
-          .withCapabilities(capabilities)
+          .withCapabilities(driverOptions)
           .build();
       } else {
         driver = await getDriverWithTimeout(driverOptions);
