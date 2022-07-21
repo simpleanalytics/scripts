@@ -13,7 +13,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [14.17]
+        node-version: [16.16]
 
     steps:
       - uses: actions/checkout@v1
@@ -51,7 +51,7 @@ jobs:
       - name: Run npm test with BrowserStack Local
         uses: ianwalter/bsl@2.1.1
         with:
-          args: npm run test
+          args: node ./test/index.js
         env:
           CI: true
           NODE_ENV: test
