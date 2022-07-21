@@ -121,7 +121,10 @@ const route = async (req, res) => {
     const attributes = ["defer", "async"];
     if (allowparams) attributes.push(`data-allow-params="${allowparams}"`);
     const attr = attributes.join(" ");
-    const host = browser === "ie" ? `http://localhost` : ``;
+    const host =
+      browser === "ie"
+        ? `http://localhost:${SERVER_PORT}`
+        : `http://localhost:${SERVER_PORT}`;
     const scriptHTML = `<script ${attr} src="${host}/script.js?${params}"></script>`;
     body += scriptHTML;
   }
