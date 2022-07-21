@@ -170,7 +170,7 @@ const getDeviceName = ({
   // Do not filter browsers when running as CI
   const retrievedBrowsers = await getBrowsers();
   const browsers = CI
-    ? retrievedBrowsers.slice(1, 2)
+    ? retrievedBrowsers
     : retrievedBrowsers
         .sort(() => Math.random() - 0.5) // Shuffle array
         .filter(localBrowserFilter)
@@ -212,7 +212,7 @@ const getDeviceName = ({
           expect(
             browsers,
             "Should have more than 20 browsers"
-          ).to.have.lengthOf.at.least(1);
+          ).to.have.lengthOf.at.least(20);
         }
       )
     );
