@@ -1,6 +1,6 @@
 const crypto = require("crypto");
 const { networkInterfaces: getNetworkInterfaces } = require("os");
-const { DEBUG } = require("../constants");
+const { DEBUG, SERVER_PORT } = require("../constants");
 const { promisify } = require("util");
 const { By, Key } = require("selenium-webdriver");
 
@@ -54,7 +54,8 @@ module.exports.navigate = async ({
   driver,
   commands,
 }) => {
-  const localhost = `http://` + (await this.getLocalhost({ useLocalIp }));
+  const localhost =
+    `http://` + (await this.getLocalhost({ useLocalIp })) + ":" + SERVER_PORT;
 
   for (const {
     sleep: sleepMs = 0,
