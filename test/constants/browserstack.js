@@ -32,7 +32,7 @@ module.exports.BS_CAPABILITIES = {
   "browserstack.local": "true",
   "browserstack.debug": "false",
   "browserstack.console": "disable",
-  "browserstack.networkLogs": "false",
+  "browserstack.networkLogs": "true",
   "browserstack.ie.noFlash": "true",
   "browserstack.localIdentifier": BROWSERSTACK_LOCAL_IDENTIFIER,
   "browserstack.user": BROWSERSTACK_USERNAME,
