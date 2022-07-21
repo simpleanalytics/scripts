@@ -253,7 +253,7 @@ const getDeviceName = ({
 
       const timezoneSupport = setTimezoneSupport(browser);
       if (timezoneSupport) {
-        driverOptions["browserstack.timezone"] = "Europe/Amsterdam";
+        driverOptions["browserstack.timezone"] = "Amsterdam";
       }
 
       let driver = await getDriverWithTimeout(driverOptions);
