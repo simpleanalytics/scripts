@@ -256,18 +256,26 @@ const getDeviceName = ({
         driverOptions["browserstack.timezone"] = "Amsterdam";
       }
 
-      let driver = await getDriverWithTimeout(driverOptions);
-
-      // Try again with new device when driver is not available
-      if (!driver || typeof driver.get !== "function") {
+      let driver;
+      if (CI) {
+        driver = new Builder()
+          .usingServer("http://hub-cloud.browserstack.com/wd/hub")
+          .withCapabilities(capabilities)
+          .build();
+      } else {
         driver = await getDriverWithTimeout(driverOptions);
-
-        // Device seems unavailable so this test will fail
-        if (!driver || typeof driver.get !== "function") {
-          expect(true, `Getting driver for ${browser.name}`).to.be.false;
-          return;
-        }
       }
+
+      // // Try again with new device when driver is not available
+      // if (!driver || typeof driver.get !== "function") {
+      //   driver = await getDriverWithTimeout(driverOptions);
+
+      //   // Device seems unavailable so this test will fail
+      //   if (!driver || typeof driver.get !== "function") {
+      //     expect(true, `Getting driver for ${browser.name}`).to.be.false;
+      //     return;
+      //   }
+      // }
 
       let commands = [];
 
