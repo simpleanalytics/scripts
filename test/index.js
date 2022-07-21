@@ -257,18 +257,18 @@ const getDeviceName = ({
 
       let driver = await getDriverWithTimeout(driverOptions);
 
-      console.log({ driver, driverGet: driver?.get });
+      console.log({ driver, typeof: typeof driver?.get });
 
-      // // Try again with new device when driver is not available
-      // if (!driver || typeof driver.get !== "function") {
-      //   driver = await getDriverWithTimeout(driverOptions);
+      // Try again with new device when driver is not available
+      if (typeof driver?.get !== "function") {
+        driver = await getDriverWithTimeout(driverOptions);
 
-      //   // Device seems unavailable so this test will fail
-      //   if (!driver || typeof driver.get !== "function") {
-      //     expect(true, `Getting driver for ${browser.name}`).to.be.false;
-      //     return;
-      //   }
-      // }
+        // Device seems unavailable so this test will fail
+        if (typeof driver?.get !== "function") {
+          expect(true, `Getting driver for ${browser.name}`).to.be.false;
+          return;
+        }
+      }
 
       let commands = [];
 
