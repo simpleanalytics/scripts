@@ -204,6 +204,12 @@ const getDeviceName = ({
       )
     );
 
+  suiteInstance.addTest(
+    new Mocha.Test(`Test Node.js environment`, async function () {
+      expect(process.version, "Should use Node.js 16.16").to.match(/^v16\.16/);
+    })
+  );
+
   for (const [index, browser] of browsers.entries()) {
     const total = browsers.length;
     const testName = `Testing ${browser.name} (${index + 1}/${total})`;
