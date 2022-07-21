@@ -96,8 +96,8 @@ const getSupportsClientHints = ({ browser, browser_version }) => {
   );
 };
 
-// 1080000 ms = 10 minutes
-const getDriverWithTimeout = (capabilitiesRaw, timeout = 1080000) =>
+// 300000 ms = 5 minutes
+const getDriverWithTimeout = (capabilitiesRaw, { timeout = 300000 } = {}) =>
   new Promise((resolve) => {
     // Clean up capabilities
     const capabilities = { ...capabilitiesRaw };
@@ -252,11 +252,14 @@ const getDeviceName = ({
         driverOptions["browserstack.timezone"] = "Amsterdam";
       }
 
-      let driver = await getDriverWithTimeout(driverOptions);
+      let driver = await getDriverWithTimeout(driverOptions, {
+        timeout: 180000,
+      });
 
       // Try again with new device when driver is not available
       if (typeof driver?.get !== "function") {
-        driver = await getDriverWithTimeout(driverOptions);
+        log(`Trying again`);
+        driver = await getDriverWithTimeout(driverOptions, { timeout: 300000 });
 
         // Device seems unavailable so this test will fail
         if (typeof driver?.get !== "function") {
