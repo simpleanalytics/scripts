@@ -31,8 +31,8 @@ const testLimit = DEV_DEVICE_LIMIT
   : 1;
 
 const matches = (param, search) => {
-  if (search?.endsWith(".0")) search = search.slice(0, -2);
-  if (param?.endsWith(".0")) param = param.slice(0, -2);
+  if (search && search.endsWith(".0")) search = search.slice(0, -2);
+  if (param && param.endsWith(".0")) param = param.slice(0, -2);
   return search && search.toLowerCase() !== param.toLowerCase();
 };
 
