@@ -34,6 +34,7 @@ module.exports.BS_CAPABILITIES = {
   "browserstack.console": "disable",
   "browserstack.networkLogs": "true",
   "browserstack.ie.noFlash": "true",
+  "browserstack.idleTimeout": 20,
   "browserstack.localIdentifier": BROWSERSTACK_LOCAL_IDENTIFIER,
   "browserstack.user": BROWSERSTACK_USERNAME,
   "browserstack.key": BROWSERSTACK_ACCESS_KEY,

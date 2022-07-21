@@ -18,6 +18,7 @@ const {
 } = require("./constants/browserstack");
 
 const {
+  DEV_NAME,
   DEV_BROWSER,
   DEV_BROWSER_VERSION,
   DEV_OS,
@@ -36,13 +37,10 @@ const matches = (param, search) => {
   return search && search.toLowerCase() !== param?.toLowerCase();
 };
 
-const localBrowserFilter = ({
-  device,
-  os,
-  os_version,
-  browser,
-  browser_version,
-}) => {
+const localBrowserFilter = (options) => {
+  const { device, os, os_version, browser, browser_version } = options;
+  const name = getDeviceName(options);
+  if (matches(name, DEV_NAME)) return false;
   if (matches(device, DEV_DEVICE)) return false;
   if (matches(os, DEV_OS)) return false;
   if (matches(os_version, DEV_OS_VERSION)) return false;
@@ -79,6 +77,7 @@ const setTimezoneSupport = ({ device, os, os_version }) => {
   const osMajorVersion = getMajorVersion(os_version);
   if (os === "android" && device.includes("Samsung") && osMajorVersion >= 12)
     return false;
+  if (os === "ios" && osMajorVersion < 13) return false;
   return true;
 };
 
@@ -106,8 +105,6 @@ const getDriverWithTimeout = (capabilitiesRaw, timeout = 1080000) =>
     delete capabilities.supportsPushState;
     delete capabilities.supportsClientHints;
     delete capabilities.useLocalIp;
-
-    console.log(JSON.stringify({ capabilities }, null, 2));
 
     const start = Date.now();
     let responded = false;
@@ -256,8 +253,6 @@ const getDeviceName = ({
       }
 
       let driver = await getDriverWithTimeout(driverOptions);
-
-      console.log({ driver, typeof: typeof driver?.get });
 
       // Try again with new device when driver is not available
       if (typeof driver?.get !== "function") {

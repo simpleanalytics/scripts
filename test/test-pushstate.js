@@ -1,5 +1,6 @@
 const { expect } = require("chai");
 const UUIDvalidate = require("uuid-validate");
+const { CI } = require("./constants");
 const { getRequests } = require("./helpers");
 
 module.exports = async () => {
@@ -63,10 +64,7 @@ module.exports = async () => {
       "Version should be a valid number"
     ).to.be.a("number");
 
-    // We replace "https:" with "http:" string in server.js
-    // that's why we expect local request to be https
-    expect([false, "false"], "HTTPS should be a boolean").to.include(
-      request.body.https
-    );
+    // We replace "https:" with "http:" string on CI
+    expect(request.body.https, "HTTPS should be a boolean").to.equal("false");
   });
 };

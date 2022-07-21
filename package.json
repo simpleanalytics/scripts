@@ -8,7 +8,7 @@
     "watch": "node_modules/.bin/nodemon compile.js --ignore dist",
     "build": "node compile.js",
     "pretest": "npm run build -- testing",
-    "test": "if [ ! $BROWSERSTACK_USERNAME ]; then node -r dotenv/config ./test/index.js; else node ./test/index.js; fi",
+    "test": "node -r dotenv/config ./test/index.js",
     "posttest": "npm run build"
   },
   "repository": {

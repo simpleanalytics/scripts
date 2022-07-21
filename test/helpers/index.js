@@ -9,23 +9,10 @@ const log = (...messages) =>
 
 module.exports.sleep = promisify(setTimeout);
 
-module.exports.getIPv4 = () =>
-  new Promise((resolve, reject) => {
-    const networkInterfaces = getNetworkInterfaces();
-    const publicIPv4s = Object.keys(networkInterfaces)
-      .reduce((interfaces, name) => {
-        interfaces.push(...networkInterfaces[name]);
-        return interfaces;
-      }, [])
-      .filter(({ family, internal }) => {
-        return family === "IPv4" && !internal;
-      });
-    if (publicIPv4s.length) return resolve(publicIPv4s[0].address);
-    return reject(Error("No local IPv4 address found"));
-  });
-
-module.exports.getLocalhost = async ({ useLocalIp = false } = {}) =>
-  `${useLocalIp ? `${await this.getIPv4()}` : "localhost"}`;
+module.exports.getLocalhost = async ({ browser, os } = {}) => {
+  if (os === "ios" || browser === "safari") return "bs-local.com";
+  return "localhost";
+};
 
 module.exports.generateRandomString = (length = 30) =>
   crypto.randomBytes(Math.ceil(length / 2)).toString("hex");
@@ -47,15 +34,9 @@ module.exports.makeUnique = (array = [], keys = []) => {
   }, []);
 };
 
-module.exports.navigate = async ({
-  browser,
-  name,
-  useLocalIp,
-  driver,
-  commands,
-}) => {
+module.exports.navigate = async ({ browser, os, name, driver, commands }) => {
   const localhost =
-    `http://` + (await this.getLocalhost({ useLocalIp })) + ":" + SERVER_PORT;
+    `http://` + (await this.getLocalhost({ os, browser })) + ":" + SERVER_PORT;
 
   for (const {
     sleep: sleepMs = 0,
@@ -83,6 +64,7 @@ module.exports.navigate = async ({
       medium: "medium",
       ref: "ref",
       browser,
+      os,
     }).toString();
 
     if (sleepMs) {

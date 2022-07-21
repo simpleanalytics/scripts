@@ -9,18 +9,22 @@ module.exports = async () => {
     body: { type: "pageview" },
   });
 
+  console.log(JSON.stringify(pageViewRequests, null, 2));
+
   expect(
     pageViewRequests,
     "There are not enough page views requests found"
   ).to.have.lengthOf(2);
 
-  expect([true, "true"], "The first visit should be unique").to.include(
-    pageViewRequests[0].body.unique
-  );
+  expect(
+    pageViewRequests[0].body.unique,
+    "The first visit should be unique"
+  ).to.equal("true");
 
-  expect([false, "false"], "The second visit should not be unique").to.include(
-    pageViewRequests[1].body.unique
-  );
+  expect(
+    pageViewRequests[1].body.unique,
+    "The second visit should not be unique"
+  ).to.equal("false");
 
   pageViewRequests.map((request) => {
     expect(
@@ -54,10 +58,7 @@ module.exports = async () => {
       "Version should be a valid number"
     ).to.be.a("number");
 
-    // We replace "https:" with "http:" string in server.js
-    // that's why we expect local request to be https
-    expect([true, "true"], "HTTPS should be a boolean").to.include(
-      request.body.https
-    );
+    // We replace "https:" with "http:" string on CI
+    expect(request.body.https, "HTTPS should be a boolean").to.equal("false");
   });
 };

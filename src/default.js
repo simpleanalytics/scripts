@@ -33,7 +33,7 @@
     var doNotTrack = "doNotTrack";
     var nav = window.navigator;
     var loc = window.location;
-    var locationHostname = loc.hostname;
+    var locationHostname = loc.host;
     var doc = window.document;
     var userAgent = nav.userAgent;
     var notSending = "Not sending request ";

@@ -23,8 +23,8 @@ module.exports = async ({ os, browser }) => {
 
   expect(
     new Date(JSON.parse(requests[2].body.metadata).date),
-    "Event should have a date in the last 60 seconds"
-  ).to.greaterThan(new Date(Date.now() - 60000));
+    "Event should have a date in the last 5 minutes"
+  ).to.greaterThan(new Date(Date.now() - 300000));
 
   requests.map((request) => {
     expect(
@@ -54,21 +54,16 @@ module.exports = async ({ os, browser }) => {
       "page_id should be a valid UUIDv4"
     ).to.be.true;
 
-    if (os === "ios") {
-      expect(
-        /[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/.test(request.body.hostname),
-        "Hostname should be an IP on iOS"
-      ).to.be.true;
-    } else if (os === "OS X" && browser === "safari") {
+    if (os === "ios" || browser === "safari") {
       expect(
         request.body.hostname,
         "Hostname should be bs-local.com on OS X Safari"
-      ).to.equal("bs-local.com");
+      ).to.equal("bs-local.com:3000");
     } else {
       expect(
         request.body.hostname,
         "Hostname should be localhost on non iOS"
-      ).to.equal("localhost");
+      ).to.equal("localhost:3000");
     }
 
     expect(
