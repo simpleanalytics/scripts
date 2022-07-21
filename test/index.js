@@ -1,9 +1,9 @@
 const Mocha = require("mocha");
 const { expect } = require("chai");
 
-const browserstack = require("browserstack-local");
+// const browserstack = require("browserstack-local");
 const { Builder } = require("selenium-webdriver");
-const { promisify } = require("util");
+// const { promisify } = require("util");
 const { DEBUG, CI } = require("./constants");
 const { version, navigate } = require("./helpers");
 const getBrowsers = require("./helpers/get-browsers");
@@ -98,8 +98,17 @@ const getSupportsClientHints = ({ browser, browser_version }) => {
 };
 
 // 1080000 ms = 10 minutes
-const getDriverWithTimeout = (capabilities, timeout = 1080000) =>
+const getDriverWithTimeout = (capabilitiesRaw, timeout = 1080000) =>
   new Promise((resolve) => {
+    // Clean up capabilities
+    const capabilities = { ...capabilitiesRaw };
+    delete capabilities.supportsSendBeacon;
+    delete capabilities.supportsPushState;
+    delete capabilities.supportsClientHints;
+    delete capabilities.useLocalIp;
+
+    console.log(JSON.stringify({ capabilities }, null, 2));
+
     const start = Date.now();
     let responded = false;
 
@@ -126,7 +135,9 @@ const getDriverWithTimeout = (capabilities, timeout = 1080000) =>
 const log = (...messages) => DEBUG && console.log("    => Test:", ...messages);
 
 if (!BROWSERSTACK_USERNAME || !BROWSERSTACK_ACCESS_KEY) {
-  log("BROWSERSTACK_USERNAME nor BROWSERSTACK_ACCESS_KEY are not defined.");
+  console.error(
+    "BROWSERSTACK_USERNAME nor BROWSERSTACK_ACCESS_KEY are not defined."
+  );
   process.exit(1);
 }
 
@@ -146,13 +157,19 @@ const getDeviceName = ({
     : `${os} ${os_version} with ${browser} ${browser_version}`;
 
 (async () => {
-  const BrowserStackLocal = new browserstack.Local();
-  const startLocal = promisify(BrowserStackLocal.start).bind(BrowserStackLocal);
-  const stopLocal = promisify(BrowserStackLocal.stop).bind(BrowserStackLocal);
+  // const BrowserStackLocal = new browserstack.Local();
+  // const startLocal = promisify(BrowserStackLocal.start).bind(BrowserStackLocal);
+  // const stopLocal = promisify(BrowserStackLocal.stop).bind(BrowserStackLocal);
+  // let stopServer;
 
-  const stopServer = (await server()).done;
-  await startLocal(BS_LOCAL_OPTIONS);
-  log("Is BrowserStack Local running?", BrowserStackLocal.isRunning());
+  await server();
+
+  // if (!CI) {
+  //   stopServer = (await server()).done;
+  //   await startLocal(BS_LOCAL_OPTIONS);
+  // }
+
+  // log("Is BrowserStack Local running?", BrowserStackLocal.isRunning());
 
   // Do not filter browsers when running as CI
   const retrievedBrowsers = await getBrowsers();
@@ -354,8 +371,10 @@ const getDeviceName = ({
 
   mochaInstance.run(async (amountFailures) => {
     // Stop local server and BrowserStack Local
-    await stopLocal();
-    await stopServer();
+    // if (!CI) {
+    //   await stopLocal();
+    //   await stopServer();
+    // }
 
     // Exit with exit code when having failures
     process.exit(STOP_ON_FAIL ? amountFailures > 0 : false);

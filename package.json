@@ -23,7 +23,7 @@
   },
   "homepage": "https://github.com/simpleanalytics/scripts#readme",
   "devDependencies": {
-    "browserstack-local": "^1.4.5",
+    "browserstack-local": "^1.5.1",
     "chai": "^4.2.0",
     "dotenv": "^8.2.0",
     "eslint": "^6.7.2",
@@ -32,7 +32,7 @@
     "mocha": "^6.2.3",
     "nodemon": "^1.19.4",
     "request": "^2.88.0",
-    "selenium-webdriver": "^4.0.0-alpha.5",
+    "selenium-webdriver": "^4.3.1",
     "uglify-js": "^3.9.4",
     "uuid-validate": "0.0.3"
   }
