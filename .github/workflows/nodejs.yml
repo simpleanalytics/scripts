@@ -49,7 +49,7 @@ jobs:
         run: sudo npm ci
 
       - name: Run npm test with BrowserStack Local
-        uses: ianwalter/bsl@2.1.1
+        uses: ianwalter/bsl@3.0.0
         with:
           args: node ./test/index.js
         env:
