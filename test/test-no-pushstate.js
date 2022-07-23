@@ -9,8 +9,6 @@ module.exports = async () => {
     body: { type: "pageview" },
   });
 
-  console.log(JSON.stringify(pageViewRequests, null, 2));
-
   expect(
     pageViewRequests,
     "There are not enough page views requests found"
