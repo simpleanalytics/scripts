@@ -476,18 +476,24 @@
     var collectDataOnLeave =
       collectMetricByString("t") || collectMetricByString("scro");
 
-    var payload = {
+    var basePayload = {
       version: version,
+      hostname: definedHostname,
+    };
+
+    if (bot) basePayload.bot = trueVar;
+
+    var payload = assign(basePayload, {
       // us = useragent
       ua: collectMetricByString("us") ? userAgent : undefinedVar,
+
       https: loc.protocol == https,
       timezone: timezone,
-      hostname: definedHostname,
       page_id: collectDataOnLeave ? uuid() : undefinedVar,
+
       // se = sessions
       session_id: collectMetricByString("se") ? uuid() : undefinedVar,
-    };
-    if (bot) payload.bot = trueVar;
+    });
 
     /** if sri **/
     payload.sri = trueVar;
@@ -581,11 +587,10 @@
     var sendOnLeave = function (id, push) {
       if (!collectDataOnLeave) return;
 
-      var append = {
+      var append = assign(basePayload, {
         type: "append",
-        hostname: definedHostname,
         original_id: push ? id : payload.page_id,
-      };
+      });
 
       /** if duration **/
       // t = timeonpage
@@ -770,19 +775,20 @@
       var navigationText = "navigation";
 
       // Check if back, forward or reload buttons are being used in modern browsers
-      var userNavigated =
-        perf &&
-        perf.getEntriesByType &&
-        perf.getEntriesByType(navigationText)[0] &&
-        perf.getEntriesByType(navigationText)[0].type
-          ? ["reload", "back_forward"].indexOf(
-              perf.getEntriesByType(navigationText)[0].type
-            ) > -1
-          : // Check if back, forward or reload buttons are being use in older browsers
-            // 1: TYPE_RELOAD, 2: TYPE_BACK_FORWARD
-            perf &&
-            perf[navigationText] &&
-            [1, 2].indexOf(perf[navigationText].type) > -1;
+      var performaceEntryType;
+      try {
+        performaceEntryType = perf.getEntriesByType(navigationText)[0].type;
+      } catch (error) {
+        // Do nothing
+      }
+
+      var userNavigated = performaceEntryType
+        ? ["reload", "back_forward"].indexOf(performaceEntryType) > -1
+        : // Check if back, forward or reload buttons are being use in older browsers
+          // 1: TYPE_RELOAD, 2: TYPE_BACK_FORWARD
+          perf &&
+          perf[navigationText] &&
+          [1, 2].indexOf(perf[navigationText].type) > -1;
 
       // Check if referrer is the same as current real hostname (not the defined hostname!)
       /** if nonuniquehostnames **/
