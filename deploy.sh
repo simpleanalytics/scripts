@@ -36,7 +36,7 @@ echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
   echo '==> Compiling one more time'
 
-  npm run compile
+  npm run build
 
   if [[ `git status --porcelain` ]]; then
     echo -e "==> ${RED}There are changes in your repo, commit and test them first${RESET}"
