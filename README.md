@@ -16,7 +16,7 @@ As our public scripts are very important in our mission to privacy we decided to
 
 ## Contribute
 
-If you want to contribute, you probabaly want to contribute to our [`/src/default.js`](src/default.js) or [`/src/auto-events.js`](src/auto-events.js) files. These files compile into a few versions of our script by [`minify.js`](minify.js). They end up on [our CDN](https://scripts.simpleanalyticscdn.com/latest.js), custom domains, and [the Cloudflare app](https://www.cloudflare.com/apps/simpleanalytics).
+If you want to contribute, you probabaly want to contribute to our [`/src/default.js`](src/default.js) or [`/src/auto-events.js`](src/auto-events.js) files. These files compile into a few versions of our script by [`compile.js`](compile.js). They end up on [our CDN](https://scripts.simpleanalyticscdn.com/latest.js), custom domains, and [the Cloudflare app](https://www.cloudflare.com/apps/simpleanalytics).
 
 In `default.js` you see some weird syntax in the comments. For example, `/** if ignorepages **/` _\[some code\]_ `/** endif **/`. These comments are converted to handlebars like this: `{{#if ignorepages }}` _\[some code\]_ `{{/if}}`. In this case, [`ignorepages` is a variable](https://github.com/simpleanalytics/scripts/blob/3874b44ce5f1b0b8a7d50fb512fdcf5285a0138f/minify.js#L66) used in `minify.js` that takes care of what functionality to show in what script. Our main script is the `latest.js` script which includes all features. We also have a `light.js` script that obviously doesn't.
 
