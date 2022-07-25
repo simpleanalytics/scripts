@@ -31,14 +31,7 @@ module.exports = async () => {
     expect(
       request.body,
       "All required keys should be present"
-    ).to.include.all.keys([
-      "version",
-      "hostname",
-      "duration",
-      "scrolled",
-      "original_id",
-      "type",
-    ]);
+    ).to.include.all.keys(["duration", "scrolled", "original_id", "type"]);
 
     expect(
       UUIDvalidate(request.body.original_id, 4),
@@ -59,10 +52,5 @@ module.exports = async () => {
       parseInt(request.body.duration, 10),
       "Duration should be close to 0 or 1 second"
     ).to.be.closeTo(2, 2);
-
-    expect(
-      parseInt(request.body.version, 10),
-      "Version should be a valid number"
-    ).to.be.a("number");
   });
 };

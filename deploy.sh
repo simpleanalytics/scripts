@@ -34,9 +34,9 @@ echo "==> You are about to deploy to $SERVER_NAME"
 read -p "==> Are you sure (y/N)? "  -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
-  echo '==> Minifying one more time'
+  echo '==> Compiling one more time'
 
-  npm run minify
+  npm run compile
 
   if [[ `git status --porcelain` ]]; then
     echo -e "==> ${RED}There are changes in your repo, commit and test them first${RESET}"
@@ -60,10 +60,12 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
   ssh app@external.simpleanalytics.com mkdir -p "/var/www/default/v$VERSION"
 
   echo "==> Copying SRI v$VERSION file to $SERVER_NAME"
-  rsync --quiet --rsync-path="sudo rsync" "./dist/v$VERSION/custom/v$VERSION.js" "$REMOTE_PATH/v$VERSION/app.js"
-  rsync --quiet --rsync-path="sudo rsync" "./dist/v$VERSION/custom/v$VERSION.js.map" "$REMOTE_PATH/v$VERSION/app.js.map"
+  rsync --quiet --rsync-path="sudo rsync" "./dist/v$VERSION/custom/app.js" "$REMOTE_PATH/v$VERSION/app.js"
+  rsync --quiet --rsync-path="sudo rsync" "./dist/v$VERSION/custom/app.js.map" "$REMOTE_PATH/v$VERSION/app.js.map"
   rsync --quiet --rsync-path="sudo rsync" "./dist/v$VERSION/custom/light.js" "$REMOTE_PATH/v$VERSION/light.js"
   rsync --quiet --rsync-path="sudo rsync" "./dist/v$VERSION/custom/light.js.map" "$REMOTE_PATH/v$VERSION/light.js.map"
+  rsync --quiet --rsync-path="sudo rsync" "./dist/v$VERSION/custom/proxy.js" "$REMOTE_PATH/v$VERSION/proxy.js"
+  rsync --quiet --rsync-path="sudo rsync" "./dist/v$VERSION/custom/proxy.js.map" "$REMOTE_PATH/v$VERSION/proxy.js.map"
   rsync --quiet --rsync-path="sudo rsync" "./dist/v$VERSION/custom/auto-events.js" "$REMOTE_PATH/v$VERSION/auto-events.js"
   rsync --quiet --rsync-path="sudo rsync" "./dist/v$VERSION/custom/auto-events.js.map" "$REMOTE_PATH/v$VERSION/auto-events.js.map"
 

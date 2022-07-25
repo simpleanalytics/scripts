@@ -1,6 +1,6 @@
 const crypto = require("crypto");
 const { networkInterfaces: getNetworkInterfaces } = require("os");
-const { DEBUG } = require("../constants");
+const { DEBUG, SERVER_PORT } = require("../constants");
 const { promisify } = require("util");
 const { By, Key } = require("selenium-webdriver");
 
@@ -9,23 +9,10 @@ const log = (...messages) =>
 
 module.exports.sleep = promisify(setTimeout);
 
-module.exports.getIPv4 = () =>
-  new Promise((resolve, reject) => {
-    const networkInterfaces = getNetworkInterfaces();
-    const publicIPv4s = Object.keys(networkInterfaces)
-      .reduce((interfaces, name) => {
-        interfaces.push(...networkInterfaces[name]);
-        return interfaces;
-      }, [])
-      .filter(({ family, internal }) => {
-        return family === "IPv4" && !internal;
-      });
-    if (publicIPv4s.length) return resolve(publicIPv4s[0].address);
-    return reject(Error("No local IPv4 address found"));
-  });
-
-module.exports.getLocalhost = async ({ useLocalIp = false } = {}) =>
-  `${useLocalIp ? `${await this.getIPv4()}` : "localhost"}`;
+module.exports.getLocalhost = async ({ browser, os } = {}) => {
+  if (os === "ios" || browser === "safari") return "bs-local.com";
+  return "localhost";
+};
 
 module.exports.generateRandomString = (length = 30) =>
   crypto.randomBytes(Math.ceil(length / 2)).toString("hex");
@@ -47,8 +34,9 @@ module.exports.makeUnique = (array = [], keys = []) => {
   }, []);
 };
 
-module.exports.navigate = async ({ name, useLocalIp, driver, commands }) => {
-  const localhost = `http://` + (await this.getLocalhost({ useLocalIp }));
+module.exports.navigate = async ({ browser, os, name, driver, commands }) => {
+  const localhost =
+    `http://` + (await this.getLocalhost({ os, browser })) + ":" + SERVER_PORT;
 
   for (const {
     sleep: sleepMs = 0,
@@ -63,12 +51,20 @@ module.exports.navigate = async ({ name, useLocalIp, driver, commands }) => {
     push,
     event,
     tab,
+    allowparams,
   } of commands) {
     const searchParams = new URLSearchParams({
       script: script || "",
       beacon: beacon || "",
       event: event || "",
       push: push || "",
+      allowparams: allowparams || "",
+      project: "project_x",
+      utm_source: "utm_source",
+      medium: "medium",
+      ref: "ref",
+      browser,
+      os,
     }).toString();
 
     if (sleepMs) {
@@ -76,7 +72,7 @@ module.exports.navigate = async ({ name, useLocalIp, driver, commands }) => {
       await this.sleep(sleepMs);
     } else if (tab) {
       log(`open new tab (${name})`);
-      await driver.findElement(By.tagName("body")).sendKeys(Key.CONTROL + "t");
+      await driver.findElement(By.css("body")).sendKeys(Key.CONTROL + "t");
     } else if (close) {
       log(`close (${name})`, close);
       await driver.close();

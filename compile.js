@@ -8,7 +8,7 @@ const GREEN = "\x1b[32m%s\x1b[0m";
 const YELLOW = "\x1b[33m%s\x1b[0m";
 const RED = "\x1b[31m%s\x1b[0m";
 
-const VERSION = 8;
+const VERSION = 9;
 
 Handlebars.registerHelper("or", function (param1, param2) {
   return param1 || param2;
@@ -68,10 +68,14 @@ const DEFAULTS = {
   errorhandling: true,
   warnings: true,
   ignorednt: true,
-  saGlobal: "sa_event",
+  namespace: "sa",
   url: "docs.simpleanalytics.com/script",
   scriptName: "script",
   allowparams: true,
+  pathoverwriter: true,
+  metadata: true,
+  nonuniquehostnames: true,
+  ignoremetrics: true,
   dev: false,
 };
 
@@ -91,6 +95,10 @@ const LIGHT = {
   warnings: false,
   ignorednt: false,
   allowparams: false,
+  pathoverwriter: false,
+  metadata: false,
+  nonuniquehostnames: false,
+  ignoremetrics: false,
 };
 
 const templates = [
@@ -219,7 +227,8 @@ const templates = [
       ...LIGHT,
       version: VERSION,
       scriptName: `cdn_light_${VERSION}`,
-      baseUrl: "{{nginxHost}}",
+      baseUrl: "simpleanalyticscdn.com",
+      apiUrlPrefix: "queue.",
     },
   },
   {
@@ -273,11 +282,7 @@ const files = templates.reduce((list, template) => {
 for (const file of files) {
   const { variables, input, output } = file;
   const name = output.toUpperCase();
-  const versionFile = `${__dirname}/dist/v${variables.version}/${output}`;
-  const cdnVersionFile = versionFile.replace(
-    /latest\.js/i,
-    `v${variables.version}.js`
-  );
+  let versionFile = `${__dirname}/dist/v${variables.version}/${output}`;
   const latestFile = `${__dirname}/dist/latest/${output}`;
 
   const contents = fs
@@ -334,12 +339,11 @@ for (const file of files) {
         code: prepend + rawCode,
       };
 
-  if (!codeTemplate)
-    console.warn(RED, `[MINIFY][${name}] codeTemplate is undefined`);
-  if (!template) console.warn(RED, `[MINIFY][${name}] template is undefined`);
+  if (!codeTemplate) console.warn(RED, `[${name}] codeTemplate is undefined`);
+  if (!template) console.warn(RED, `[${name}] template is undefined`);
 
   for (const warning of warnings || [])
-    console.warn(YELLOW, `[MINIFY][${name}] ${warning}`);
+    console.warn(YELLOW, `[${name}] ${warning}`);
 
   const code = fillTemplate(codeTemplate, variables);
 
@@ -355,7 +359,7 @@ for (const file of files) {
     const { index, lineNumber, description } = error;
     console.log(
       RED,
-      `[MINIFY][${name}][ERROR] ${input
+      `[${name}][ERROR] ${input
         .split("/")
         .pop()} ${description} at line ${lineNumber} position ${index}`
     );
@@ -369,25 +373,45 @@ for (const file of files) {
   }
 
   const compiledMap = map ? fillTemplate(map, variables) : null;
+  const isCustom = /^custom\//.test(output);
 
   if (variables.version && variables.sri) {
-    const cdnFileName = cdnVersionFile.split("/").pop();
-    fs.writeFileSync(
-      cdnVersionFile,
-      code.replace(
-        /sourceMappingURL=latest\.js\.map/gi,
-        `sourceMappingURL=${cdnFileName}.map`
-      )
+    let cdnFileName = versionFile.split("/").pop();
+
+    // Skip custom vX.js SRI file, we use app.js for that.
+    if (cdnFileName === "latest.js" && isCustom) continue;
+
+    // Rewrite latest.js to app.js in vX folder
+    if (cdnFileName === "latest.js" && !isCustom) {
+      cdnFileName = "app.js";
+      versionFile = versionFile.replace("latest.js", "app.js");
+    }
+
+    let write = code.replace(
+      /sourceMappingURL=latest\.js\.map/gi,
+      `sourceMappingURL=${cdnFileName}.map`
     );
+
+    fs.writeFileSync(versionFile, write);
+
     if (compiledMap) {
-      fs.writeFileSync(
-        `${cdnVersionFile}.map`,
-        compiledMap.replace(/latest\.source\.js/gi, cdnFileName)
+      let writeCompiled = compiledMap.replace(
+        /latest\.source\.js/gi,
+        cdnFileName
       );
+
+      fs.writeFileSync(`${versionFile}.map`, writeCompiled);
     }
   } else {
-    fs.writeFileSync(latestFile, code.replace(/; SRI-version/i, ""));
-    if (compiledMap) fs.writeFileSync(`${latestFile}.map`, compiledMap);
+    let write = code.replace(/; SRI-version/i, "");
+
+    fs.writeFileSync(latestFile, write);
+
+    if (compiledMap) {
+      let writeCompiled = compiledMap;
+
+      fs.writeFileSync(`${latestFile}.map`, writeCompiled);
+    }
   }
 
   const bytes = new TextEncoder("utf-8").encode(code).length;
@@ -399,10 +423,10 @@ for (const file of files) {
   const fill2 = " ".repeat(Math.max(0, 14 - sourceName.length));
 
   console.log(
-    `[MINIFY] ${name.toLowerCase()} ${fill1}Minified ${sourceName} ${fill2} ${bytesZeroFilled} bytes ${
+    ` ${name.toLowerCase()} ${fill1}Compiled ${sourceName} ${fill2} ${bytesZeroFilled} bytes ${
       variables.sri ? " (SRI)" : ""
     }`
   );
 }
 
-console.log(GREEN, `[MINIFY] Done minifying all files`);
+console.log(GREEN, ` Done compiling all files`);
