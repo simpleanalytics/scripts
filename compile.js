@@ -227,7 +227,8 @@ const templates = [
       ...LIGHT,
       version: VERSION,
       scriptName: `cdn_light_${VERSION}`,
-      baseUrl: "{{nginxHost}}",
+      baseUrl: "simpleanalyticscdn.com",
+      apiUrlPrefix: "queue.",
     },
   },
   {

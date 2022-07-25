@@ -37,6 +37,7 @@
     var doc = window.document;
     var userAgent = nav.userAgent;
     var notSending = "Not sending request ";
+    var notSendingWhen = notSending + "when ";
     var fetchedHighEntropyValues = falseVar;
     var encodeURIComponentFunc = encodeURIComponent;
     var decodeURIComponentFunc = decodeURIComponent;
@@ -83,6 +84,10 @@
 
     var isString = function (string) {
       return typeof string == "string";
+    };
+
+    var filterRegex = function (item) {
+      return item.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     };
 
     var attr = function (scriptElement, attribute) {
@@ -208,7 +213,7 @@
             var ignore = ignoreSource || !collectMetricByString("ut");
 
             /** if allowparams **/
-            var paramsRegexList = allowParams.join("|");
+            var paramsRegexList = allowParams.map(filterRegex).join("|");
             var regex = ignore
               ? "^(" + paramsRegexList + ")="
               : "^((utm_)" +
@@ -225,8 +230,8 @@
               "^((utm_)" +
               (strictUtm ? "" : "?") +
               "(source|medium|content|term|campaign)" +
-              (strictUtm ? "" : "|ref");
-            (")=");
+              (strictUtm ? "" : "|ref") +
+              ")=";
             /** endif **/
 
             // The prefix "utm_" is optional with "strictUtm" disabled
@@ -251,7 +256,10 @@
         try {
           if (
             ignorePage === path ||
-            new RegExp(ignorePage.replace(/\*/gi, "(.*)"), "gi").test(path)
+            new RegExp(
+              "^" + filterRegex(ignorePage).replace(/\\\*/gi, "(.*)") + "$",
+              "i"
+            ).test(path)
           )
             return trueVar;
         } catch (error) {
@@ -279,40 +287,38 @@
 
     // Send data via image
     var sendData = function (data, callback, onlyThisData) {
-      return braveCallback(function (isBrave) {
-        data = onlyThisData ? data : assign(payload, page, data);
+      data = onlyThisData ? data : assign(payload, page, data);
 
-        if (isBrave && !onlyThisData) data.brave = trueVar;
+      if (nav.brave && !onlyThisData) data.brave = trueVar;
 
-        /** if dev **/
-        data.dev = trueVar;
-        /** endif **/
+      /** if dev **/
+      data.dev = trueVar;
+      /** endif **/
 
-        var image = new Image();
-        /** if events **/
-        if (callback) {
-          image.onerror = callback;
-          image.onload = callback;
-        }
-        /** endif **/
-        image.src =
-          fullApiUrl +
-          "/simple.gif?" +
-          Object.keys(data)
-            .filter(function (key) {
-              return data[key] != undefinedVar;
-            })
-            .map(function (key) {
-              return (
-                encodeURIComponentFunc(key) +
-                "=" +
-                encodeURIComponentFunc(data[key])
-              );
-            })
-            .join("&") +
-          "&time=" +
-          Date.now();
-      });
+      var image = new Image();
+      /** if events **/
+      if (callback) {
+        image.onerror = callback;
+        image.onload = callback;
+      }
+      /** endif **/
+      image.src =
+        fullApiUrl +
+        "/simple.gif?" +
+        Object.keys(data)
+          .filter(function (key) {
+            return data[key] != undefinedVar;
+          })
+          .map(function (key) {
+            return (
+              encodeURIComponentFunc(key) +
+              "=" +
+              encodeURIComponentFunc(data[key])
+            );
+          })
+          .join("&") +
+        "&time=" +
+        Date.now();
     };
 
     /** if errorhandling **/
@@ -350,7 +356,6 @@
     //
 
     /** if duration **/
-    var duration = "duration";
     var start = now();
     /** endif **/
 
@@ -397,9 +402,11 @@
 
     /** if ignorepages **/
     // Customers can ignore certain pages
-    var ignorePages = convertCommaSeparatedToArray(
-      overwriteOptions.ignorePages || attr(scriptElement, "ignore-pages")
-    );
+    var ignorePages =
+      ["/path*lala"] ||
+      convertCommaSeparatedToArray(
+        overwriteOptions.ignorePages || attr(scriptElement, "ignore-pages")
+      );
     /** endif **/
 
     /** if allowparams **/
@@ -429,19 +436,6 @@
       overwriteOptions.metadataCollector ||
       attr(scriptElement, "metadata-collector");
     /** endif **/
-
-    var braveCallback = function (callback) {
-      if (!nav.brave) callback(falseVar);
-      else
-        nav.brave
-          .isBrave()
-          .then(function () {
-            callback(trueVar);
-          })
-          .catch(function () {
-            callback(falseVar);
-          });
-    };
 
     // This code could error on (incomplete) implementations, that's why we use try...catch
     var timezone;
@@ -530,22 +524,12 @@
     /** if ignorednt **/
     if (!collectDnt && doNotTrack in nav && nav[doNotTrack] == "1")
       return warn(
-        notSending +
-          "when " +
-          doNotTrack +
-          " is enabled. See " +
-          docsUrl +
-          "/dnt"
+        notSendingWhen + doNotTrack + " is enabled. See " + docsUrl + "/dnt"
       );
     /** else **/
     if (doNotTrack in nav && nav[doNotTrack] == "1")
       return warn(
-        notSending +
-          "when " +
-          doNotTrack +
-          " is enabled. See " +
-          docsUrl +
-          "/dnt"
+        notSendingWhen + doNotTrack + " is enabled. See " + docsUrl + "/dnt"
       );
     /** endif **/
 
@@ -595,7 +579,7 @@
       /** if duration **/
       // t = timeonpage
       if (collectMetricByString("t")) {
-        append[duration] = Math.round((now() - start - msHidden) / thousand);
+        append.duration = Math.round((now() - start - msHidden) / thousand);
       }
       msHidden = 0;
       start = now();
@@ -694,7 +678,7 @@
       /** if ignorepages **/
       // Ignore pages specified in data-ignore-pages
       if (shouldIgnore(path)) {
-        warn(notSending + ", ignored " + path);
+        warn(notSendingWhen + "ignoring " + path);
         return;
       }
       /** endif **/
