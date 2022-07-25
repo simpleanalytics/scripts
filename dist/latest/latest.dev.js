@@ -1,4 +1,4 @@
-/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2022-07-23; 6fa3; v9) */
+/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2022-07-25; f08f; v9) */
 /* eslint-env browser */
 
 (function (
@@ -36,6 +36,7 @@
     var doc = window.document;
     var userAgent = nav.userAgent;
     var notSending = "Not sending request ";
+    var notSendingWhen = notSending + "when ";
     var fetchedHighEntropyValues = falseVar;
     var encodeURIComponentFunc = encodeURIComponent;
     var decodeURIComponentFunc = decodeURIComponent;
@@ -80,6 +81,10 @@
 
     var isString = function (string) {
       return typeof string == "string";
+    };
+
+    var filterRegex = function (item) {
+      return item.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     };
 
     var attr = function (scriptElement, attribute) {
@@ -196,7 +201,7 @@
           .filter(function (keyValue) {
             var ignore = ignoreSource || !collectMetricByString("ut");
 
-            var paramsRegexList = allowParams.join("|");
+            var paramsRegexList = allowParams.map(filterRegex).join("|");
             var regex = ignore
               ? "^(" + paramsRegexList + ")="
               : "^((utm_)" +
@@ -229,7 +234,10 @@
         try {
           if (
             ignorePage === path ||
-            new RegExp(ignorePage.replace(/\*/gi, "(.*)"), "gi").test(path)
+            new RegExp(
+              "^" + filterRegex(ignorePage).replace(/\\\*/gi, "(.*)") + "$",
+              "i"
+            ).test(path)
           )
             return trueVar;
         } catch (error) {
@@ -256,36 +264,34 @@
 
     // Send data via image
     var sendData = function (data, callback, onlyThisData) {
-      return braveCallback(function (isBrave) {
-        data = onlyThisData ? data : assign(payload, page, data);
+      data = onlyThisData ? data : assign(payload, page, data);
 
-        if (isBrave && !onlyThisData) data.brave = trueVar;
+      if (nav.brave && !onlyThisData) data.brave = trueVar;
 
-        data.dev = trueVar;
+      data.dev = trueVar;
 
-        var image = new Image();
-        if (callback) {
-          image.onerror = callback;
-          image.onload = callback;
-        }
-        image.src =
-          fullApiUrl +
-          "/simple.gif?" +
-          Object.keys(data)
-            .filter(function (key) {
-              return data[key] != undefinedVar;
-            })
-            .map(function (key) {
-              return (
-                encodeURIComponentFunc(key) +
-                "=" +
-                encodeURIComponentFunc(data[key])
-              );
-            })
-            .join("&") +
-          "&time=" +
-          Date.now();
-      });
+      var image = new Image();
+      if (callback) {
+        image.onerror = callback;
+        image.onload = callback;
+      }
+      image.src =
+        fullApiUrl +
+        "/simple.gif?" +
+        Object.keys(data)
+          .filter(function (key) {
+            return data[key] != undefinedVar;
+          })
+          .map(function (key) {
+            return (
+              encodeURIComponentFunc(key) +
+              "=" +
+              encodeURIComponentFunc(data[key])
+            );
+          })
+          .join("&") +
+        "&time=" +
+        Date.now();
     };
 
     /////////////////////
@@ -320,7 +326,6 @@
     // INITIALIZE VALUES
     //
 
-    var duration = "duration";
     var start = now();
 
     var scrolled = 0;
@@ -357,9 +362,11 @@
       namespace + "_" + eventText;
 
     // Customers can ignore certain pages
-    var ignorePages = convertCommaSeparatedToArray(
-      overwriteOptions.ignorePages || attr(scriptElement, "ignore-pages")
-    );
+    var ignorePages =
+      ["/path*lala"] ||
+      convertCommaSeparatedToArray(
+        overwriteOptions.ignorePages || attr(scriptElement, "ignore-pages")
+      );
 
     // Customers can allow params
     var allowParams = convertCommaSeparatedToArray(
@@ -380,19 +387,6 @@
     var metadataCollector =
       overwriteOptions.metadataCollector ||
       attr(scriptElement, "metadata-collector");
-
-    var braveCallback = function (callback) {
-      if (!nav.brave) callback(falseVar);
-      else
-        nav.brave
-          .isBrave()
-          .then(function () {
-            callback(trueVar);
-          })
-          .catch(function () {
-            callback(falseVar);
-          });
-    };
 
     // This code could error on (incomplete) implementations, that's why we use try...catch
     var timezone;
@@ -423,18 +417,24 @@
     var collectDataOnLeave =
       collectMetricByString("t") || collectMetricByString("scro");
 
-    var payload = {
+    var basePayload = {
       version: version,
+      hostname: definedHostname,
+    };
+
+    if (bot) basePayload.bot = trueVar;
+
+    var payload = assign(basePayload, {
       // us = useragent
       ua: collectMetricByString("us") ? userAgent : undefinedVar,
+
       https: loc.protocol == https,
       timezone: timezone,
-      hostname: definedHostname,
       page_id: collectDataOnLeave ? uuid() : undefinedVar,
+
       // se = sessions
       session_id: collectMetricByString("se") ? uuid() : undefinedVar,
-    };
-    if (bot) payload.bot = trueVar;
+    });
 
     payload.sri = falseVar;
 
@@ -462,12 +462,7 @@
     // Don't track when Do Not Track is set to true
     if (!collectDnt && doNotTrack in nav && nav[doNotTrack] == "1")
       return warn(
-        notSending +
-          "when " +
-          doNotTrack +
-          " is enabled. See " +
-          docsUrl +
-          "/dnt"
+        notSendingWhen + doNotTrack + " is enabled. See " + docsUrl + "/dnt"
       );
 
     // Warn when sending from localhost and not having a hostname set
@@ -508,15 +503,14 @@
     var sendOnLeave = function (id, push) {
       if (!collectDataOnLeave) return;
 
-      var append = {
+      var append = assign(basePayload, {
         type: "append",
-        hostname: definedHostname,
         original_id: push ? id : payload.page_id,
-      };
+      });
 
       // t = timeonpage
       if (collectMetricByString("t")) {
-        append[duration] = Math.round((now() - start - msHidden) / thousand);
+        append.duration = Math.round((now() - start - msHidden) / thousand);
       }
       msHidden = 0;
       start = now();
@@ -605,7 +599,7 @@
 
       // Ignore pages specified in data-ignore-pages
       if (shouldIgnore(path)) {
-        warn(notSending + ", ignored " + path);
+        warn(notSendingWhen + "ignoring " + path);
         return;
       }
 
@@ -677,19 +671,20 @@
       var navigationText = "navigation";
 
       // Check if back, forward or reload buttons are being used in modern browsers
-      var userNavigated =
-        perf &&
-        perf.getEntriesByType &&
-        perf.getEntriesByType(navigationText)[0] &&
-        perf.getEntriesByType(navigationText)[0].type
-          ? ["reload", "back_forward"].indexOf(
-              perf.getEntriesByType(navigationText)[0].type
-            ) > -1
-          : // Check if back, forward or reload buttons are being use in older browsers
-            // 1: TYPE_RELOAD, 2: TYPE_BACK_FORWARD
-            perf &&
-            perf[navigationText] &&
-            [1, 2].indexOf(perf[navigationText].type) > -1;
+      var performaceEntryType;
+      try {
+        performaceEntryType = perf.getEntriesByType(navigationText)[0].type;
+      } catch (error) {
+        // Do nothing
+      }
+
+      var userNavigated = performaceEntryType
+        ? ["reload", "back_forward"].indexOf(performaceEntryType) > -1
+        : // Check if back, forward or reload buttons are being use in older browsers
+          // 1: TYPE_RELOAD, 2: TYPE_BACK_FORWARD
+          perf &&
+          perf[navigationText] &&
+          [1, 2].indexOf(perf[navigationText].type) > -1;
 
       // Check if referrer is the same as current real hostname (not the defined hostname!)
       var currentReferrerHostname = doc.referrer.split(slash)[2];
