@@ -120,14 +120,7 @@ const getDriverWithTimeout = (capabilitiesRaw, { timeout = 180000 } = {}) =>
     const start = Date.now();
     let responded = false;
 
-    log(`getDriverWithTimeout start: ${capabilities.name} ${new Date()}`);
-
     const response = (message) => {
-      log(
-        `getDriverWithTimeout response: ${
-          capabilities.name
-        } (${message}) ${new Date()}`
-      );
       if (message instanceof Error) {
         log(message);
         return resolve(message);
