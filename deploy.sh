@@ -53,8 +53,6 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
   rsync --rsync-path="sudo rsync" "$SCRIPTS_LATEST_PATH/latest.js.map" "$REMOTE_PATH/latest.js.map"
   rsync --rsync-path="sudo rsync" "$SCRIPTS_LATEST_PATH/light.js" "$REMOTE_PATH/light.js"
   rsync --rsync-path="sudo rsync" "$SCRIPTS_LATEST_PATH/light.js.map" "$REMOTE_PATH/light.js.map"
-  rsync --rsync-path="sudo rsync" "$SCRIPTS_LATEST_PATH/proxy.js" "$REMOTE_PATH/proxy.js"
-  rsync --rsync-path="sudo rsync" "$SCRIPTS_LATEST_PATH/proxy.js.map" "$REMOTE_PATH/proxy.js.map"
 
   echo "==> Creating v$VERSION folder on $SERVER_NAME"
   ssh app@external.simpleanalytics.com mkdir -p "/var/www/default/v$VERSION"
@@ -64,8 +62,6 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
   rsync --quiet --rsync-path="sudo rsync" "./dist/v$VERSION/custom/app.js.map" "$REMOTE_PATH/v$VERSION/app.js.map"
   rsync --quiet --rsync-path="sudo rsync" "./dist/v$VERSION/custom/light.js" "$REMOTE_PATH/v$VERSION/light.js"
   rsync --quiet --rsync-path="sudo rsync" "./dist/v$VERSION/custom/light.js.map" "$REMOTE_PATH/v$VERSION/light.js.map"
-  rsync --quiet --rsync-path="sudo rsync" "./dist/v$VERSION/custom/proxy.js" "$REMOTE_PATH/v$VERSION/proxy.js"
-  rsync --quiet --rsync-path="sudo rsync" "./dist/v$VERSION/custom/proxy.js.map" "$REMOTE_PATH/v$VERSION/proxy.js.map"
   rsync --quiet --rsync-path="sudo rsync" "./dist/v$VERSION/custom/auto-events.js" "$REMOTE_PATH/v$VERSION/auto-events.js"
   rsync --quiet --rsync-path="sudo rsync" "./dist/v$VERSION/custom/auto-events.js.map" "$REMOTE_PATH/v$VERSION/auto-events.js.map"
 
