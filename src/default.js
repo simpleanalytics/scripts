@@ -7,7 +7,8 @@
   apiUrlPrefix,
   version,
   defaultNamespace,
-  sendError
+  sendError,
+  warn
 ) {
   try {
     /////////////////////
@@ -74,8 +75,21 @@
     //
 
     // A simple log function so the user knows why a request is not being send
-    var warn = function (message) {
-      if (con && con.warn) con.warn("Simple Analytics:", message);
+    warn = function () {
+      if (con && con.warn) {
+        // 1. Convert args to a normal array
+        var args = [].slice.call(arguments);
+
+        // 2. Prepend log prefix
+        args.unshift("Simple Analytics:");
+
+        // 3. Pass along arguments to console.warn
+        con.warn.apply(con, args);
+      }
+    };
+
+    var warnInFunction = function (name, error) {
+      warn("Error in your " + name + " function:", error);
     };
 
     var hasProp = function (obj, prop) {
@@ -445,7 +459,7 @@
         ? Intl.DateTimeFormat().resolvedOptions().timeZone
         : undefinedVar;
     } catch (e) {
-      /* Do nothing */
+      warn(error);
     }
 
     /////////////////////
@@ -637,6 +651,7 @@
           ) * 5
         );
       } catch (error) {
+        warn(error);
         return 0;
       }
     };
@@ -763,7 +778,7 @@
       try {
         performaceEntryType = perf.getEntriesByType(navigationText)[0].type;
       } catch (error) {
-        // Do nothing
+        warn(error);
       }
 
       var userNavigated = performaceEntryType
