@@ -76,16 +76,16 @@
 
     // A simple log function so the user knows why a request is not being send
     warn = function () {
-      if (con && con.warn) {
-        // 1. Convert args to a normal array
-        var args = [].slice.call(arguments);
+      // 1. Convert args to a normal array
+      var args = [].slice.call(arguments);
 
-        // 2. Prepend log prefix
-        args.unshift("Simple Analytics:");
+      // 2. Prepend log prefix
+      args.unshift("Simple Analytics: ");
 
-        // 3. Pass along arguments to console.warn
-        con.warn.apply(con, args);
-      }
+      // 3. Pass along arguments to console.warn
+      // Function.prototype.bind.call is needed for Internet Explorer
+      var log = Function.prototype.bind.call(con.warn, con);
+      log.apply(con, args);
     };
 
     var warnInFunction = function (name, error) {
