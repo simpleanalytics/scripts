@@ -963,6 +963,7 @@
             );
             return callback();
           }
+          event = eventOutput;
         }
       } catch (error) {
         warnInFunction(eventFunctionName, error);
