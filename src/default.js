@@ -267,18 +267,14 @@
         var ignorePage =
           ignorePageRaw[0] == slash ? ignorePageRaw : slash + ignorePageRaw;
 
-        try {
-          if (
-            ignorePage === path ||
-            new RegExp(
-              "^" + filterRegex(ignorePage).replace(/\\\*/gi, "(.*)") + "$",
-              "i"
-            ).test(path)
-          )
-            return trueVar;
-        } catch (error) {
-          return falseVar;
-        }
+        if (
+          ignorePage === path ||
+          new RegExp(
+            "^" + filterRegex(ignorePage).replace(/\\\*/gi, "(.*)") + "$",
+            "i"
+          ).test(path)
+        )
+          return trueVar;
       }
       return falseVar;
     };
