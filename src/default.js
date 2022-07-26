@@ -423,11 +423,9 @@
 
     /** if ignorepages **/
     // Customers can ignore certain pages
-    var ignorePages =
-      ["/path*lala"] ||
-      convertCommaSeparatedToArray(
-        overwriteOptions.ignorePages || attr(scriptElement, "ignore-pages")
-      );
+    var ignorePages = convertCommaSeparatedToArray(
+      overwriteOptions.ignorePages || attr(scriptElement, "ignore-pages")
+    );
     /** endif **/
 
     /** if allowparams **/
