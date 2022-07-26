@@ -238,8 +238,13 @@
     </script>
 
     <script>
+      function pathOverwriter(data) {
+        console.info("pathOverwriter", data);
+        return "/overwritter-by-pathOverwriter" + data.path;
+      }
+
       function appendMetadata(data) {
-        console.info({ data });
+        console.info("appendMetadata", data);
         if (data.type === "pageview")
           return {
             page_id: 123,
@@ -256,6 +261,7 @@
     <script
       async
       data-allow-params="project"
+      data-path-overwriter="pathOverwriter"
       data-metadata-collector="appendMetadata"
       data-hostname="playground.simpleanalytics.com"
       data-ignore-metrics="referrer,utm,country,session,timeonpage,scrolled,useragent,screensize,viewportsize,language"
