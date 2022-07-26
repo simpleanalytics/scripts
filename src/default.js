@@ -680,13 +680,17 @@
       try {
         path = overwrite || decodeURIComponentFunc(loc.pathname);
       } catch (e) {
-        // Do nothing
+        warn(error);
       }
 
       /** if pathoverwriter **/
       var pathOverwriterFunction = window[pathOverwriter];
       if (isFunction(pathOverwriterFunction)) {
-        path = pathOverwriterFunction.call(window, path);
+        try {
+          path = pathOverwriterFunction.call(window, { path: path }) || path;
+        } catch (error) {
+          warnInFunction("path", error);
+        }
       }
       /** endif **/
 
