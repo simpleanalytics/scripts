@@ -331,6 +331,16 @@
         Date.now();
     };
 
+    // Customers can overwrite their hostname, here we check for that
+    var overwrittenHostname =
+      overwriteOptions.hostname || attr(scriptElement, "hostname");
+    var definedHostname = overwrittenHostname || locationHostname;
+
+    var basePayload = {
+      version: version,
+      hostname: definedHostname,
+    };
+
     /** if errorhandling **/
     /////////////////////
     // ERROR FUNCTIONS
@@ -339,13 +349,19 @@
     // Send errors
     // no var because it's scoped outside of the try/catch
     sendError = function (errorOrMessage) {
-      errorOrMessage = errorOrMessage.message || errorOrMessage;
+      errorOrMessage = errorOrMessage.stack
+        ? errorOrMessage + " " + errorOrMessage.stack
+        : errorOrMessage;
       warn(errorOrMessage);
-      sendData({
-        type: errorText,
-        error: errorOrMessage,
-        url: definedHostname + loc.pathname,
-      });
+      sendData(
+        assign(basePayload, {
+          type: errorText,
+          error: errorOrMessage,
+          path: loc.pathname,
+        }),
+        undefinedVar,
+        trueVar
+      );
     };
 
     // We listen for the error events and only send errors that are
@@ -388,11 +404,6 @@
         attr(scriptElement, "skip-dnt") == trueText ||
         attr(scriptElement, "collect-dnt") == trueText;
     /** endif **/
-
-    // Customers can overwrite their hostname, here we check for that
-    var overwrittenHostname =
-      overwriteOptions.hostname || attr(scriptElement, "hostname");
-    var definedHostname = overwrittenHostname || locationHostname;
 
     /** if (or spa hash) **/
     // Some customers want to collect page views manually
@@ -479,11 +490,6 @@
     // t = timeonpage, scro = scrolled
     var collectDataOnLeave =
       collectMetricByString("t") || collectMetricByString("scro");
-
-    var basePayload = {
-      version: version,
-      hostname: definedHostname,
-    };
 
     if (bot) basePayload.bot = trueVar;
 
