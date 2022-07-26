@@ -946,22 +946,26 @@
 
       var eventIsFunction = isFunction(event);
       var callback = isFunction(callbackRaw) ? callbackRaw : function () {};
+      var eventType = typeof event;
 
-      if (validTypes.indexOf(typeof event) < 0 && !eventIsFunction) {
-        warn(eventText + " isn't a string: " + event);
+      if (validTypes.indexOf(eventType) < 0 && !eventIsFunction) {
+        warnInFunction(eventFunctionName, eventText + " can't be " + eventType);
         return callback();
       }
 
       try {
         if (eventIsFunction) {
-          event = event();
-          if (validTypes.indexOf(typeof event) < 0) {
-            warn(eventText + " function output isn't a string: " + event);
+          var eventOutput = event();
+          if (validTypes.indexOf(typeof eventOutput) < 0) {
+            warnInFunction(
+              eventFunctionName,
+              event + " returns no string: " + eventOutput
+            );
             return callback();
           }
         }
       } catch (error) {
-        warn(errorText + " in your event function: " + error);
+        warnInFunction(eventFunctionName, error);
         return callback();
       }
 
