@@ -200,10 +200,10 @@
       try {
         return assign(
           metadata,
-          metadataCollectorFunction.call(window, assign(data, metadata))
+          metadataCollectorFunction.call(window, assign(metadata, data))
         );
       } catch (error) {
-        warn(errorText + " in your metadata function: " + error);
+        warnInFunction("metadata", error);
       }
     };
     /** endif **/
