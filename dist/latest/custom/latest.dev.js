@@ -1,4 +1,4 @@
-/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2022-07-25; fded; v9) */
+/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2022-07-26; efb0; v9) */
 /* eslint-env browser */
 
 (function (
@@ -8,7 +8,8 @@
   apiUrlPrefix,
   version,
   defaultNamespace,
-  sendError
+  sendError,
+  warn
 ) {
   try {
     /////////////////////
@@ -71,8 +72,21 @@
     //
 
     // A simple log function so the user knows why a request is not being send
-    var warn = function (message) {
-      if (con && con.warn) con.warn("Simple Analytics:", message);
+    warn = function () {
+      // 1. Convert args to a normal array
+      var args = [].slice.call(arguments);
+
+      // 2. Prepend log prefix
+      args.unshift("Simple Analytics: ");
+
+      // 3. Pass along arguments to console.warn
+      // Function.prototype.bind.call is needed for Internet Explorer
+      var log = Function.prototype.bind.call(con.warn, con);
+      log.apply(con, args);
+    };
+
+    var warnInFunction = function (name, error) {
+      warn("Error in your " + name + " function:", error);
     };
 
     var hasProp = function (obj, prop) {
@@ -176,10 +190,10 @@
       try {
         return assign(
           metadata,
-          metadataCollectorFunction.call(window, assign(data, metadata))
+          metadataCollectorFunction.call(window, assign(metadata, data))
         );
       } catch (error) {
-        warn(errorText + " in your metadata function: " + error);
+        warnInFunction("metadata", error);
       }
     };
 
@@ -231,18 +245,14 @@
         var ignorePage =
           ignorePageRaw[0] == slash ? ignorePageRaw : slash + ignorePageRaw;
 
-        try {
-          if (
-            ignorePage === path ||
-            new RegExp(
-              "^" + filterRegex(ignorePage).replace(/\\\*/gi, "(.*)") + "$",
-              "i"
-            ).test(path)
-          )
-            return trueVar;
-        } catch (error) {
-          return falseVar;
-        }
+        if (
+          ignorePage === path ||
+          new RegExp(
+            "^" + filterRegex(ignorePage).replace(/\\\*/gi, "(.*)") + "$",
+            "i"
+          ).test(path)
+        )
+          return trueVar;
       }
       return falseVar;
     };
@@ -294,6 +304,16 @@
         Date.now();
     };
 
+    // Customers can overwrite their hostname, here we check for that
+    var overwrittenHostname =
+      overwriteOptions.hostname || attr(scriptElement, "hostname");
+    var definedHostname = overwrittenHostname || locationHostname;
+
+    var basePayload = {
+      version: version,
+      hostname: definedHostname,
+    };
+
     /////////////////////
     // ERROR FUNCTIONS
     //
@@ -301,13 +321,19 @@
     // Send errors
     // no var because it's scoped outside of the try/catch
     sendError = function (errorOrMessage) {
-      errorOrMessage = errorOrMessage.message || errorOrMessage;
+      errorOrMessage = errorOrMessage.stack
+        ? errorOrMessage + " " + errorOrMessage.stack
+        : errorOrMessage;
       warn(errorOrMessage);
-      sendData({
-        type: errorText,
-        error: errorOrMessage,
-        url: definedHostname + loc.pathname,
-      });
+      sendData(
+        assign(basePayload, {
+          type: errorText,
+          error: errorOrMessage,
+          path: loc.pathname,
+        }),
+        undefinedVar,
+        trueVar
+      );
     };
 
     // We listen for the error events and only send errors that are
@@ -344,11 +370,6 @@
         attr(scriptElement, "skip-dnt") == trueText ||
         attr(scriptElement, "collect-dnt") == trueText;
 
-    // Customers can overwrite their hostname, here we check for that
-    var overwrittenHostname =
-      overwriteOptions.hostname || attr(scriptElement, "hostname");
-    var definedHostname = overwrittenHostname || locationHostname;
-
     // Some customers want to collect page views manually
     var autoCollect = !(
       attr(scriptElement, "auto-collect") == "false" ||
@@ -362,11 +383,9 @@
       namespace + "_" + eventText;
 
     // Customers can ignore certain pages
-    var ignorePages =
-      ["/path*lala"] ||
-      convertCommaSeparatedToArray(
-        overwriteOptions.ignorePages || attr(scriptElement, "ignore-pages")
-      );
+    var ignorePages = convertCommaSeparatedToArray(
+      overwriteOptions.ignorePages || attr(scriptElement, "ignore-pages")
+    );
 
     // Customers can allow params
     var allowParams = convertCommaSeparatedToArray(
@@ -395,8 +414,8 @@
       timezone = collectMetricByString("c")
         ? Intl.DateTimeFormat().resolvedOptions().timeZone
         : undefinedVar;
-    } catch (e) {
-      /* Do nothing */
+    } catch (error) {
+      warn(error);
     }
 
     /////////////////////
@@ -416,11 +435,6 @@
     // t = timeonpage, scro = scrolled
     var collectDataOnLeave =
       collectMetricByString("t") || collectMetricByString("scro");
-
-    var basePayload = {
-      version: version,
-      hostname: definedHostname,
-    };
 
     if (bot) basePayload.bot = trueVar;
 
@@ -562,6 +576,7 @@
           ) * 5
         );
       } catch (error) {
+        warn(error);
         return 0;
       }
     };
@@ -588,13 +603,17 @@
       // https://github.com/simpleanalytics/roadmap/issues/462
       try {
         path = overwrite || decodeURIComponentFunc(loc.pathname);
-      } catch (e) {
-        // Do nothing
+      } catch (error) {
+        warn(error);
       }
 
       var pathOverwriterFunction = window[pathOverwriter];
       if (isFunction(pathOverwriterFunction)) {
-        path = pathOverwriterFunction.call(window, path);
+        try {
+          path = pathOverwriterFunction.call(window, { path: path }) || path;
+        } catch (error) {
+          warnInFunction("path", error);
+        }
       }
 
       // Ignore pages specified in data-ignore-pages
@@ -675,7 +694,7 @@
       try {
         performaceEntryType = perf.getEntriesByType(navigationText)[0].type;
       } catch (error) {
-        // Do nothing
+        warn(error);
       }
 
       var userNavigated = performaceEntryType
@@ -814,22 +833,27 @@
 
       var eventIsFunction = isFunction(event);
       var callback = isFunction(callbackRaw) ? callbackRaw : function () {};
+      var eventType = typeof event;
 
-      if (validTypes.indexOf(typeof event) < 0 && !eventIsFunction) {
-        warn(eventText + " isn't a string: " + event);
+      if (validTypes.indexOf(eventType) < 0 && !eventIsFunction) {
+        warnInFunction(eventFunctionName, eventText + " can't be " + eventType);
         return callback();
       }
 
       try {
         if (eventIsFunction) {
-          event = event();
-          if (validTypes.indexOf(typeof event) < 0) {
-            warn(eventText + " function output isn't a string: " + event);
+          var eventOutput = event();
+          if (validTypes.indexOf(typeof eventOutput) < 0) {
+            warnInFunction(
+              eventFunctionName,
+              event + " returns no string: " + eventOutput
+            );
             return callback();
           }
+          event = eventOutput;
         }
       } catch (error) {
-        warn(errorText + " in your event function: " + error);
+        warnInFunction(eventFunctionName, error);
         return callback();
       }
 
