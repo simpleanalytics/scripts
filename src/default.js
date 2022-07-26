@@ -463,7 +463,7 @@
       timezone = collectMetricByString("c")
         ? Intl.DateTimeFormat().resolvedOptions().timeZone
         : undefinedVar;
-    } catch (e) {
+    } catch (error) {
       warn(error);
     }
 
@@ -679,7 +679,7 @@
       // https://github.com/simpleanalytics/roadmap/issues/462
       try {
         path = overwrite || decodeURIComponentFunc(loc.pathname);
-      } catch (e) {
+      } catch (error) {
         warn(error);
       }
 
