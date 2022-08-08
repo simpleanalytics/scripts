@@ -190,6 +190,9 @@
       for (var i = 0; i < a.length; i++) {
         var link = a[i];
 
+        // Skip links that don't have an href
+        if (!link.getAttribute("href")) continue;
+
         // We don't want to overwrite website behaviour so we check for the onclick attribute
         if (!link.getAttribute("onclick")) {
           collectLink(link, true);
