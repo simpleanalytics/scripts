@@ -142,7 +142,8 @@
       <p>A test site to test automated events for Simple Analytics.</p>
 
       <p>
-        <a data-callback>Callback link</a>
+        <a data-callback>Callback link</a><br />
+        <a data-metadata-callback>Callback metadata link</a>
       </p>
 
       <textarea readonly>Loading JavaScript...</textarea>
@@ -246,15 +247,19 @@
       const callbackLink = document.querySelector("[data-callback]");
       callbackLink.addEventListener("click", (event) => {
         event.preventDefault();
-        window.sa_event(
-          "callback_test",
-          {
-            boolean: true,
-          },
-          () => {
-            console.info("Callback called");
-          }
-        );
+        window.sa_event("callback_test", () => {
+          console.info("Callback called");
+        });
+      });
+
+      const callbackMetadataLink = document.querySelector(
+        "[data-metadata-callback]"
+      );
+      callbackMetadataLink.addEventListener("click", (event) => {
+        event.preventDefault();
+        window.sa_event("callback_metadata_test", { boolean: true }, () => {
+          console.info("Callback metadata called");
+        });
       });
     </script>
   </body>
