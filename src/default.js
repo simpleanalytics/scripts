@@ -995,8 +995,8 @@
       }
     };
 
-    var defaultEventFunc = function (event, callback) {
-      sendEvent(event, callback);
+    var defaultEventFunc = function (event, metadata, callback) {
+      sendEvent(event, metadata, callback);
     };
 
     // Set default function if user didn't define a function
