@@ -1,4 +1,4 @@
-/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2022-07-26; efb0; v9) */
+/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2022-09-05; e711; v10) */
 /* eslint-env browser */
 
 (function (
@@ -113,6 +113,29 @@
         : [];
     };
 
+    var isObject = function (object) {
+      return object && object.constructor === Object;
+    };
+
+    var assign = function () {
+      var to = {};
+      var arg = arguments;
+      for (var index = 0; index < arg.length; index++) {
+        var nextSource = arg[index];
+        if (isObject(nextSource)) {
+          for (var nextKey in nextSource) {
+            if (hasProp(nextSource, nextKey)) {
+              to[nextKey] = nextSource[nextKey];
+            }
+          }
+        }
+      }
+      return to;
+    };
+
+    // Merge overwriteOptions with sa_settings
+    overwriteOptions = assign(overwriteOptions, window.sa_settings);
+
     // Customers can skip data points
     var ignoreMetrics = convertCommaSeparatedToArray(
       overwriteOptions.ignoreMetrics || attr(scriptElement, "ignore-metrics")
@@ -153,26 +176,6 @@
 
     var isFunction = function (func) {
       return typeof func == "function";
-    };
-
-    var isObject = function (object) {
-      return object && object.constructor === Object;
-    };
-
-    var assign = function () {
-      var to = {};
-      var arg = arguments;
-      for (var index = 0; index < arg.length; index++) {
-        var nextSource = arg[index];
-        if (isObject(nextSource)) {
-          for (var nextKey in nextSource) {
-            if (hasProp(nextSource, nextKey)) {
-              to[nextKey] = nextSource[nextKey];
-            }
-          }
-        }
-      }
-      return to;
     };
 
     // Define namespace for the library
@@ -875,8 +878,8 @@
       }
     };
 
-    var defaultEventFunc = function (event, callback) {
-      sendEvent(event, callback);
+    var defaultEventFunc = function (event, metadata, callback) {
+      sendEvent(event, metadata, callback);
     };
 
     // Set default function if user didn't define a function
@@ -907,6 +910,6 @@
   {},
   "<!--# echo var="http_host" default="" -->",
   "",
-  "custom_latest_dev_9",
+  "custom_latest_dev_10",
   "sa"
 );

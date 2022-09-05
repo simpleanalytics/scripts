@@ -116,6 +116,29 @@
         : [];
     };
 
+    var isObject = function (object) {
+      return object && object.constructor === Object;
+    };
+
+    var assign = function () {
+      var to = {};
+      var arg = arguments;
+      for (var index = 0; index < arg.length; index++) {
+        var nextSource = arg[index];
+        if (isObject(nextSource)) {
+          for (var nextKey in nextSource) {
+            if (hasProp(nextSource, nextKey)) {
+              to[nextKey] = nextSource[nextKey];
+            }
+          }
+        }
+      }
+      return to;
+    };
+
+    // Merge overwriteOptions with sa_settings
+    overwriteOptions = assign(overwriteOptions, window.sa_settings);
+
     /** if ignoremetrics **/
     // Customers can skip data points
     var ignoreMetrics = convertCommaSeparatedToArray(
@@ -162,26 +185,6 @@
 
     var isFunction = function (func) {
       return typeof func == "function";
-    };
-
-    var isObject = function (object) {
-      return object && object.constructor === Object;
-    };
-
-    var assign = function () {
-      var to = {};
-      var arg = arguments;
-      for (var index = 0; index < arg.length; index++) {
-        var nextSource = arg[index];
-        if (isObject(nextSource)) {
-          for (var nextKey in nextSource) {
-            if (hasProp(nextSource, nextKey)) {
-              to[nextKey] = nextSource[nextKey];
-            }
-          }
-        }
-      }
-      return to;
     };
 
     // Define namespace for the library
@@ -992,8 +995,8 @@
       }
     };
 
-    var defaultEventFunc = function (event, callback) {
-      sendEvent(event, callback);
+    var defaultEventFunc = function (event, metadata, callback) {
+      sendEvent(event, metadata, callback);
     };
 
     // Set default function if user didn't define a function

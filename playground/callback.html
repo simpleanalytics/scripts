@@ -16,27 +16,6 @@
             ? window.sa_event.q.push(a)
             : (window.sa_event.q = [a]);
         };
-
-      sa_event(
-        "before_script_load",
-        {
-          date: new Date(),
-          modified_at: new Date().toISOString().slice(0, 16) + "Z",
-          deletedAt: new Date().toISOString().slice(0, 16).replace("T", " "),
-          false: false,
-          true: true,
-          null: null,
-          undefined: undefined,
-          zero: 0,
-          one: 1,
-          minus_one: -1,
-        },
-        () => {
-          console.info(
-            "Simple Analytics auto events: collected before_script_load"
-          );
-        }
-      );
     </script>
 
     <style>
@@ -94,6 +73,8 @@
       }
       a {
         color: #415659;
+        cursor: pointer;
+        text-decoration: underline;
       }
       a:hover {
         text-decoration: none;
@@ -161,16 +142,8 @@
       <p>A test site to test automated events for Simple Analytics.</p>
 
       <p>
-        <a href="https://example.com" target="_blank" rel="nofollow noopener"
-          >Outbound link</a
-        ><br />
-        <a href="mailto:user@example.com">Email link</a><br />
-        <a href="/file.pdf">Download PDF link</a><br />
-        <a
-          href="https://example.com"
-          data-sa-link-event="navigated_to_example_com"
-          >data-sa-link-event</a
-        >
+        <a data-callback>Callback link</a><br />
+        <a data-metadata-callback>Callback metadata link</a>
       </p>
 
       <textarea readonly>Loading JavaScript...</textarea>
@@ -267,59 +240,27 @@
       data-ignore-metrics="referrer,utm,country,session,timeonpage,scrolled,useragent,screensize,viewportsize,language"
       onerror="scriptLoaded('Normal embed', false)"
       onload="scriptLoaded('Normal embed', true)"
-      src="/dist/latest/latest.js"
-    ></script>
-
-    <!-- Auto events script -->
-    <script
-      async
-      data-hostname="playground.simpleanalytics.com"
-      data-collect="outbound,emails,downloads"
-      data-extensions="pdf,csv,docx,xlsx,zip,doc,xls"
-      data-use-title="true"
-      data-full-urls="false"
-      onerror="scriptLoaded('Auto events', false)"
-      onload="scriptLoaded('Auto events', true)"
-      src="/dist/latest/auto-events.js"
+      src="/dist/latest/latest.dev.js"
     ></script>
 
     <script>
-      (function () {
-        function saLoadedLinkEvents() {
-          document
-            .querySelectorAll("a[data-sa-link-event]")
-            .forEach(function (element) {
-              var href = element.getAttribute("href");
-              var eventName = element.getAttribute("data-sa-link-event");
-              if (!href || !window.sa_event || !window.sa_event_loaded) return;
+      const callbackLink = document.querySelector("[data-callback]");
+      callbackLink.addEventListener("click", (event) => {
+        event.preventDefault();
+        window.sa_event("callback_test", () => {
+          console.info("Callback called");
+        });
+      });
 
-              element.addEventListener("click", function (event) {
-                var target = element.getAttribute("target");
-                if (target === "_blank") {
-                  event.preventDefault();
-                  window.sa_event(eventName, function () {
-                    window.location.href = href;
-                  });
-                  return false;
-                } else {
-                  window.sa_event(eventName);
-                  return true;
-                }
-              });
-            });
-        }
-
-        if (
-          document.readyState === "ready" ||
-          document.readyState === "complete"
-        ) {
-          saLoadedLinkEvents();
-        } else {
-          document.addEventListener("readystatechange", function (event) {
-            if (event.target.readyState === "complete") saLoadedLinkEvents();
-          });
-        }
-      })();
+      const callbackMetadataLink = document.querySelector(
+        "[data-metadata-callback]"
+      );
+      callbackMetadataLink.addEventListener("click", (event) => {
+        event.preventDefault();
+        window.sa_event("callback_metadata_test", { boolean: true }, () => {
+          console.info("Callback metadata called");
+        });
+      });
     </script>
   </body>
 </html>
