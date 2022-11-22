@@ -144,7 +144,7 @@
       optionsLink.downloads &&
       /^https?:\/\//i.test(link.href) &&
       new RegExp(
-        ".(" + (optionsLink.downloadsExtensions || []).join("|") + ")",
+        "\\.(" + (optionsLink.downloadsExtensions || []).join("|") + ")$",
         "i"
       ).test(link.pathname)
     ) {
