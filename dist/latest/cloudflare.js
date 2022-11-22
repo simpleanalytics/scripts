@@ -1,4 +1,4 @@
-/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2022-09-05; 9974; v10) */
+/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2022-11-22; cdfd; v11) */
 /* eslint-env browser */
 
 (function (
@@ -63,6 +63,9 @@
       /(bot|spider|crawl)/i.test(userAgent) && !/(cubot)/i.test(userAgent);
     var screen = window.screen;
 
+    // Skip server side rendered pages on Cloudflare
+    if (typeof window == "" + undefinedVar) return;
+
     // Find the script element where options can be set on
     var scriptElement =
       doc.currentScript || doc.querySelector('script[src*="' + baseUrl + '"]');
@@ -77,12 +80,11 @@
       var args = [].slice.call(arguments);
 
       // 2. Prepend log prefix
-      args.unshift("Simple Analytics: ");
+      args.unshift("Simple Analytics:");
 
       // 3. Pass along arguments to console.warn
-      // Function.prototype.bind.call is needed for Internet Explorer
-      var log = Function.prototype.bind.call(con.warn, con);
-      log.apply(con, args);
+      // Function.prototype.apply.call is needed for Internet Explorer
+      return Function.prototype.apply.call(con.warn, con, args);
     };
 
     var warnInFunction = function (name, error) {
@@ -133,8 +135,13 @@
       return to;
     };
 
+    var settings = window.sa_settings;
+    var logSettings = settings || Object.values(overwriteOptions).length;
+
     // Merge overwriteOptions with sa_settings
-    overwriteOptions = assign(overwriteOptions, window.sa_settings);
+    overwriteOptions = assign(overwriteOptions, settings);
+
+    if (logSettings) warn("Settings", overwriteOptions);
 
     // Customers can skip data points
     var ignoreMetrics = convertCommaSeparatedToArray(
@@ -905,9 +912,9 @@
   }
 })(
   window,
-  {"saGlobal":INSTALL_OPTIONS.sa_global,"mode":INSTALL_OPTIONS.hash_mode ? 'hash' : null,"collectDnt":INSTALL_OPTIONS.collect_dnt},
+  {"hostname":INSTALL_OPTIONS.hostname,"collectDnt":typeof INSTALL_OPTIONS.collect_dnt === 'boolean' ? INSTALL_OPTIONS.collect_dnt : null,"mode":INSTALL_OPTIONS.hash_mode ? 'hash' : 'normal',"strictUtm":INSTALL_OPTIONS.advanced_settings_toggle && INSTALL_OPTIONS.strict_utm,"allowParams":INSTALL_OPTIONS.advanced_settings_toggle && INSTALL_OPTIONS.allow_url_parameters,"nonUniqueHostnames":INSTALL_OPTIONS.advanced_settings_toggle && INSTALL_OPTIONS.non_unique_hostnames,"ignorePages":INSTALL_OPTIONS.advanced_settings_toggle && INSTALL_OPTIONS.ignore_pages,"namespace":INSTALL_OPTIONS.overwrite_namespace && INSTALL_OPTIONS.namespace},
   INSTALL_OPTIONS.custom_domain || "queue.simpleanalyticscdn.com",
   "",
-  "cloudflare_10",
+  "cloudflare_11",
   "sa"
 );

@@ -1,4 +1,4 @@
-/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2022-09-05; c427; v10) */
+/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2022-11-22; 79e5; v11) */
 /* eslint-env browser */
 
 (function (
@@ -63,6 +63,7 @@
       /(bot|spider|crawl)/i.test(userAgent) && !/(cubot)/i.test(userAgent);
     var screen = window.screen;
 
+
     // Find the script element where options can be set on
     var scriptElement =
       doc.currentScript || doc.querySelector('script[src*="' + baseUrl + '"]');
@@ -77,12 +78,11 @@
       var args = [].slice.call(arguments);
 
       // 2. Prepend log prefix
-      args.unshift("Simple Analytics: ");
+      args.unshift("Simple Analytics:");
 
       // 3. Pass along arguments to console.warn
-      // Function.prototype.bind.call is needed for Internet Explorer
-      var log = Function.prototype.bind.call(con.warn, con);
-      log.apply(con, args);
+      // Function.prototype.apply.call is needed for Internet Explorer
+      return Function.prototype.apply.call(con.warn, con, args);
     };
 
     var warnInFunction = function (name, error) {
@@ -133,8 +133,13 @@
       return to;
     };
 
+    var settings = window.sa_settings;
+    var logSettings = settings || Object.values(overwriteOptions).length;
+
     // Merge overwriteOptions with sa_settings
-    overwriteOptions = assign(overwriteOptions, window.sa_settings);
+    overwriteOptions = assign(overwriteOptions, settings);
+
+    if (logSettings) warn("Settings", overwriteOptions);
 
     // Customers can skip data points
     var ignoreMetrics = convertCommaSeparatedToArray(
@@ -910,6 +915,6 @@
   {},
   "simpleanalyticscdn.com",
   "queue.",
-  "cdn_latest_dev_10",
+  "cdn_latest_dev_11",
   "sa"
 );
