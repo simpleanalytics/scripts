@@ -88,7 +88,7 @@
       args.unshift("Simple Analytics:");
 
       // 3. Pass along arguments to console.warn
-      // Function.prototype.bind.call is needed for Internet Explorer
+      // Function.prototype.apply.call is needed for Internet Explorer
       return Function.prototype.apply.call(con.warn, con, args);
     };
 
