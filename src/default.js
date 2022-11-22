@@ -312,6 +312,7 @@
       data = onlyThisData ? data : assign(payload, page, data);
 
       if (nav.brave && !onlyThisData) data.brave = trueVar;
+      if (nav._duckduckgoloader_ && !onlyThisData) data.duck = trueVar;
 
       /** if dev **/
       data.dev = trueVar;
