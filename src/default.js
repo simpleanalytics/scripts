@@ -66,6 +66,11 @@
     var screen = window.screen;
     /** endif **/
 
+    /** if skipnonwindow **/
+    // Skip server side rendered pages on Cloudflare
+    if (typeof window == "" + undefinedVar) return;
+    /** endif **/
+
     // Find the script element where options can be set on
     var scriptElement =
       doc.currentScript || doc.querySelector('script[src*="' + baseUrl + '"]');
@@ -80,12 +85,11 @@
       var args = [].slice.call(arguments);
 
       // 2. Prepend log prefix
-      args.unshift("Simple Analytics: ");
+      args.unshift("Simple Analytics:");
 
       // 3. Pass along arguments to console.warn
       // Function.prototype.bind.call is needed for Internet Explorer
-      var log = Function.prototype.bind.call(con.warn, con);
-      log.apply(con, args);
+      return Function.prototype.apply.call(con.warn, con, args);
     };
 
     var warnInFunction = function (name, error) {
@@ -136,8 +140,13 @@
       return to;
     };
 
+    var settings = window.sa_settings;
+    var logSettings = settings || Object.values(overwriteOptions).length;
+
     // Merge overwriteOptions with sa_settings
-    overwriteOptions = assign(overwriteOptions, window.sa_settings);
+    overwriteOptions = assign(overwriteOptions, settings);
+
+    if (logSettings) warn("Settings", overwriteOptions);
 
     /** if ignoremetrics **/
     // Customers can skip data points

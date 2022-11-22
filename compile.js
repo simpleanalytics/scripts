@@ -77,6 +77,7 @@ const DEFAULTS = {
   nonuniquehostnames: true,
   ignoremetrics: true,
   dev: false,
+  skipnonwindow: false,
 };
 
 const LIGHT = {
@@ -161,15 +162,27 @@ const templates = [
     output: `cloudflare.js`,
     variables: {
       ...DEFAULTS,
+      skipnonwindow: true,
       minify: false,
       version: VERSION,
       scriptName: `cloudflare_${VERSION}`,
       sri: false,
       baseUrl: "{{cloudFlareCustomDomain}}",
       overwriteOptions: {
-        saGlobal: "INSTALL_OPTIONS.sa_global",
-        mode: "INSTALL_OPTIONS.hash_mode ? 'hash' : null",
-        collectDnt: "INSTALL_OPTIONS.collect_dnt",
+        hostname: "INSTALL_OPTIONS.hostname",
+        collectDnt:
+          "typeof INSTALL_OPTIONS.collect_dnt === 'boolean' ? INSTALL_OPTIONS.collect_dnt : null",
+        mode: "INSTALL_OPTIONS.hash_mode ? 'hash' : 'normal'",
+        strictUtm:
+          "INSTALL_OPTIONS.advanced_settings_toggle && INSTALL_OPTIONS.strict_utm",
+        allowParams:
+          "INSTALL_OPTIONS.advanced_settings_toggle && INSTALL_OPTIONS.allow_url_parameters",
+        nonUniqueHostnames:
+          "INSTALL_OPTIONS.advanced_settings_toggle && INSTALL_OPTIONS.non_unique_hostnames",
+        ignorePages:
+          "INSTALL_OPTIONS.advanced_settings_toggle && INSTALL_OPTIONS.ignore_pages",
+        namespace:
+          "INSTALL_OPTIONS.overwrite_namespace && INSTALL_OPTIONS.namespace",
       },
     },
   },
