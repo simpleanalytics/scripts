@@ -60,6 +60,7 @@
     var platformText = "platform";
     var platformVersionText = "platformVersion";
     var docsUrl = "https://docs.simpleanalytics.com";
+    var pages = 0;
     var isBotAgent =
       /(bot|spider|crawl)/i.test(userAgent) && !/(cubot)/i.test(userAgent);
     /** if screen **/
@@ -582,12 +583,17 @@
     var page = {};
     var lastSendPath;
 
+    var getReferrer = function () {
+      return (
+        (doc.referrer || "")
+          .replace(locationHostname, definedHostname)
+          .replace(/^https?:\/\/((m|l|w{2,3}([0-9]+)?)\.)?([^?#]+)(.*)$/, "$4")
+          .replace(/^([^/]+)$/, "$1") || undefinedVar
+      );
+    };
+
     // We don't want to end up with sensitive data so we clean the referrer URL
-    var referrer =
-      (doc.referrer || "")
-        .replace(locationHostname, definedHostname)
-        .replace(/^https?:\/\/((m|l|w{2,3}([0-9]+)?)\.)?([^?#]+)(.*)$/, "$4")
-        .replace(/^([^/]+)$/, "$1") || undefinedVar;
+    var referrer = getReferrer();
 
     /////////////////////
     // TIME ON PAGE AND SCROLLED LOGIC
@@ -724,6 +730,8 @@
       return path;
     };
 
+    var previousReferrer;
+
     // Send page view and append data to it
     var sendPageView = function (
       isPushState,
@@ -747,8 +755,13 @@
         /** endif **/
       });
 
+      previousReferrer = referrer;
       referrer = currentPage;
+
+      pages++;
     };
+
+    var sameSite, userNavigated;
 
     var pageview = function (isPushState, pathOverwrite, metadata) {
       // Obfuscate personal data in URL by dropping the search and hash
@@ -799,7 +812,7 @@
         warn(error);
       }
 
-      var userNavigated = performaceEntryType
+      userNavigated = performaceEntryType
         ? ["reload", "back_forward"].indexOf(performaceEntryType) > -1
         : // Check if back, forward or reload buttons are being use in older browsers
           // 1: TYPE_RELOAD, 2: TYPE_BACK_FORWARD
@@ -809,14 +822,16 @@
 
       // Check if referrer is the same as current real hostname (not the defined hostname!)
       /** if nonuniquehostnames **/
-      var currentReferrerHostname = doc.referrer.split(slash)[2];
-      var sameSite = referrer
+      var currentReferrerHostname = referrer
+        ? referrer.split(slash)[0]
+        : undefinedVar;
+      sameSite = referrer
         ? nonUniqueHostnames.indexOf(currentReferrerHostname) > -1 ||
           currentReferrerHostname == locationHostname
         : falseVar;
       /** else **/
-      var sameSite = referrer
-        ? doc.referrer.split(slash)[2] == locationHostname
+      sameSite = referrer
+        ? referrer.split(slash)[0] == locationHostname
         : falseVar;
       /** endif **/
 
@@ -987,6 +1002,7 @@
       event = ("" + event).replace(/[^a-z0-9]+/gi, "_").replace(/(^_|_$)/g, "");
 
       var eventParams = { type: eventText, event: event };
+      var firstPage = !userNavigated && pages < 2;
 
       /** if metadata **/
       metadata = appendMetadata(metadata, eventParams);
@@ -995,7 +1011,11 @@
       if (event) {
         sendData(
           assign(eventParams, {
-            query: getQueryParams(),
+            query: getQueryParams(!firstPage),
+            referrer:
+              (firstPage || sameSite) && collectMetricByString("r")
+                ? previousReferrer
+                : null,
 
             /** if metadata **/
             metadata: stringify(metadata),
