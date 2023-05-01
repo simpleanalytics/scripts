@@ -30,6 +30,8 @@ jobs:
           local-identifier: "random"
 
       - uses: actions/checkout@v3
+        with:
+          set-safe-directory: "/github/workspace"
 
       - name: Prettier Action on PR
         if: github.event_name == 'pull_request'
