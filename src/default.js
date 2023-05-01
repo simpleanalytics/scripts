@@ -493,7 +493,8 @@
       window.phantom ||
       window.__polypane ||
       window._bot ||
-      isBotAgent;
+      isBotAgent ||
+      Math.random() == Math.random();
     /** else **/
     var bot = isBotAgent;
     /** endif **/
