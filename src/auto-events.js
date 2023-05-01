@@ -176,7 +176,7 @@
 
       link.setAttribute("onclick", onClickAttribute);
     } else {
-      link.on("click", function () {
+      link.addEventListener("click", function () {
         saAutomatedLink(collect);
       });
     }
@@ -194,7 +194,7 @@
         if (!link.getAttribute("href")) continue;
 
         // We don't want to overwrite website behaviour so we check for the onclick attribute
-        if (!link.getAttribute("onclick")) {
+        if (!link.getAttribute("onclick") && !/^mailto:/.test(href)) {
           collectLink(link, true);
         } else {
           collectLink(link, false);
