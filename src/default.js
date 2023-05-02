@@ -142,7 +142,7 @@
     };
 
     var settings = window.sa_settings;
-    var logSettings = settings || Object.values(overwriteOptions).length;
+    var logSettings = settings || Object.keys(overwriteOptions).length;
 
     // Merge overwriteOptions with sa_settings
     overwriteOptions = assign(overwriteOptions, settings);

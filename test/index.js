@@ -246,6 +246,7 @@ const getDeviceName = ({
     browser.supportsPushState = getSupportsPushState(browser);
     browser.supportsClientHints = getSupportsClientHints(browser);
     browser.useLocalIp = browser.os === "ios";
+    browser["browserstack.consoleLogs"] = "verbose";
 
     return browser;
   };
