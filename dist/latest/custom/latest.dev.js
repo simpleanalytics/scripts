@@ -1,4 +1,4 @@
-/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2023-05-01; 3732; v11) */
+/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2023-05-02; 761d; v11) */
 /* eslint-env browser */
 
 (function (
@@ -135,7 +135,7 @@
     };
 
     var settings = window.sa_settings;
-    var logSettings = settings || Object.values(overwriteOptions).length;
+    var logSettings = settings || Object.keys(overwriteOptions).length;
 
     // Merge overwriteOptions with sa_settings
     overwriteOptions = assign(overwriteOptions, settings);
@@ -892,6 +892,7 @@
       if (event) {
         sendData(
           assign(eventParams, {
+            id: uuid(),
             query: getQueryParams(!firstPage),
             referrer:
               (firstPage || sameSite) && collectMetricByString("r")
