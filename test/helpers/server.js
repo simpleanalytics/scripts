@@ -119,6 +119,8 @@ const route = async (req, res) => {
       script: script || "",
       beacon: beacon || "",
       push: push || "",
+      os: os || "",
+      browser: browser || "",
     }).toString();
     onload = `window.location.href = "/href?${params}"`;
   }
