@@ -63,7 +63,7 @@ const getSeleniumVersion = ({ browser, os, browser_version }) => {
   if (os === "Windows" && browser === "ie") return "3.5.2";
   if (browser === "firefox" && version(browser_version) >= 94) return "4.0.0";
 
-  return "4.0.0-alpha-2";
+  return "4.8.0";
 };
 
 const getAppiumVersion = ({ device, os, os_version }) => {
@@ -328,60 +328,77 @@ const getDeviceName = ({
     // Empty global REQUESTS
     global.REQUESTS = [];
 
-    await navigate({
-      ...browser,
-      commands,
-      driver,
-    });
+    let errorMessage = null;
 
-    // console.log(JSON.stringify(global.REQUESTS, null, 2));
+    try {
+      await navigate({
+        ...browser,
+        commands,
+        driver,
+      });
 
-    if (browser.supportsSendBeacon) {
-      log("Testing beacon");
-      await require("./test-beacon")(browser);
-    } else if (browser.supportsPushState) {
-      log("Testing one beacon");
-      await require("./test-one-beacon")(browser);
+      // console.log(JSON.stringify(global.REQUESTS, null, 2));
+
+      if (browser.supportsSendBeacon) {
+        log("Testing beacon");
+        await require("./test-beacon")(browser);
+      } else if (browser.supportsPushState) {
+        log("Testing one beacon");
+        await require("./test-one-beacon")(browser);
+      }
+
+      if (browser.supportsPushState) {
+        log("Testing push state");
+        await require("./test-pushstate")(browser);
+      } else {
+        log("Testing no push state");
+        await require("./test-no-pushstate")(browser);
+      }
+
+      if (browser.supportsClientHints) {
+        log("We can't test client hints because they only work on https");
+      }
+
+      log("Testing events");
+
+      // Empty global REQUESTS
+      global.REQUESTS = [];
+
+      commands = [
+        { script: "/latest/hello.js", event: "-- event 123 &&" },
+        { wait: "/simple.gif", params: { body: { type: "event" } } },
+        { script: "/latest/hello.js", event: "function" },
+        { script: "/latest/hello.js", event: "metadata" },
+        {
+          wait: "/simple.gif",
+          params: { body: { type: "event" } },
+          amount: 3,
+        },
+      ];
+
+      await navigate({
+        ...browser,
+        commands,
+        driver,
+      });
+
+      await require("./test-events")(browser);
+    } catch (error) {
+      errorMessage = error.message;
+      throw error;
+    } finally {
+      if (!driver) return;
+
+      const reason = errorMessage?.replace(/"/g, "'") || "";
+
+      driver.executeScript(
+        `browserstack_executor: {"action": "setSessionStatus", "arguments": {"status":"${
+          errorMessage ? "failed" : "passed"
+        }","reason": "${reason}"}}`
+      );
+
+      await driver.quit();
     }
-
-    if (browser.supportsPushState) {
-      log("Testing push state");
-      await require("./test-pushstate")(browser);
-    } else {
-      log("Testing no push state");
-      await require("./test-no-pushstate")(browser);
-    }
-
-    if (browser.supportsClientHints) {
-      log("We can't test client hints because they only work on https");
-    }
-
-    log("Testing events");
-
-    // Empty global REQUESTS
-    global.REQUESTS = [];
-
-    commands = [
-      { script: "/latest/hello.js", event: "-- event 123 &&" },
-      { wait: "/simple.gif", params: { body: { type: "event" } } },
-      { script: "/latest/hello.js", event: "function" },
-      { script: "/latest/hello.js", event: "metadata" },
-      {
-        wait: "/simple.gif",
-        params: { body: { type: "event" } },
-        amount: 3,
-      },
-    ];
-
-    await navigate({
-      ...browser,
-      commands,
-      driver,
-    });
-
-    await require("./test-events")(browser);
-
-    if (driver) await driver.quit();
   };
 
   for (const [index, browser] of browsers.entries()) {
