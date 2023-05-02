@@ -1011,6 +1011,7 @@
       if (event) {
         sendData(
           assign(eventParams, {
+            id: uuid(),
             query: getQueryParams(!firstPage),
             referrer:
               (firstPage || sameSite) && collectMetricByString("r")
