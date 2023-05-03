@@ -20,6 +20,54 @@ if [[ `git status --porcelain` ]]; then
   exit 1
 fi
 
+if [ -f .env ]; then
+    export $(grep -v '^#' .env | sed 's/\r$//' | awk '/=/ {print $1}' )
+else
+  echo "==> Can not find .env variables"
+  exit 1
+fi
+
+if [[ -z ${BUNNY_SCRIPTS_ACCESS_KEY+x} || -z ${BUNNY_SCRIPTS_ACCOUNT_KEY+x} ]]; then
+  echo "==> Make sure BUNNY_SCRIPTS_ACCESS_KEY and BUNNY_SCRIPTS_ACCOUNT_KEY are defined in .env"
+  exit 1
+fi
+
+upload_to_bunny() {
+  local_file=$1
+  remote_file=$2
+  find=${3:-}
+  replace=${4:-}
+
+  if [ ! -z "$find" ] && [ ! -z "$replace" ]; then
+    sed "s/$find/$replace/g" $local_file > /tmp/tmp_file
+    put_response=$(curl \
+      --request PUT \
+      --url "https://storage.bunnycdn.com/sa-cdn/$remote_file" \
+      --header "AccessKey: $BUNNY_SCRIPTS_ACCESS_KEY" \
+      --upload-file "/tmp/tmp_file" \
+      --output - \
+      --silent \
+      -w "%{stdout} %{http_code}"
+    )
+    rm /tmp/tmp_file
+  else
+    put_response=$(curl \
+      --request PUT \
+      --url "https://storage.bunnycdn.com/sa-cdn/$remote_file" \
+      --header "AccessKey: $BUNNY_SCRIPTS_ACCESS_KEY" \
+      --upload-file "$local_file" \
+      --output - \
+      --silent \
+      -w "%{stdout} %{http_code}"
+    )
+  fi
+
+  if ! [[ $put_response = *201* ]]; then
+    echo "==> Failed to update $remote_file, got http code: $put_response"
+    exit 1
+  fi
+}
+
 read -p "==> Specify the latest SRI version: " VERSION
 
 LATEST_FILE="./dist/v$VERSION/app.js"
@@ -54,16 +102,41 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
   rsync --rsync-path="sudo rsync" "$SCRIPTS_LATEST_PATH/light.js" "$REMOTE_PATH/light.js"
   rsync --rsync-path="sudo rsync" "$SCRIPTS_LATEST_PATH/light.js.map" "$REMOTE_PATH/light.js.map"
 
-  echo "==> Creating v$VERSION folder on $SERVER_NAME"
-  ssh app@external.simpleanalytics.com mkdir -p "/var/www/default/v$VERSION"
-
   echo "==> Copying SRI v$VERSION file to $SERVER_NAME"
-  rsync --quiet --rsync-path="sudo rsync" "./dist/v$VERSION/custom/app.js" "$REMOTE_PATH/v$VERSION/app.js"
+  rsync --quiet --rsync-path="sudo mkdir -p $REMOTE_PATH/v$VERSION && sudo rsync" "./dist/v$VERSION/custom/app.js" "$REMOTE_PATH/v$VERSION/app.js"
   rsync --quiet --rsync-path="sudo rsync" "./dist/v$VERSION/custom/app.js.map" "$REMOTE_PATH/v$VERSION/app.js.map"
   rsync --quiet --rsync-path="sudo rsync" "./dist/v$VERSION/custom/light.js" "$REMOTE_PATH/v$VERSION/light.js"
   rsync --quiet --rsync-path="sudo rsync" "./dist/v$VERSION/custom/light.js.map" "$REMOTE_PATH/v$VERSION/light.js.map"
   rsync --quiet --rsync-path="sudo rsync" "./dist/v$VERSION/custom/auto-events.js" "$REMOTE_PATH/v$VERSION/auto-events.js"
   rsync --quiet --rsync-path="sudo rsync" "./dist/v$VERSION/custom/auto-events.js.map" "$REMOTE_PATH/v$VERSION/auto-events.js.map"
+
+  echo "==> Upload files to Bunny"
+  upload_to_bunny "dist/v${VERSION}/app.js" "sri/v${VERSION}.js" "app.js.map" "v${VERSION}.js.map"
+  upload_to_bunny "dist/v${VERSION}/app.js.map" "sri/v${VERSION}.js.map" "app.js" "v${VERSION}.js"
+  upload_to_bunny "dist/latest/auto-events.js" "auto-events.js"
+  upload_to_bunny "dist/latest/auto-events.js.map" "auto-events.js.map"
+  upload_to_bunny "dist/latest/hello.js" "hello.js"
+  upload_to_bunny "dist/latest/hello.js.map" "hello.js.map"
+  upload_to_bunny "dist/latest/latest.dev.js" "latest.dev.js"
+  upload_to_bunny "dist/latest/latest.js" "latest.js"
+  upload_to_bunny "dist/latest/latest.js.map" "latest.js.map"
+  upload_to_bunny "dist/latest/light.js" "light.js"
+  upload_to_bunny "dist/latest/light.js.map" "light.js.map"
+
+  echo "==> Flushing files on Bunny"
+  flush_response=$(curl \
+    --request POST \
+    --header "AccessKey: $BUNNY_SCRIPTS_ACCOUNT_KEY" \
+    --url "https://api.bunny.net/purge?url=https://simpleanalyticscdn.b-cdn.net/*" \
+    --output - \
+    --silent \
+    -w "%{stdout} %{http_code}"
+  )
+
+  if ! [[ $flush_response = *200 ]]; then
+    echo "==> Failed to flush $cdnfilename, got http code: $flush_response"
+    exit 1
+  fi
 
   echo -e "==> ${GREEN}Woop woop! Deployed to $SERVER_NAME!${RESET}"
 else
