@@ -60,10 +60,16 @@
     var platformText = "platform";
     var platformVersionText = "platformVersion";
     var docsUrl = "https://docs.simpleanalytics.com";
+    var pages = 0;
     var isBotAgent =
       /(bot|spider|crawl)/i.test(userAgent) && !/(cubot)/i.test(userAgent);
     /** if screen **/
     var screen = window.screen;
+    /** endif **/
+
+    /** if skipnonwindow **/
+    // Skip server side rendered pages on Cloudflare
+    if (typeof window == "" + undefinedVar) return;
     /** endif **/
 
     // Find the script element where options can be set on
@@ -80,12 +86,11 @@
       var args = [].slice.call(arguments);
 
       // 2. Prepend log prefix
-      args.unshift("Simple Analytics: ");
+      args.unshift("Simple Analytics:");
 
       // 3. Pass along arguments to console.warn
-      // Function.prototype.bind.call is needed for Internet Explorer
-      var log = Function.prototype.bind.call(con.warn, con);
-      log.apply(con, args);
+      // Function.prototype.apply.call is needed for Internet Explorer
+      return Function.prototype.apply.call(con.warn, con, args);
     };
 
     var warnInFunction = function (name, error) {
@@ -136,8 +141,13 @@
       return to;
     };
 
+    var settings = window.sa_settings;
+    var logSettings = settings || Object.keys(overwriteOptions).length;
+
     // Merge overwriteOptions with sa_settings
-    overwriteOptions = assign(overwriteOptions, window.sa_settings);
+    overwriteOptions = assign(overwriteOptions, settings);
+
+    if (logSettings) warn("Settings", overwriteOptions);
 
     /** if ignoremetrics **/
     // Customers can skip data points
@@ -303,6 +313,7 @@
       data = onlyThisData ? data : assign(payload, page, data);
 
       if (nav.brave && !onlyThisData) data.brave = trueVar;
+      if (nav._duckduckgoloader_ && !onlyThisData) data.duck = trueVar;
 
       /** if dev **/
       data.dev = trueVar;
@@ -483,7 +494,8 @@
       window.phantom ||
       window.__polypane ||
       window._bot ||
-      isBotAgent;
+      isBotAgent ||
+      Math.random() == Math.random();
     /** else **/
     var bot = isBotAgent;
     /** endif **/
@@ -571,12 +583,17 @@
     var page = {};
     var lastSendPath;
 
+    var getReferrer = function () {
+      return (
+        (doc.referrer || "")
+          .replace(locationHostname, definedHostname)
+          .replace(/^https?:\/\/((m|l|w{2,3}([0-9]+)?)\.)?([^?#]+)(.*)$/, "$4")
+          .replace(/^([^/]+)$/, "$1") || undefinedVar
+      );
+    };
+
     // We don't want to end up with sensitive data so we clean the referrer URL
-    var referrer =
-      (doc.referrer || "")
-        .replace(locationHostname, definedHostname)
-        .replace(/^https?:\/\/((m|l|w{2,3}([0-9]+)?)\.)?([^?#]+)(.*)$/, "$4")
-        .replace(/^([^/]+)$/, "$1") || undefinedVar;
+    var referrer = getReferrer();
 
     /////////////////////
     // TIME ON PAGE AND SCROLLED LOGIC
@@ -713,6 +730,8 @@
       return path;
     };
 
+    var previousReferrer;
+
     // Send page view and append data to it
     var sendPageView = function (
       isPushState,
@@ -736,8 +755,13 @@
         /** endif **/
       });
 
+      previousReferrer = referrer;
       referrer = currentPage;
+
+      pages++;
     };
+
+    var sameSite, userNavigated;
 
     var pageview = function (isPushState, pathOverwrite, metadata) {
       // Obfuscate personal data in URL by dropping the search and hash
@@ -788,7 +812,7 @@
         warn(error);
       }
 
-      var userNavigated = performaceEntryType
+      userNavigated = performaceEntryType
         ? ["reload", "back_forward"].indexOf(performaceEntryType) > -1
         : // Check if back, forward or reload buttons are being use in older browsers
           // 1: TYPE_RELOAD, 2: TYPE_BACK_FORWARD
@@ -798,14 +822,16 @@
 
       // Check if referrer is the same as current real hostname (not the defined hostname!)
       /** if nonuniquehostnames **/
-      var currentReferrerHostname = doc.referrer.split(slash)[2];
-      var sameSite = referrer
+      var currentReferrerHostname = referrer
+        ? referrer.split(slash)[0]
+        : undefinedVar;
+      sameSite = referrer
         ? nonUniqueHostnames.indexOf(currentReferrerHostname) > -1 ||
           currentReferrerHostname == locationHostname
         : falseVar;
       /** else **/
-      var sameSite = referrer
-        ? doc.referrer.split(slash)[2] == locationHostname
+      sameSite = referrer
+        ? referrer.split(slash)[0] == locationHostname
         : falseVar;
       /** endif **/
 
@@ -976,6 +1002,7 @@
       event = ("" + event).replace(/[^a-z0-9]+/gi, "_").replace(/(^_|_$)/g, "");
 
       var eventParams = { type: eventText, event: event };
+      var firstPage = !userNavigated && pages < 2;
 
       /** if metadata **/
       metadata = appendMetadata(metadata, eventParams);
@@ -984,7 +1011,12 @@
       if (event) {
         sendData(
           assign(eventParams, {
-            query: getQueryParams(),
+            id: uuid(),
+            query: getQueryParams(!firstPage),
+            referrer:
+              (firstPage || sameSite) && collectMetricByString("r")
+                ? previousReferrer
+                : null,
 
             /** if metadata **/
             metadata: stringify(metadata),

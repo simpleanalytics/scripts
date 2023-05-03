@@ -42,7 +42,13 @@ module.exports = async ({ os, browser }) => {
       "page_id",
       "session_id",
       "type",
+      "id",
     ]);
+
+    expect(
+      UUIDvalidate(request.body.id, 4),
+      "event id should be a valid UUIDv4"
+    ).to.be.true;
 
     expect(
       UUIDvalidate(request.body.session_id, 4),

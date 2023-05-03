@@ -87,13 +87,18 @@
       if (window[saGlobal] && window[saGlobal + "_loaded"]) {
         var hostname = element.hostname;
         var pathname = element.pathname;
+
+        var event;
+        var metadata = {
+          title: element.getAttribute("title") || undefined,
+        };
+        var url = element.href || undefined;
+
         var useTitle = false;
         if (optionsLink.title && element.hasAttribute("title")) {
           var theTitle = element.getAttribute("title").trim();
           if (theTitle != "") useTitle = true;
         }
-
-        var event;
 
         if (useTitle) {
           event = theTitle;
@@ -101,17 +106,20 @@
           switch (type) {
             case "outbound": {
               event = hostname + (optionsLink.outboundFullUrl ? pathname : "");
+              metadata.url = url;
               break;
             }
             case "download": {
               event = optionsLink.downloadsFullUrl
                 ? hostname + pathname
                 : pathname.split("/").pop();
+              metadata.url = url;
               break;
             }
             case "email": {
               var href = element.getAttribute("href");
               event = (href.split(":")[1] || "").split("?")[0];
+              metadata.email = event;
               break;
             }
           }
@@ -122,11 +130,13 @@
           "_" +
           event.replace(/[^a-z0-9]+/gi, "_").replace(/(^_+|_+$)/g, "");
 
-        window[saGlobal](clean, callback);
+        window[saGlobal](clean, metadata, callback);
 
         log("collected " + clean);
 
-        return window.setTimeout(callback, 5000);
+        return type === "email"
+          ? callback()
+          : window.setTimeout(callback, 5000);
       } else {
         log(saGlobal + " is not defined", "warn");
         return callback();
@@ -176,8 +186,8 @@
 
       link.setAttribute("onclick", onClickAttribute);
     } else {
-      link.on("click", function () {
-        saAutomatedLink(collect);
+      link.addEventListener("click", function (element) {
+        saAutomatedLink(element.target, collect);
       });
     }
   }
@@ -189,12 +199,13 @@
       // Loop over all links on the page
       for (var i = 0; i < a.length; i++) {
         var link = a[i];
+        var href = link.getAttribute("href");
 
         // Skip links that don't have an href
-        if (!link.getAttribute("href")) continue;
+        if (!href) continue;
 
         // We don't want to overwrite website behaviour so we check for the onclick attribute
-        if (!link.getAttribute("onclick")) {
+        if (!link.getAttribute("onclick") && !/^mailto:/.test(href)) {
           collectLink(link, true);
         } else {
           collectLink(link, false);

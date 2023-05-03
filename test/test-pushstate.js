@@ -1,6 +1,5 @@
 const { expect } = require("chai");
 const UUIDvalidate = require("uuid-validate");
-const { CI } = require("./constants");
 const { getRequests } = require("./helpers");
 
 module.exports = async () => {
@@ -30,6 +29,9 @@ module.exports = async () => {
   expect(pageViewRequests[1].body.query, "Query should not exist").to.equal(
     "project=project_x"
   );
+
+  // Seconds page referrer should be the first page (ending with /)
+  expect(pageViewRequests[1].body.referrer).to.be.a("string").and.match(/\/$/i);
 
   pageViewRequests.map((request) => {
     expect(
