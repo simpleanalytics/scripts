@@ -63,7 +63,7 @@ const getSeleniumVersion = ({ browser, os, browser_version }) => {
   if (os === "Windows" && browser === "ie") return "3.5.2";
   if (browser === "firefox" && version(browser_version) >= 94) return "4.0.0";
 
-  return "4.8.0";
+  return "4.0.0-alpha-2";
 };
 
 const getAppiumVersion = ({ device, os, os_version }) => {
