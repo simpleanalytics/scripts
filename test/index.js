@@ -397,7 +397,13 @@ const getDeviceName = ({
         }","reason": "${reason}"}}`
       );
 
-      await driver.quit();
+      try {
+        const sessionId = await driver.getSession();
+        console.log({ sessionId: sessionId?.id_ });
+        if (sessionId?.id_) await driver.quit();
+      } catch (error) {
+        // Do nothing when driver is already closed
+      }
     }
   };
 
