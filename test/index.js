@@ -389,15 +389,15 @@ const getDeviceName = ({
     } finally {
       if (!driver) return;
 
-      const reason = errorMessage?.replace(/"/g, "'") || "";
-
-      driver.executeScript(
-        `browserstack_executor: {"action": "setSessionStatus", "arguments": {"status":"${
-          errorMessage ? "failed" : "passed"
-        }","reason": "${reason}"}}`
-      );
-
       try {
+        const reason = errorMessage?.replace(/"/g, "'") || "";
+
+        driver.executeScript(
+          `browserstack_executor: {"action": "setSessionStatus", "arguments": {"status":"${
+            errorMessage ? "failed" : "passed"
+          }","reason": "${reason}"}}`
+        );
+
         const sessionId = await driver.getSession();
         console.log({ sessionId: sessionId?.id_ });
         if (sessionId?.id_) await driver.quit();
