@@ -402,7 +402,7 @@ const getDeviceName = ({
         console.log({ sessionId: sessionId?.id_ });
         if (sessionId?.id_) await driver.quit();
       } catch (error) {
-        // Do nothing when driver is already closed
+        // Don't log when driver.quit() fails
       }
     }
   };
