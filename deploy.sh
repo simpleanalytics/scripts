@@ -101,6 +101,8 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
   rsync --rsync-path="sudo rsync" "$SCRIPTS_LATEST_PATH/latest.js.map" "$REMOTE_PATH/latest.js.map"
   rsync --rsync-path="sudo rsync" "$SCRIPTS_LATEST_PATH/light.js" "$REMOTE_PATH/light.js"
   rsync --rsync-path="sudo rsync" "$SCRIPTS_LATEST_PATH/light.js.map" "$REMOTE_PATH/light.js.map"
+  rsync --rsync-path="sudo rsync" "$SCRIPTS_LATEST_PATH/proxy.js" "$REMOTE_PATH/proxy.js"
+  rsync --rsync-path="sudo rsync" "$SCRIPTS_LATEST_PATH/proxy.js.map" "$REMOTE_PATH/proxy.js.map"
 
   echo "==> Copying SRI v$VERSION file to $SERVER_NAME"
   rsync --quiet --rsync-path="sudo mkdir -p $REMOTE_PATH/v$VERSION && sudo rsync" "./dist/v$VERSION/custom/app.js" "$REMOTE_PATH/v$VERSION/app.js"
@@ -109,6 +111,8 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
   rsync --quiet --rsync-path="sudo rsync" "./dist/v$VERSION/custom/light.js.map" "$REMOTE_PATH/v$VERSION/light.js.map"
   rsync --quiet --rsync-path="sudo rsync" "./dist/v$VERSION/custom/auto-events.js" "$REMOTE_PATH/v$VERSION/auto-events.js"
   rsync --quiet --rsync-path="sudo rsync" "./dist/v$VERSION/custom/auto-events.js.map" "$REMOTE_PATH/v$VERSION/auto-events.js.map"
+  rsync --quiet --rsync-path="sudo rsync" "./dist/v$VERSION/custom/proxy.js" "$REMOTE_PATH/v$VERSION/proxy.js"
+  rsync --quiet --rsync-path="sudo rsync" "./dist/v$VERSION/custom/proxy.js.map" "$REMOTE_PATH/v$VERSION/proxy.js.map"
 
   echo "==> Upload files to Bunny"
   upload_to_bunny "dist/v${VERSION}/app.js" "sri/v${VERSION}.js" "app.js.map" "v${VERSION}.js.map"
