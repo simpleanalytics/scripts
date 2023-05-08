@@ -142,6 +142,8 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
     exit 1
   fi
 
+  echo -e "==> ${RED}Add SRI version to '/etc/nginx/sa-client-site-with-ssl.conf' on external server and update docs page at 'https://docs.simpleanalytics.com/sri'${RESET}"
+
   echo -e "==> ${GREEN}Woop woop! Deployed to $SERVER_NAME!${RESET}"
 else
   echo '==> Cancelled by you'
