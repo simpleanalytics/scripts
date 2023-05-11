@@ -490,7 +490,7 @@
       nav.webdriver ||
       window.__nightmare ||
       window.callPhantom ||
-      window._phantom ||
+      window._phantom && !window._phantom.solana ||
       window.phantom ||
       window.__polypane ||
       window._bot ||
