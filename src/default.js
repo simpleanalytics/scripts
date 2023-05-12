@@ -486,12 +486,13 @@
     //
 
     /** if botdetection **/
+    var phantom = window.phantom;
     var bot =
       nav.webdriver ||
       window.__nightmare ||
       window.callPhantom ||
-      window._phantom && !window._phantom.solana ||
-      window.phantom ||
+      window._phantom ||
+      phantom && !phantom ||
       window.__polypane ||
       window._bot ||
       isBotAgent ||
