@@ -492,7 +492,7 @@
       window.__nightmare ||
       window.callPhantom ||
       window._phantom ||
-      (phantom && !phantom) ||
+      (phantom && !phantom.solana) ||
       window.__polypane ||
       window._bot ||
       isBotAgent ||
