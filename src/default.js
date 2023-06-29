@@ -949,17 +949,17 @@
 
     /** if (or spa hash) **/
     if (autoCollect) pageview();
-    else {
-      /** if metadata **/
-      window.sa_pageview = function (path, metadata) {
-        pageview(0, path, metadata);
-      };
-      /** else **/
-      window.sa_pageview = function (path) {
-        pageview(0, path);
-      };
-      /** endif **/
-    }
+
+    /** if metadata **/
+    window.sa_pageview = function (path, metadata) {
+      pageview(0, path, metadata);
+    };
+    /** else **/
+    window.sa_pageview = function (path) {
+      pageview(0, path);
+    };
+    /** endif **/
+
     /** else **/
     pageview();
     /** endif **/
