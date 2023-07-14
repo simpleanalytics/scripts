@@ -66,7 +66,7 @@ const route = async (req, res) => {
       <html>
         <head><title>Simple Analytics Test</title></head>
         <body><h1>Path: ${pathname}</h1></body>
-      <html>`
+      <html>`,
     );
     return res.end();
   }
