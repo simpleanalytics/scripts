@@ -839,7 +839,7 @@
       /** if uniques **/
       // We set unique variable based on pushstate or back navigation, if no match we check the referrer
       page.unique =
-        /__cf_chl_tk/i.test(getReferrer()) || isPushState || userNavigated
+        /__cf_/i.test(getReferrer()) || isPushState || userNavigated
           ? falseVar
           : !sameSite;
       /** endif **/
