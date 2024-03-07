@@ -9,7 +9,8 @@
     "build": "node compile.js",
     "pretest": "npm run build -- testing",
     "test": "node -r dotenv/config ./test/index.js",
-    "posttest": "npm run build"
+    "posttest": "npm run build",
+    "prettier": "prettier --write ."
   },
   "repository": {
     "type": "git",
@@ -31,6 +32,7 @@
     "handlebars": "^4.7.6",
     "mocha": "^6.2.3",
     "nodemon": "^1.19.4",
+    "prettier": "3.2.5",
     "request": "^2.88.0",
     "selenium-webdriver": "^4.3.1",
     "uglify-js": "^3.9.4",

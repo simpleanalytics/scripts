@@ -117,8 +117,8 @@
       return Array.isArray(csv)
         ? csv
         : isString(csv) && csv.length
-        ? csv.split(/, ?/)
-        : [];
+          ? csv.split(/, ?/)
+          : [];
     };
 
     var isObject = function (object) {
@@ -345,10 +345,22 @@
         Date.now();
     };
 
+    var cleanSubdomain = function (url) {
+      if (!url) return;
+      return url.replace(
+        /^(https?:\/\/)?((m|l|w{2,3}([0-9]+)?)\.)?([^?#]+)(.*)$/,
+        "$5",
+      );
+    };
+
     // Customers can overwrite their hostname, here we check for that
-    var overwrittenHostname =
-      overwriteOptions.hostname || attr(scriptElement, "hostname");
-    var definedHostname = overwrittenHostname || locationHostname;
+    var overwrittenHostname = cleanSubdomain(
+      overwriteOptions.hostname || attr(scriptElement, "hostname"),
+    );
+
+    var definedHostname = cleanSubdomain(
+      overwrittenHostname || locationHostname,
+    );
 
     var basePayload = {
       version: version,
@@ -585,11 +597,8 @@
     var lastSendPath;
 
     var getReferrer = function () {
-      return (
-        (doc.referrer || "")
-          .replace(locationHostname, definedHostname)
-          .replace(/^https?:\/\/((m|l|w{2,3}([0-9]+)?)\.)?([^?#]+)(.*)$/, "$4")
-          .replace(/^([^/]+)$/, "$1") || undefinedVar
+      return cleanSubdomain(
+        (doc.referrer || "").replace(locationHostname, definedHostname),
       );
     };
 
@@ -839,7 +848,7 @@
       /** if uniques **/
       // We set unique variable based on pushstate or back navigation, if no match we check the referrer
       page.unique =
-        /__cf_/i.test(getReferrer()) || isPushState || userNavigated
+        /__cf_/.test(getReferrer()) || isPushState || userNavigated
           ? falseVar
           : !sameSite;
       /** endif **/

@@ -208,9 +208,8 @@
             return param;
           })
           .join(" ");
-        document.querySelector(
-          "textarea",
-        ).value += `${type.toUpperCase()}: ${line}\n`;
+        document.querySelector("textarea").value +=
+          `${type.toUpperCase()}: ${line}\n`;
       }
 
       console.log = function () {
