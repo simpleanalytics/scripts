@@ -345,6 +345,7 @@
         Date.now();
     };
 
+
     // Customers can overwrite their hostname, here we check for that
     var overwrittenHostname =
       overwriteOptions.hostname || attr(scriptElement, "hostname");
@@ -583,9 +584,13 @@
     var page = {};
     var lastSendPath;
 
+    // Customers can overwrite their referrer, here we check for that
+    var overwrittenReferrer =
+        overwriteOptions.referrer || attr(scriptElement, "referrer");
+
     var getReferrer = function () {
       return (
-        (doc.referrer || "")
+        (overwrittenReferrer || doc.referrer || "")
           .replace(locationHostname, definedHostname)
           .replace(/^https?:\/\/((m|l|w{2,3}([0-9]+)?)\.)?([^?#]+)(.*)$/, "$4")
           .replace(/^([^/]+)$/, "$1") || undefinedVar
