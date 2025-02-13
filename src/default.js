@@ -8,7 +8,7 @@
   version,
   defaultNamespace,
   sendError,
-  warn,
+  warn
 ) {
   try {
     /////////////////////
@@ -152,7 +152,7 @@
     /** if ignoremetrics **/
     // Customers can skip data points
     var ignoreMetrics = convertCommaSeparatedToArray(
-      overwriteOptions.ignoreMetrics || attr(scriptElement, "ignore-metrics"),
+      overwriteOptions.ignoreMetrics || attr(scriptElement, "ignore-metrics")
     );
     /** endif **/
 
@@ -213,7 +213,7 @@
       try {
         return assign(
           metadata,
-          metadataCollectorFunction.call(window, assign(metadata, data)),
+          metadataCollectorFunction.call(window, assign(metadata, data))
         );
       } catch (error) {
         warnInFunction("metadata", error);
@@ -284,7 +284,7 @@
           ignorePage === path ||
           new RegExp(
             "^" + filterRegex(ignorePage).replace(/\\\*/gi, "(.*)") + "$",
-            "i",
+            "i"
           ).test(path)
         )
           return trueVar;
@@ -349,17 +349,17 @@
       if (!url) return;
       return url.replace(
         /^(https?:\/\/)?((m|l|w{2,3}([0-9]+)?)\.)?([^?#]+)(.*)$/,
-        "$5",
+        "$5"
       );
     };
 
     // Customers can overwrite their hostname, here we check for that
     var overwrittenHostname = cleanSubdomain(
-      overwriteOptions.hostname || attr(scriptElement, "hostname"),
+      overwriteOptions.hostname || attr(scriptElement, "hostname")
     );
 
     var definedHostname = cleanSubdomain(
-      overwrittenHostname || locationHostname,
+      overwrittenHostname || locationHostname
     );
 
     var basePayload = {
@@ -386,7 +386,7 @@
           path: loc.pathname,
         }),
         undefinedVar,
-        trueVar,
+        trueVar
       );
     };
 
@@ -399,7 +399,7 @@
           sendError(event.message);
         }
       },
-      falseVar,
+      falseVar
     );
     /** endif **/
 
@@ -450,14 +450,14 @@
     /** if ignorepages **/
     // Customers can ignore certain pages
     var ignorePages = convertCommaSeparatedToArray(
-      overwriteOptions.ignorePages || attr(scriptElement, "ignore-pages"),
+      overwriteOptions.ignorePages || attr(scriptElement, "ignore-pages")
     );
     /** endif **/
 
     /** if allowparams **/
     // Customers can allow params
     var allowParams = convertCommaSeparatedToArray(
-      overwriteOptions.allowParams || attr(scriptElement, "allow-params"),
+      overwriteOptions.allowParams || attr(scriptElement, "allow-params")
     );
     /** endif **/
 
@@ -465,7 +465,7 @@
     // Customers can allow params
     var nonUniqueHostnames = convertCommaSeparatedToArray(
       overwriteOptions.nonUniqueHostnames ||
-        attr(scriptElement, "non-unique-hostnames"),
+        attr(scriptElement, "non-unique-hostnames")
     );
     /** endif **/
 
@@ -566,12 +566,12 @@
     /** if ignorednt **/
     if (!collectDnt && doNotTrack in nav && nav[doNotTrack] == "1")
       return warn(
-        notSendingWhen + doNotTrack + " is enabled. See " + docsUrl + "/dnt",
+        notSendingWhen + doNotTrack + " is enabled. See " + docsUrl + "/dnt"
       );
     /** else **/
     if (doNotTrack in nav && nav[doNotTrack] == "1")
       return warn(
-        notSendingWhen + doNotTrack + " is enabled. See " + docsUrl + "/dnt",
+        notSendingWhen + doNotTrack + " is enabled. See " + docsUrl + "/dnt"
       );
     /** endif **/
 
@@ -586,7 +586,7 @@
           locationHostname +
           ". See " +
           docsUrl +
-          "/overwrite-domain-name",
+          "/overwrite-domain-name"
       );
 
     /////////////////////
@@ -598,7 +598,7 @@
 
     var getReferrer = function () {
       return cleanSubdomain(
-        (doc.referrer || "").replace(locationHostname, definedHostname),
+        (doc.referrer || "").replace(locationHostname, definedHostname)
       );
     };
 
@@ -654,7 +654,7 @@
           hiddenStart = now();
         } else msHidden += now() - hiddenStart;
       },
-      falseVar,
+      falseVar
     );
     /** endif **/
 
@@ -670,15 +670,15 @@
           body[offsetHeight] || 0,
           documentElement[clientHeight] || 0,
           documentElement[scrollHeight] || 0,
-          documentElement[offsetHeight] || 0,
+          documentElement[offsetHeight] || 0
         );
         return Math.min(
           100,
           Math.round(
             (100 * ((documentElement.scrollTop || 0) + documentClientHeight)) /
               height /
-              5,
-          ) * 5,
+              5
+          ) * 5
         );
       } catch (error) {
         warn(error);
@@ -693,7 +693,7 @@
         function () {
           if (scrolled < position()) scrolled = position();
         },
-        falseVar,
+        falseVar
       );
     });
     /** endif **/
@@ -747,7 +747,7 @@
       isPushState,
       deleteSourceInfo,
       sameSite,
-      metadata,
+      metadata
     ) {
       if (isPushState) sendOnLeave("" + payload.page_id, trueVar);
       if (collectDataOnLeave) payload.page_id = uuid();
@@ -792,7 +792,7 @@
         page.viewport_height =
           Math.max(
             documentElement[clientHeight] || 0,
-            window.innerHeight || 0,
+            window.innerHeight || 0
           ) || null;
       }
       /** endif **/
@@ -866,7 +866,7 @@
           isPushState,
           isPushState || userNavigated || !collectMetricByString("r"), // r = referrers
           sameSite,
-          metadata,
+          metadata
         );
       };
 
@@ -933,7 +933,7 @@
         function () {
           pageview(1);
         },
-        falseVar,
+        falseVar
       );
 
       addEventListenerFunc(
@@ -941,7 +941,7 @@
         function () {
           pageview(1);
         },
-        falseVar,
+        falseVar
       );
     }
     /** endif **/
@@ -954,7 +954,7 @@
         function () {
           pageview(1);
         },
-        falseVar,
+        falseVar
       );
     }
     /** endif **/
@@ -1001,7 +1001,7 @@
           if (validTypes.indexOf(typeof eventOutput) < 0) {
             warnInFunction(
               eventFunctionName,
-              event + " returns no string: " + eventOutput,
+              event + " returns no string: " + eventOutput
             );
             return callback();
           }
@@ -1035,7 +1035,7 @@
             metadata: stringify(metadata),
             /** endif **/
           }),
-          callback,
+          callback
         );
       }
     };
@@ -1078,5 +1078,5 @@
   "{{baseUrl}}",
   "{{apiUrlPrefix}}",
   "{{scriptName}}",
-  "{{namespace}}",
+  "{{namespace}}"
 );

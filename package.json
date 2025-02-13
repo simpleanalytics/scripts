@@ -10,7 +10,7 @@
     "pretest": "npm run build -- testing",
     "test": "node -r dotenv/config ./test/index.js",
     "posttest": "npm run build",
-    "prettier": "prettier --write ."
+    "prettier": "prettier --check ."
   },
   "repository": {
     "type": "git",
@@ -24,6 +24,7 @@
   },
   "homepage": "https://github.com/simpleanalytics/scripts#readme",
   "devDependencies": {
+    "acorn": "^8.11.3",
     "browserstack-local": "^1.5.1",
     "chai": "^4.2.0",
     "dotenv": "^8.2.0",

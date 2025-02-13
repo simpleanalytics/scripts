@@ -3,6 +3,7 @@ const UglifyJS = require("uglify-js");
 const fs = require("fs");
 const esprima = require("esprima");
 const path = require("path");
+const acorn = require("acorn");
 
 const GREEN = "\x1b[32m%s\x1b[0m";
 const YELLOW = "\x1b[33m%s\x1b[0m";
@@ -30,21 +31,21 @@ const fillTemplate = (template, { overwriteOptions = null } = {}) => {
   return template
     .replace(
       /\{\{\s?nginxHost\s?\}\}/gi,
-      '<!--# echo var="http_host" default="" -->',
+      '<!--# echo var="http_host" default="" -->'
     )
     .replace(
       /\{\{\s?nginxProxyHost\s?\}\}/gi,
-      '<!--# echo var="proxy_hostname" default="" --><!--# echo var="proxy_path" default="/simple" -->',
+      '<!--# echo var="proxy_hostname" default="" --><!--# echo var="proxy_path" default="/simple" -->'
     )
     .replace(
       /\\?"\{\{\s?overwriteOptions\s?\}\}\\?"/gi,
       overwriteOptions
         ? JSON.stringify(overwriteOptions).replace(/:"([^"]+)"/gi, ":$1")
-        : "{}",
+        : "{}"
     )
     .replace(
       /"\{\{\s?cloudFlareCustomDomain\s?\}\}"/gi,
-      'INSTALL_OPTIONS.custom_domain || "queue.simpleanalyticscdn.com"',
+      'INSTALL_OPTIONS.custom_domain || "queue.simpleanalyticscdn.com"'
     );
 };
 
@@ -284,7 +285,7 @@ const files = templates.reduce((list, template) => {
   if (template.variables.sri) {
     list.push(
       { ...template, variables: { ...template.variables, sri: true } },
-      { ...template, variables: { ...template.variables, sri: false } },
+      { ...template, variables: { ...template.variables, sri: false } }
     );
   } else {
     list.push(template);
@@ -320,7 +321,7 @@ for (const file of files) {
     .digest("hex")
     .slice(0, 4);
 
-  const prepend = `/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; ${date}; ${hash}${
+  const prepend = `/* Simple Analytics - Privacy-first analytics (docs.simpleanalytics.com/script; ${date}; ${hash}${
     variables.sri ? `; SRI-version` : ""
   }${variables.version ? `; v${variables.version}` : ""}) */\n`;
 
@@ -346,7 +347,7 @@ for (const file of files) {
             filename: originalFileName,
             url: `${finalFileName}.map`,
           },
-        },
+        }
       )
     : {
         code: prepend + rawCode,
@@ -358,6 +359,31 @@ for (const file of files) {
   for (const warning of warnings || [])
     console.warn(YELLOW, `[${name}] ${warning}`);
 
+  try {
+    acorn.parse(rawCode, { ecmaVersion: 5 });
+  } catch (error) {
+    // console.log("acorn", error);
+
+    // error object:
+    // pos: 147,
+    // loc: Position { line: 12, column: 0 },
+    // raisedAt: 148
+
+    // Find part of the code that is causing the error
+    const lines = rawCode.split("\n");
+    const line = error.loc.line;
+    const column = error.loc.column;
+    const start = Math.max(0, line - 3);
+    const end = Math.min(lines.length, line + 3);
+    const codeSnippet = lines.slice(start, end).join("\n");
+    const sentence = lines[error.loc.line - 1];
+
+    // console.log({ codeSnippet, line: lines[error.loc.line - 1] });
+
+    throw new Error(
+      `${error.message} at line ${sentence} position ${column}: ${codeSnippet}`
+    );
+  }
   const code = fillTemplate(codeTemplate, variables);
 
   const validate = template({
@@ -374,7 +400,7 @@ for (const file of files) {
       RED,
       `[${name}][ERROR] ${input
         .split("/")
-        .pop()} ${description} at line ${lineNumber} position ${index}`,
+        .pop()} ${description} at line ${lineNumber} position ${index}`
     );
     continue;
   }
@@ -402,7 +428,7 @@ for (const file of files) {
 
     let write = code.replace(
       /sourceMappingURL=latest\.js\.map/gi,
-      `sourceMappingURL=${cdnFileName}.map`,
+      `sourceMappingURL=${cdnFileName}.map`
     );
 
     fs.writeFileSync(versionFile, write);
@@ -410,7 +436,7 @@ for (const file of files) {
     if (compiledMap) {
       let writeCompiled = compiledMap.replace(
         /latest\.source\.js/gi,
-        cdnFileName,
+        cdnFileName
       );
 
       fs.writeFileSync(`${versionFile}.map`, writeCompiled);
@@ -438,7 +464,7 @@ for (const file of files) {
   console.log(
     ` ${name.toLowerCase()} ${fill1}Compiled ${sourceName} ${fill2} ${bytesZeroFilled} bytes ${
       variables.sri ? " (SRI)" : ""
-    }`,
+    }`
   );
 }
 
