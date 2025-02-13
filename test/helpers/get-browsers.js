@@ -38,10 +38,10 @@ module.exports = async () => {
         browser_main_version: version(item.browser_version),
       }))
       .sort((left, right) =>
-        version(left.browser_version) > version(right.browser_version) ? -1 : 1,
+        version(left.browser_version) > version(right.browser_version) ? -1 : 1
       )
       .slice(0, 2),
-    ["os", "browser_main_version"],
+    ["os", "browser_main_version"]
   );
 
   const chrome = makeUnique(
@@ -54,18 +54,18 @@ module.exports = async () => {
         );
       })
       .sort((left, right) =>
-        version(left.browser_version) > version(right.browser_version) ? -1 : 1,
+        version(left.browser_version) > version(right.browser_version) ? -1 : 1
       ),
-    ["os", "os_version"],
+    ["os", "os_version"]
   );
 
   const ios = makeUnique(
     all
       .filter(({ browser }) => browser === "iphone")
       .sort((left, right) =>
-        version(left.browser_version) > version(right.browser_version) ? -1 : 1,
+        version(left.browser_version) > version(right.browser_version) ? -1 : 1
       ),
-    ["os", "os_version"],
+    ["os", "os_version"]
   );
 
   const android = makeUnique(
@@ -76,9 +76,9 @@ module.exports = async () => {
         os_main_version: parseInt(item.os_version.split(".")[0], 10),
       }))
       .sort((left, right) =>
-        version(left.os_version) > version(right.os_version) ? -1 : 1,
+        version(left.os_version) > version(right.os_version) ? -1 : 1
       ),
-    ["os", "os_main_version"],
+    ["os", "os_main_version"]
   );
 
   const safari = makeUnique(
@@ -96,10 +96,10 @@ module.exports = async () => {
         browser_main_version: version(item.browser_version),
       }))
       .sort((left, right) =>
-        left.browser_main_version > right.browser_main_version ? -1 : 1,
+        left.browser_main_version > right.browser_main_version ? -1 : 1
       )
       .slice(0, 4),
-    ["os", "browser_main_version"],
+    ["os", "browser_main_version"]
   ).slice(0, 5);
 
   const firefox = makeUnique(
@@ -112,9 +112,9 @@ module.exports = async () => {
         );
       })
       .sort((left, right) =>
-        version(left.browser_version) > version(right.browser_version) ? -1 : 1,
+        version(left.browser_version) > version(right.browser_version) ? -1 : 1
       ),
-    ["os"],
+    ["os"]
   );
 
   const opera = makeUnique(
@@ -128,9 +128,9 @@ module.exports = async () => {
         );
       })
       .sort((left, right) =>
-        version(left.browser_version) > version(right.browser_version) ? -1 : 1,
+        version(left.browser_version) > version(right.browser_version) ? -1 : 1
       ),
-    ["os"],
+    ["os"]
   );
 
   const ipads = makeUnique(
@@ -139,9 +139,9 @@ module.exports = async () => {
         return browser === "ipad";
       })
       .sort((left, right) =>
-        version(left.os_version) > version(right.os_version) ? -1 : 1,
+        version(left.os_version) > version(right.os_version) ? -1 : 1
       ),
-    ["os_version"],
+    ["os_version"]
   );
 
   const browsers = [
