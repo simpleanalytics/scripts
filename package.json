@@ -9,6 +9,7 @@
     "build": "node compile.js",
     "pretest": "npm run build -- testing",
     "test": "node -r dotenv/config ./test/index.js",
+    "test:unit": "mocha ./test/unit",
     "posttest": "npm run build"
   },
   "repository": {
@@ -32,6 +33,7 @@
     "mocha": "^6.2.3",
     "nodemon": "^1.19.4",
     "request": "^2.88.0",
+    "jsdom": "^22.1.0",
     "selenium-webdriver": "^4.3.1",
     "uglify-js": "^3.9.4",
     "uuid-validate": "0.0.3"

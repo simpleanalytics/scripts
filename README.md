@@ -26,6 +26,8 @@ If you contribute, make sure to use `npm run build`, copy the script to a websit
 
 Just run `npm run watch` and every file will be validated and compiled on save. We minify our scripts with [UglifyJS](http://lisperator.net/uglifyjs/), a well-known JavaScript minifier.
 
+You can quickly run the unit tests with `npm run test:unit`. This command doesn't rely on BrowserStack and is handy for local checks.
+
 The most important file of the repository is [`/src/default.js`](src/default.js)
 
 ## Device testing is sponsored by BrowserStack
