@@ -30,21 +30,21 @@ const fillTemplate = (template, { overwriteOptions = null } = {}) => {
   return template
     .replace(
       /\{\{\s?nginxHost\s?\}\}/gi,
-      '<!--# echo var="http_host" default="" -->'
+      '<!--# echo var="http_host" default="" -->',
     )
     .replace(
       /\{\{\s?nginxProxyHost\s?\}\}/gi,
-      '<!--# echo var="proxy_hostname" default="" --><!--# echo var="proxy_path" default="/simple" -->'
+      '<!--# echo var="proxy_hostname" default="" --><!--# echo var="proxy_path" default="/simple" -->',
     )
     .replace(
       /\\?"\{\{\s?overwriteOptions\s?\}\}\\?"/gi,
       overwriteOptions
         ? JSON.stringify(overwriteOptions).replace(/:"([^"]+)"/gi, ":$1")
-        : "{}"
+        : "{}",
     )
     .replace(
       /"\{\{\s?cloudFlareCustomDomain\s?\}\}"/gi,
-      'INSTALL_OPTIONS.custom_domain || "queue.simpleanalyticscdn.com"'
+      'INSTALL_OPTIONS.custom_domain || "queue.simpleanalyticscdn.com"',
     );
 };
 
@@ -284,7 +284,7 @@ const files = templates.reduce((list, template) => {
   if (template.variables.sri) {
     list.push(
       { ...template, variables: { ...template.variables, sri: true } },
-      { ...template, variables: { ...template.variables, sri: false } }
+      { ...template, variables: { ...template.variables, sri: false } },
     );
   } else {
     list.push(template);
@@ -346,7 +346,7 @@ for (const file of files) {
             filename: originalFileName,
             url: `${finalFileName}.map`,
           },
-        }
+        },
       )
     : {
         code: prepend + rawCode,
@@ -374,7 +374,7 @@ for (const file of files) {
       RED,
       `[${name}][ERROR] ${input
         .split("/")
-        .pop()} ${description} at line ${lineNumber} position ${index}`
+        .pop()} ${description} at line ${lineNumber} position ${index}`,
     );
     continue;
   }
@@ -402,7 +402,7 @@ for (const file of files) {
 
     let write = code.replace(
       /sourceMappingURL=latest\.js\.map/gi,
-      `sourceMappingURL=${cdnFileName}.map`
+      `sourceMappingURL=${cdnFileName}.map`,
     );
 
     fs.writeFileSync(versionFile, write);
@@ -410,7 +410,7 @@ for (const file of files) {
     if (compiledMap) {
       let writeCompiled = compiledMap.replace(
         /latest\.source\.js/gi,
-        cdnFileName
+        cdnFileName,
       );
 
       fs.writeFileSync(`${versionFile}.map`, writeCompiled);
@@ -438,7 +438,7 @@ for (const file of files) {
   console.log(
     ` ${name.toLowerCase()} ${fill1}Compiled ${sourceName} ${fill2} ${bytesZeroFilled} bytes ${
       variables.sri ? " (SRI)" : ""
-    }`
+    }`,
   );
 }
 
