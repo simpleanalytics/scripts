@@ -345,24 +345,13 @@
         Date.now();
     };
 
-    var cleanSubdomain = function (url) {
-      if (!url) return;
-      return url.replace(
-        /^(https?:\/\/)?((m|l|w{2,3}([0-9]+)?)\.)?([^?#]+)(.*)$/,
-        "$5"
-      );
-    };
-
     // Customers can overwrite their hostname, here we check for that
-    var overwrittenHostname = cleanSubdomain(
-      overwriteOptions.hostname || attr(scriptElement, "hostname")
-    );
-
-    var definedHostname = cleanSubdomain(
-      overwrittenHostname || locationHostname
-    );
+    var overwrittenHostname =
+      overwriteOptions.hostname || attr(scriptElement, "hostname");
+    var definedHostname = overwrittenHostname || locationHostname;
 
     var basePayload = {
+      pullrequest: "54",
       version: version,
       hostname: definedHostname,
     };
@@ -498,13 +487,12 @@
     //
 
     /** if botdetection **/
-    var phantom = window.phantom;
     var bot =
       nav.webdriver ||
       window.__nightmare ||
       window.callPhantom ||
       window._phantom ||
-      (phantom && !phantom.solana) ||
+      window.phantom ||
       window.__polypane ||
       window._bot ||
       isBotAgent ||
@@ -596,9 +584,16 @@
     var page = {};
     var lastSendPath;
 
+    // Customers can overwrite their referrer, here we check for that
+    var overwrittenReferrer =
+      overwriteOptions.referrer || attr(scriptElement, "referrer");
+
     var getReferrer = function () {
-      return cleanSubdomain(
-        (doc.referrer || "").replace(locationHostname, definedHostname)
+      return (
+        (overwrittenReferrer || doc.referrer || "")
+          .replace(locationHostname, definedHostname)
+          .replace(/^https?:\/\/((m|l|w{2,3}([0-9]+)?)\.)?([^?#]+)(.*)$/, "$4")
+          .replace(/^([^/]+)$/, "$1") || undefinedVar
       );
     };
 
@@ -847,10 +842,7 @@
 
       /** if uniques **/
       // We set unique variable based on pushstate or back navigation, if no match we check the referrer
-      page.unique =
-        /__cf_/.test(getReferrer()) || isPushState || userNavigated
-          ? falseVar
-          : !sameSite;
+      page.unique = isPushState || userNavigated ? falseVar : !sameSite;
       /** endif **/
 
       /** if metadata **/
@@ -961,17 +953,17 @@
 
     /** if (or spa hash) **/
     if (autoCollect) pageview();
-
-    /** if metadata **/
-    window.sa_pageview = function (path, metadata) {
-      pageview(0, path, metadata);
-    };
-    /** else **/
-    window.sa_pageview = function (path) {
-      pageview(0, path);
-    };
-    /** endif **/
-
+    else {
+      /** if metadata **/
+      window.sa_pageview = function (path, metadata) {
+        pageview(0, path, metadata);
+      };
+      /** else **/
+      window.sa_pageview = function (path) {
+        pageview(0, path);
+      };
+      /** endif **/
+    }
     /** else **/
     pageview();
     /** endif **/
