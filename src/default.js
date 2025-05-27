@@ -117,8 +117,8 @@
       return Array.isArray(csv)
         ? csv
         : isString(csv) && csv.length
-        ? csv.split(/, ?/)
-        : [];
+          ? csv.split(/, ?/)
+          : [];
     };
 
     var isObject = function (object) {
@@ -205,8 +205,8 @@
       defaultNamespace;
 
     /** if metadata **/
-    var metadataObject = window[namespace + "_metadata"];
     var appendMetadata = function (metadata, data) {
+      var metadataObject = window[namespace + "_metadata"];
       if (isObject(metadataObject)) metadata = assign(metadata, metadataObject);
       var metadataCollectorFunction = window[metadataCollector];
       if (!isFunction(metadataCollectorFunction)) return metadata;
