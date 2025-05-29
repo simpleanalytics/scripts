@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  prettier:
+  linting:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
 
@@ -65,7 +65,7 @@ jobs:
 
   browserstack:
     runs-on: ubuntu-latest
-    needs: [unit-tests, prettier]
+    needs: [unit-tests, linting]
     if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
 
     strategy:
