@@ -10,6 +10,7 @@
     "playground": "./playground.sh",
     "watch": "node_modules/.bin/nodemon compile.js --ignore dist",
     "build": "node compile.js",
+    "lint": "./node_modules/.bin/eslint --ext .js .",
     "pretest": "npm run build -- testing",
     "test": "node -r dotenv/config ./test/index.js",
     "posttest": "npm run build",

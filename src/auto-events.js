@@ -73,7 +73,7 @@
   if (typeof optionsLink === "undefined")
     log("options object not found, please specify", "warn");
 
-  window.saAutomatedLink = function saAutomatedLink(element, type) {
+  var saAutomatedLink = function saAutomatedLink(element, type) {
     try {
       if (!element) return log("no element found");
       var sent = false;
@@ -145,6 +145,8 @@
       log(error.message, "warn");
     }
   };
+
+  window.saAutomatedLink = saAutomatedLink;
 
   function collectLink(link, onclick) {
     var collect = false;
