@@ -11,23 +11,23 @@ module.exports = async () => {
 
   expect(
     pageViewRequests,
-    "There are not enough page views requests found",
+    "There are not enough page views requests found"
   ).to.have.lengthOf(2);
 
   expect([true, "true"], "The first visit should be unique").to.include(
-    pageViewRequests[0].body.unique,
+    pageViewRequests[0].body.unique
   );
 
   expect([false, "false"], "The second visit should not be unique").to.include(
-    pageViewRequests[1].body.unique,
+    pageViewRequests[1].body.unique
   );
 
   expect(pageViewRequests[0].body.query, "Query should exist").to.equal(
-    "project=project_x&utm_source=utm_source&medium=medium&ref=ref",
+    "project=project_x&utm_source=utm_source&medium=medium&ref=ref"
   );
 
   expect(pageViewRequests[1].body.query, "Query should not exist").to.equal(
-    "project=project_x",
+    "project=project_x"
   );
 
   // Seconds page referrer should be the first page (ending with /)
@@ -36,12 +36,12 @@ module.exports = async () => {
   pageViewRequests.map((request) => {
     expect(
       request,
-      "There are no page view requests with body found",
+      "There are no page view requests with body found"
     ).to.have.property("body");
 
     expect(
       request.body,
-      "All required keys should be present",
+      "All required keys should be present"
     ).to.include.all.keys([
       "hostname",
       "https",
@@ -63,7 +63,7 @@ module.exports = async () => {
 
     expect(
       parseInt(request.body.version, 10),
-      "Version should be a valid number",
+      "Version should be a valid number"
     ).to.be.a("number");
 
     // We replace "https:" with "http:" string on CI
