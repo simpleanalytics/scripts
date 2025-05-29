@@ -3,6 +3,9 @@
   "version": "9.0.0",
   "description": "Simple Analytics visitor facing scripts",
   "main": "compile.js",
+  "engines": {
+    "node": "22.16"
+  },
   "scripts": {
     "playground": "./playground.sh",
     "watch": "node_modules/.bin/nodemon compile.js --ignore dist",

@@ -231,7 +231,7 @@ const getDeviceName = ({
 
   suiteInstance.addTest(
     new Mocha.Test(`Test Node.js environment`, async function () {
-      expect(process.version, "Should use Node.js 16.16").to.match(/^v16\.16/);
+      expect(process.version, "Should use Node.js 22.16").to.match(/^v22\.16/);
     })
   );
 

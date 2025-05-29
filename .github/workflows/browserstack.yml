@@ -14,7 +14,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [22]
+        node-version: [22.16]
 
     steps:
       - uses: actions/checkout@v4
@@ -42,7 +42,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [22]
+        node-version: [22.16]
 
     steps:
       - name: "BrowserStack Env Setup"
