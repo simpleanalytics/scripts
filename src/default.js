@@ -345,22 +345,10 @@
         Date.now();
     };
 
-    var cleanSubdomain = function (url) {
-      if (!url) return;
-      return url.replace(
-        /^(https?:\/\/)?((m|l|w{2,3}([0-9]+)?)\.)?([^?#]+)(.*)$/,
-        "$5"
-      );
-    };
-
     // Customers can overwrite their hostname, here we check for that
-    var overwrittenHostname = cleanSubdomain(
-      overwriteOptions.hostname || attr(scriptElement, "hostname")
-    );
-
-    var definedHostname = cleanSubdomain(
-      overwrittenHostname || locationHostname
-    );
+    var overwrittenHostname =
+      overwriteOptions.hostname || attr(scriptElement, "hostname");
+    var definedHostname = overwrittenHostname || locationHostname;
 
     var basePayload = {
       version: version,
@@ -597,8 +585,15 @@
     var lastSendPath;
 
     var getReferrer = function () {
-      return cleanSubdomain(
-        (doc.referrer || "").replace(locationHostname, definedHostname)
+      // Customers can overwrite their referrer, here we check for that
+      var overwrittenReferrer =
+        overwriteOptions.referrer || attr(scriptElement, "referrer");
+
+      return (
+        (overwrittenReferrer || doc.referrer || "")
+          .replace(locationHostname, definedHostname)
+          .replace(/^https?:\/\/((m|l|w{2,3}([0-9]+)?)\.)?([^?#]+)(.*)$/, "$4")
+          .replace(/^([^/]+)$/, "$1") || undefinedVar
       );
     };
 
