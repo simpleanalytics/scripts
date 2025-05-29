@@ -1,4 +1,4 @@
-/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2023-05-03; ed1a; v11) */
+/* Simple Analytics - Privacy-first analytics (docs.simpleanalytics.com/script; 2025-05-29; 36a5; v12) */
 /* eslint-env browser */
 
 (function (
@@ -110,8 +110,8 @@
       return Array.isArray(csv)
         ? csv
         : isString(csv) && csv.length
-        ? csv.split(/, ?/)
-        : [];
+          ? csv.split(/, ?/)
+          : [];
     };
 
     var isObject = function (object) {
@@ -432,12 +432,13 @@
     // PAYLOAD FOR BOTH PAGE VIEWS AND EVENTS
     //
 
+    var phantom = window.phantom;
     var bot =
       nav.webdriver ||
       window.__nightmare ||
       window.callPhantom ||
       window._phantom ||
-      window.phantom ||
+      (phantom && !phantom.solana) ||
       window.__polypane ||
       window._bot ||
       isBotAgent ||
@@ -512,8 +513,12 @@
     var lastSendPath;
 
     var getReferrer = function () {
+      // Customers can overwrite their referrer, here we check for that
+      var overwrittenReferrer =
+        overwriteOptions.referrer || attr(scriptElement, "referrer");
+
       return (
-        (doc.referrer || "")
+        (overwrittenReferrer || doc.referrer || "")
           .replace(locationHostname, definedHostname)
           .replace(/^https?:\/\/((m|l|w{2,3}([0-9]+)?)\.)?([^?#]+)(.*)$/, "$4")
           .replace(/^([^/]+)$/, "$1") || undefinedVar
@@ -738,7 +743,10 @@
         : falseVar;
 
       // We set unique variable based on pushstate or back navigation, if no match we check the referrer
-      page.unique = isPushState || userNavigated ? falseVar : !sameSite;
+      page.unique =
+        /__cf_/.test(getReferrer()) || isPushState || userNavigated
+          ? falseVar
+          : !sameSite;
 
       metadata = appendMetadata(metadata, {
         type: pageviewText,
@@ -841,11 +849,11 @@
     }
 
     if (autoCollect) pageview();
-    else {
-      window.sa_pageview = function (path, metadata) {
-        pageview(0, path, metadata);
-      };
-    }
+
+    window.sa_pageview = function (path, metadata) {
+      pageview(0, path, metadata);
+    };
+
 
     /////////////////////
     // EVENTS
@@ -938,6 +946,6 @@
   {},
   "simpleanalyticscdn.com",
   "queue.",
-  "cdn_latest_dev_11",
+  "cdn_latest_dev_12",
   "sa"
 );
