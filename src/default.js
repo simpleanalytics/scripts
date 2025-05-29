@@ -351,7 +351,6 @@
     var definedHostname = overwrittenHostname || locationHostname;
 
     var basePayload = {
-      pullrequest: "54",
       version: version,
       hostname: definedHostname,
     };
@@ -487,12 +486,13 @@
     //
 
     /** if botdetection **/
+    var phantom = window.phantom;
     var bot =
       nav.webdriver ||
       window.__nightmare ||
       window.callPhantom ||
       window._phantom ||
-      window.phantom ||
+      (phantom && !phantom.solana) ||
       window.__polypane ||
       window._bot ||
       isBotAgent ||
@@ -584,11 +584,11 @@
     var page = {};
     var lastSendPath;
 
-    // Customers can overwrite their referrer, here we check for that
-    var overwrittenReferrer =
-      overwriteOptions.referrer || attr(scriptElement, "referrer");
-
     var getReferrer = function () {
+      // Customers can overwrite their referrer, here we check for that
+      var overwrittenReferrer =
+        overwriteOptions.referrer || attr(scriptElement, "referrer");
+
       return (
         (overwrittenReferrer || doc.referrer || "")
           .replace(locationHostname, definedHostname)
@@ -842,7 +842,10 @@
 
       /** if uniques **/
       // We set unique variable based on pushstate or back navigation, if no match we check the referrer
-      page.unique = isPushState || userNavigated ? falseVar : !sameSite;
+      page.unique =
+        /__cf_/.test(getReferrer()) || isPushState || userNavigated
+          ? falseVar
+          : !sameSite;
       /** endif **/
 
       /** if metadata **/
@@ -953,17 +956,17 @@
 
     /** if (or spa hash) **/
     if (autoCollect) pageview();
-    else {
-      /** if metadata **/
-      window.sa_pageview = function (path, metadata) {
-        pageview(0, path, metadata);
-      };
-      /** else **/
-      window.sa_pageview = function (path) {
-        pageview(0, path);
-      };
-      /** endif **/
-    }
+
+    /** if metadata **/
+    window.sa_pageview = function (path, metadata) {
+      pageview(0, path, metadata);
+    };
+    /** else **/
+    window.sa_pageview = function (path) {
+      pageview(0, path);
+    };
+    /** endif **/
+
     /** else **/
     pageview();
     /** endif **/
