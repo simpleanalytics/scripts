@@ -267,12 +267,14 @@ const getDeviceName = ({
     if (nextDriver) {
       log(`Reusing next driver...`);
       driver = await nextDriver;
+      // eslint-disable-next-line require-atomic-updates
       nextDriver = null;
     } else {
       log(`Waiting to get ${browser.name}...`);
       driver = await getDriverWithTimeout(browser);
     }
 
+    // eslint-disable-next-line require-atomic-updates
     nextDriver = backgroundDriver;
 
     // Try again with new device when driver is not available
@@ -328,8 +330,6 @@ const getDeviceName = ({
     // Empty global REQUESTS
     global.REQUESTS = [];
 
-    let errorMessage = null;
-
     try {
       await navigate({
         ...browser,
@@ -383,9 +383,6 @@ const getDeviceName = ({
       });
 
       await require("./test-events")(browser);
-    } catch (error) {
-      errorMessage = error.message;
-      throw error;
     } finally {
       // if (!driver) return;
       // try {

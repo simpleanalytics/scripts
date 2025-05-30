@@ -1,5 +1,4 @@
 const crypto = require("crypto");
-const { networkInterfaces: getNetworkInterfaces } = require("os");
 const { DEBUG, SERVER_PORT } = require("../constants");
 const { promisify } = require("util");
 const { By, Key } = require("selenium-webdriver");
