@@ -1,4 +1,4 @@
-/* Simple Analytics - Privacy-first analytics (docs.simpleanalytics.com/script; 2025-05-29; 36a5; v12) */
+/* Simple Analytics - Privacy-first analytics (docs.simpleanalytics.com/script; 2025-05-30; 1686; v12) */
 /* eslint-env browser */
 
 (function (
@@ -191,8 +191,8 @@
       attr(scriptElement, namespaceText) ||
       defaultNamespace;
 
-    var metadataObject = window[namespace + "_metadata"];
     var appendMetadata = function (metadata, data) {
+      var metadataObject = window[namespace + "_metadata"];
       if (isObject(metadataObject)) metadata = assign(metadata, metadataObject);
       var metadataCollectorFunction = window[metadataCollector];
       if (!isFunction(metadataCollectorFunction)) return metadata;
