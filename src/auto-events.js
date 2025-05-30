@@ -149,6 +149,7 @@
   window.saAutomatedLink = saAutomatedLink;
 
   function collectLink(link, onclick) {
+    if (link.hasAttribute("data-simple-event")) return;
     var collect = false;
 
     // Collect download clicks
