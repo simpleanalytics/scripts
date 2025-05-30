@@ -1,12 +1,12 @@
-name: Browserstack
+name: Testing Suite
 
 on:
-  workflow_dispatch:
   pull_request:
     types: [opened, synchronize]
   push:
     branches:
       - main
+  workflow_dispatch:
 
 env:
   NODE_VERSION: 22.16
