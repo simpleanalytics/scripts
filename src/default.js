@@ -165,6 +165,7 @@
         }).length === 0
       );
       /** else **/
+      // eslint-disable-next-line no-unreachable
       return true;
       /** endif **/
     };
@@ -253,6 +254,7 @@
             if (ignore && !allowParams.length) return falseVar;
             /** else **/
             if (ignore) return falseVar;
+            // eslint-disable-next-line no-redeclare
             var regex =
               "^((utm_)" +
               (strictUtm ? "" : "?") +
@@ -498,6 +500,7 @@
       isBotAgent ||
       Math.random() == Math.random();
     /** else **/
+    // eslint-disable-next-line no-redeclare
     var bot = isBotAgent;
     /** endif **/
 
