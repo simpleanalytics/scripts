@@ -28,6 +28,10 @@ Just run `npm run watch` and every file will be validated and compiled on save. 
 
 The most important file of the repository is [`/src/default.js`](src/default.js)
 
+## Unit tests
+
+Run `npm run test:unit` to execute a small set of tests without BrowserStack.
+
 ## Device testing is sponsored by BrowserStack
 
 We run our public script with more than [50 browsers on many different (real) devices](https://github.com/simpleanalytics/scripts/blob/main/test/helpers/get-browsers.js). We support Internet Explorer 9 (not sure who is still using that) and up. Including many mobile browsers and less common devices. We get amazing sponsorship from [BrowserStack](https://www.browserstack.com/). Thanks, BrowserStack!
