@@ -206,8 +206,8 @@
       defaultNamespace;
 
     /** if metadata **/
-    var metadataObject = window[namespace + "_metadata"];
     var appendMetadata = function (metadata, data) {
+      var metadataObject = window[namespace + "_metadata"];
       if (isObject(metadataObject)) metadata = assign(metadata, metadataObject);
       var metadataCollectorFunction = window[metadataCollector];
       if (!isFunction(metadataCollectorFunction)) return metadata;
@@ -638,7 +638,12 @@
         // sendData will assign payload to request
         sendData(append, undefinedVar, trueVar);
       } else {
-        nav.sendBeacon(fullApiUrl + "/append", stringify(append));
+        try {
+          nav.sendBeacon.bind(nav)(fullApiUrl + "/append", stringify(append));
+        } catch (e) {
+          // Fallback for browsers throwing "Illegal invocation" when the URL is invalid
+          sendData(append, undefinedVar, trueVar);
+        }
       }
     };
 
