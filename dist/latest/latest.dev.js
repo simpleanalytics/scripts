@@ -1,4 +1,4 @@
-/* Simple Analytics - Privacy-first analytics (docs.simpleanalytics.com/script; 2025-05-30; bf05; v12) */
+/* Simple Analytics - Privacy-first analytics (docs.simpleanalytics.com/script; 2025-05-30; 8325; v12) */
 /* eslint-env browser */
 
 (function (
@@ -662,21 +662,25 @@
       isPushState,
       deleteSourceInfo,
       sameSite,
-      metadata
+      metadata,
+      callback
     ) {
       if (isPushState) sendOnLeave("" + payload.page_id, trueVar);
       if (collectDataOnLeave) payload.page_id = uuid();
 
       var currentPage = definedHostname + getPath();
 
-      sendData({
-        id: payload.page_id,
-        type: pageviewText,
-        referrer: !deleteSourceInfo || sameSite ? referrer : null,
-        query: getQueryParams(deleteSourceInfo),
+      sendData(
+        {
+          id: payload.page_id,
+          type: pageviewText,
+          referrer: !deleteSourceInfo || sameSite ? referrer : null,
+          query: getQueryParams(deleteSourceInfo),
 
-        metadata: stringify(metadata),
-      });
+          metadata: stringify(metadata),
+        },
+        callback
+      );
 
       previousReferrer = referrer;
       referrer = currentPage;
@@ -686,7 +690,14 @@
 
     var sameSite, userNavigated;
 
-    var pageview = function (isPushState, pathOverwrite, metadata) {
+    var pageview = function (
+      isPushState,
+      pathOverwrite,
+      metadata,
+      callbackRaw
+    ) {
+      if (!callbackRaw && isFunction(metadata)) callbackRaw = metadata;
+      var callback = isFunction(callbackRaw) ? callbackRaw : function () {};
       // Obfuscate personal data in URL by dropping the search and hash
       var path = getPath(pathOverwrite);
 
@@ -765,7 +776,8 @@
           isPushState,
           isPushState || userNavigated || !collectMetricByString("r"), // r = referrers
           sameSite,
-          metadata
+          metadata,
+          callback
         );
       };
 
@@ -856,8 +868,8 @@
 
     if (autoCollect) pageview();
 
-    window.sa_pageview = function (path, metadata) {
-      pageview(0, path, metadata);
+    window.sa_pageview = function (path, metadata, callback) {
+      pageview(0, path, metadata, callback);
     };
 
 
