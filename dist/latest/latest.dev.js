@@ -191,8 +191,8 @@
       attr(scriptElement, namespaceText) ||
       defaultNamespace;
 
-    var metadataObject = window[namespace + "_metadata"];
     var appendMetadata = function (metadata, data) {
+      var metadataObject = window[namespace + "_metadata"];
       if (isObject(metadataObject)) metadata = assign(metadata, metadataObject);
       var metadataCollectorFunction = window[metadataCollector];
       if (!isFunction(metadataCollectorFunction)) return metadata;
