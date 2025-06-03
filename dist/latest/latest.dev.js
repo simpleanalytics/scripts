@@ -1,4 +1,4 @@
-/* Simple Analytics - Privacy-first analytics (docs.simpleanalytics.com/script; 2025-05-29; 36a5; v12) */
+/* Simple Analytics - Privacy-first analytics (docs.simpleanalytics.com/script; 2025-05-30; 8e6f; v12) */
 /* eslint-env browser */
 
 (function (
@@ -216,9 +216,11 @@
       overwriteOptions.strictUtm ||
       attr(scriptElement, "strict-utm") == trueText;
 
-    var getQueryParams = function (ignoreSource) {
+    var getQueryParams = function (ignoreSource, overrideQuery) {
+      var search =
+        overrideQuery !== undefinedVar ? "?" + overrideQuery : loc.search;
       return (
-        loc.search
+        search
           .slice(1)
           .split("&")
           .filter(function (keyValue) {
@@ -511,6 +513,7 @@
 
     var page = {};
     var lastSendPath;
+    var queryOverwrite;
 
     var getReferrer = function () {
       // Customers can overwrite their referrer, here we check for that
@@ -619,6 +622,7 @@
 
     var getPath = function (overwrite) {
       var path = "";
+      queryOverwrite = undefinedVar;
 
       // decodeURIComponent can fail when having invalid characters
       // https://github.com/simpleanalytics/roadmap/issues/462
@@ -626,6 +630,12 @@
         path = overwrite || decodeURIComponentFunc(loc.pathname);
       } catch (error) {
         warn(error);
+      }
+
+      if (overwrite && overwrite.indexOf("?") > -1) {
+        var overwriteParts = overwrite.split("?");
+        path = overwriteParts[0];
+        queryOverwrite = overwriteParts.slice(1).join("?").split("#")[0];
       }
 
       var pathOverwriterFunction = window[pathOverwriter];
@@ -656,18 +666,19 @@
       isPushState,
       deleteSourceInfo,
       sameSite,
-      metadata
+      metadata,
+      queryOverwrite
     ) {
       if (isPushState) sendOnLeave("" + payload.page_id, trueVar);
       if (collectDataOnLeave) payload.page_id = uuid();
 
-      var currentPage = definedHostname + getPath();
+      var currentPage = definedHostname + page.path;
 
       sendData({
         id: payload.page_id,
         type: pageviewText,
         referrer: !deleteSourceInfo || sameSite ? referrer : null,
-        query: getQueryParams(deleteSourceInfo),
+        query: getQueryParams(deleteSourceInfo, queryOverwrite),
 
         metadata: stringify(metadata),
       });
@@ -759,7 +770,8 @@
           isPushState,
           isPushState || userNavigated || !collectMetricByString("r"), // r = referrers
           sameSite,
-          metadata
+          metadata,
+          queryOverwrite
         );
       };
 
