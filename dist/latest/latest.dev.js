@@ -1,4 +1,4 @@
-/* Simple Analytics - Privacy-first analytics (docs.simpleanalytics.com/script; 2025-05-30; bf05; v12) */
+/* Simple Analytics - Privacy-first analytics (docs.simpleanalytics.com/script; 2025-06-04; 2fe0; v12) */
 /* eslint-env browser */
 
 (function (
@@ -560,8 +560,7 @@
         sendData(append, undefinedVar, trueVar);
       } else {
         try {
-          nav.sendBeacon
-            .bind(nav)(fullApiUrl + "/append", stringify(append));
+          nav.sendBeacon.bind(nav)(fullApiUrl + "/append", stringify(append));
         } catch (e) {
           // Fallback for browsers throwing "Illegal invocation" when the URL is invalid
           sendData(append, undefinedVar, trueVar);
