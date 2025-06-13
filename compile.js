@@ -3,12 +3,13 @@ const UglifyJS = require("uglify-js");
 const fs = require("fs");
 const esprima = require("esprima");
 const path = require("path");
+const acorn = require("acorn");
 
 const GREEN = "\x1b[32m%s\x1b[0m";
 const YELLOW = "\x1b[33m%s\x1b[0m";
 const RED = "\x1b[31m%s\x1b[0m";
 
-const VERSION = 11;
+const VERSION = 12;
 
 Handlebars.registerHelper("or", function (param1, param2) {
   return param1 || param2;
@@ -320,7 +321,7 @@ for (const file of files) {
     .digest("hex")
     .slice(0, 4);
 
-  const prepend = `/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; ${date}; ${hash}${
+  const prepend = `/* Simple Analytics - Privacy-first analytics (docs.simpleanalytics.com/script; ${date}; ${hash}${
     variables.sri ? `; SRI-version` : ""
   }${variables.version ? `; v${variables.version}` : ""}) */\n`;
 
@@ -358,6 +359,31 @@ for (const file of files) {
   for (const warning of warnings || [])
     console.warn(YELLOW, `[${name}] ${warning}`);
 
+  try {
+    acorn.parse(rawCode, { ecmaVersion: 5 });
+  } catch (error) {
+    // console.log("acorn", error);
+
+    // error object:
+    // pos: 147,
+    // loc: Position { line: 12, column: 0 },
+    // raisedAt: 148
+
+    // Find part of the code that is causing the error
+    const lines = rawCode.split("\n");
+    const line = error.loc.line;
+    const column = error.loc.column;
+    const start = Math.max(0, line - 3);
+    const end = Math.min(lines.length, line + 3);
+    const codeSnippet = lines.slice(start, end).join("\n");
+    const sentence = lines[error.loc.line - 1];
+
+    // console.log({ codeSnippet, line: lines[error.loc.line - 1] });
+
+    throw new Error(
+      `${error.message} at line ${sentence} position ${column}: ${codeSnippet}`
+    );
+  }
   const code = fillTemplate(codeTemplate, variables);
 
   const validate = template({

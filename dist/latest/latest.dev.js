@@ -1,4 +1,4 @@
-/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2023-05-03; ed1a; v11) */
+/* Simple Analytics - Privacy-first analytics (docs.simpleanalytics.com/script; 2025-06-13; a5d8; v12) */
 /* eslint-env browser */
 
 (function (
@@ -110,8 +110,8 @@
       return Array.isArray(csv)
         ? csv
         : isString(csv) && csv.length
-        ? csv.split(/, ?/)
-        : [];
+          ? csv.split(/, ?/)
+          : [];
     };
 
     var isObject = function (object) {
@@ -191,8 +191,8 @@
       attr(scriptElement, namespaceText) ||
       defaultNamespace;
 
-    var metadataObject = window[namespace + "_metadata"];
     var appendMetadata = function (metadata, data) {
+      var metadataObject = window[namespace + "_metadata"];
       if (isObject(metadataObject)) metadata = assign(metadata, metadataObject);
       var metadataCollectorFunction = window[metadataCollector];
       if (!isFunction(metadataCollectorFunction)) return metadata;
@@ -216,9 +216,9 @@
       overwriteOptions.strictUtm ||
       attr(scriptElement, "strict-utm") == trueText;
 
-    var getQueryParams = function (ignoreSource) {
+    var getQueryParams = function (ignoreSource, overwriteSearch) {
       return (
-        loc.search
+        (overwriteSearch || loc.search)
           .slice(1)
           .split("&")
           .filter(function (keyValue) {
@@ -432,12 +432,13 @@
     // PAYLOAD FOR BOTH PAGE VIEWS AND EVENTS
     //
 
+    var phantom = window.phantom;
     var bot =
       nav.webdriver ||
       window.__nightmare ||
       window.callPhantom ||
       window._phantom ||
-      window.phantom ||
+      (phantom && !phantom.solana) ||
       window.__polypane ||
       window._bot ||
       isBotAgent ||
@@ -512,8 +513,12 @@
     var lastSendPath;
 
     var getReferrer = function () {
+      // Customers can overwrite their referrer, here we check for that
+      var overwrittenReferrer =
+        overwriteOptions.referrer || attr(scriptElement, "referrer");
+
       return (
-        (doc.referrer || "")
+        (overwrittenReferrer || doc.referrer || "")
           .replace(locationHostname, definedHostname)
           .replace(/^https?:\/\/((m|l|w{2,3}([0-9]+)?)\.)?([^?#]+)(.*)$/, "$4")
           .replace(/^([^/]+)$/, "$1") || undefinedVar
@@ -554,7 +559,12 @@
         // sendData will assign payload to request
         sendData(append, undefinedVar, trueVar);
       } else {
-        nav.sendBeacon(fullApiUrl + "/append", stringify(append));
+        try {
+          nav.sendBeacon.bind(nav)(fullApiUrl + "/append", stringify(append));
+        } catch (e) {
+          // Fallback for browsers throwing "Illegal invocation" when the URL is invalid
+          sendData(append, undefinedVar, trueVar);
+        }
       }
     };
 
@@ -651,21 +661,26 @@
       isPushState,
       deleteSourceInfo,
       sameSite,
-      metadata
+      query,
+      metadata,
+      callback
     ) {
       if (isPushState) sendOnLeave("" + payload.page_id, trueVar);
       if (collectDataOnLeave) payload.page_id = uuid();
 
       var currentPage = definedHostname + getPath();
 
-      sendData({
-        id: payload.page_id,
-        type: pageviewText,
-        referrer: !deleteSourceInfo || sameSite ? referrer : null,
-        query: getQueryParams(deleteSourceInfo),
+      sendData(
+        {
+          id: payload.page_id,
+          type: pageviewText,
+          referrer: !deleteSourceInfo || sameSite ? referrer : null,
+          query: query || getQueryParams(deleteSourceInfo),
 
-        metadata: stringify(metadata),
-      });
+          metadata: stringify(metadata),
+        },
+        callback
+      );
 
       previousReferrer = referrer;
       referrer = currentPage;
@@ -675,7 +690,21 @@
 
     var sameSite, userNavigated;
 
-    var pageview = function (isPushState, pathOverwrite, metadata) {
+    var pageview = function (
+      isPushState,
+      pathOverwrite,
+      metadata,
+      callbackRaw
+    ) {
+      if (!callbackRaw && isFunction(metadata)) callbackRaw = metadata;
+      var callback = isFunction(callbackRaw) ? callbackRaw : function () {};
+      var querySearch;
+      if (isString(pathOverwrite) && pathOverwrite.indexOf("?") > -1) {
+        // keep query from manual path
+        var parts = pathOverwrite.split("?");
+        pathOverwrite = parts.shift();
+        querySearch = "?" + parts.join("?");
+      }
       // Obfuscate personal data in URL by dropping the search and hash
       var path = getPath(pathOverwrite);
 
@@ -738,7 +767,10 @@
         : falseVar;
 
       // We set unique variable based on pushstate or back navigation, if no match we check the referrer
-      page.unique = isPushState || userNavigated ? falseVar : !sameSite;
+      page.unique =
+        /__cf_/.test(getReferrer()) || isPushState || userNavigated
+          ? falseVar
+          : !sameSite;
 
       metadata = appendMetadata(metadata, {
         type: pageviewText,
@@ -747,11 +779,15 @@
 
       var triggerSendPageView = function () {
         fetchedHighEntropyValues = trueVar;
+        var delSrc =
+          isPushState || userNavigated || !collectMetricByString("r");
         sendPageView(
           isPushState,
-          isPushState || userNavigated || !collectMetricByString("r"), // r = referrers
+          delSrc, // r = referrers
           sameSite,
-          metadata
+          querySearch ? getQueryParams(delSrc, querySearch) : undefinedVar,
+          metadata,
+          callback
         );
       };
 
@@ -841,11 +877,11 @@
     }
 
     if (autoCollect) pageview();
-    else {
-      window.sa_pageview = function (path, metadata) {
-        pageview(0, path, metadata);
-      };
-    }
+
+    window.sa_pageview = function (path, metadata, callback) {
+      pageview(0, path, metadata, callback);
+    };
+
 
     /////////////////////
     // EVENTS
@@ -938,6 +974,6 @@
   {},
   "simpleanalyticscdn.com",
   "queue.",
-  "cdn_latest_dev_11",
+  "cdn_latest_dev_12",
   "sa"
 );

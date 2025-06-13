@@ -73,7 +73,7 @@
   if (typeof optionsLink === "undefined")
     log("options object not found, please specify", "warn");
 
-  window.saAutomatedLink = function saAutomatedLink(element, type) {
+  var saAutomatedLink = function saAutomatedLink(element, type) {
     try {
       if (!element) return log("no element found");
       var sent = false;
@@ -146,7 +146,10 @@
     }
   };
 
+  window.saAutomatedLink = saAutomatedLink;
+
   function collectLink(link, onclick) {
+    if (link.hasAttribute("data-simple-event")) return;
     var collect = false;
 
     // Collect download clicks
@@ -186,8 +189,8 @@
 
       link.setAttribute("onclick", onClickAttribute);
     } else {
-      link.addEventListener("click", function (element) {
-        saAutomatedLink(element.target, collect);
+      link.addEventListener("click", function () {
+        saAutomatedLink(link, collect);
       });
     }
   }
