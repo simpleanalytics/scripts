@@ -37,6 +37,7 @@
     "outbound",
     "emails",
     "downloads",
+    "phones",
   ]);
   var fullUrls = setting("fullUrls", "bool", false);
 
@@ -45,6 +46,7 @@
     outbound: collectTypes.indexOf("outbound") > -1,
     emails: collectTypes.indexOf("emails") > -1,
     downloads: collectTypes.indexOf("downloads") > -1,
+    phones: collectTypes.indexOf("phones") > -1,
     // Downloads: enter file extensions you want to collect
     downloadsExtensions: setting("extensions", "array", [
       "pdf",
@@ -122,6 +124,12 @@
               metadata.email = event;
               break;
             }
+            case "phone": {
+              var hrefPhone = element.getAttribute("href");
+              event = (hrefPhone.split(":")[1] || "").split("?")[0];
+              metadata.phone = event;
+              break;
+            }
           }
         }
 
@@ -174,6 +182,10 @@
       // Collect email clicks
     } else if (optionsLink.emails && /^mailto:/i.test(link.href)) {
       collect = "email";
+
+      // Collect telephone clicks
+    } else if (optionsLink.phones && /^tel:/i.test(link.href)) {
+      collect = "phone";
     }
 
     if (!collect) return;
@@ -208,7 +220,11 @@
         if (!href) continue;
 
         // We don't want to overwrite website behaviour so we check for the onclick attribute
-        if (!link.getAttribute("onclick") && !/^mailto:/.test(href)) {
+        if (
+          !link.getAttribute("onclick") &&
+          !/^mailto:/.test(href) &&
+          !/^tel:/.test(href)
+        ) {
           collectLink(link, true);
         } else {
           collectLink(link, false);
