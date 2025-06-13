@@ -1,4 +1,4 @@
-/* Simple Analytics - Privacy-first analytics (docs.simpleanalytics.com/script; 2025-06-04; 2fe0; v12) */
+
 /* eslint-env browser */
 
 (function (
@@ -216,9 +216,9 @@
       overwriteOptions.strictUtm ||
       attr(scriptElement, "strict-utm") == trueText;
 
-    var getQueryParams = function (ignoreSource) {
+    var getQueryParams = function (ignoreSource, overwriteSearch) {
       return (
-        loc.search
+        (overwriteSearch || loc.search)
           .slice(1)
           .split("&")
           .filter(function (keyValue) {
@@ -661,21 +661,26 @@
       isPushState,
       deleteSourceInfo,
       sameSite,
-      metadata
+      query,
+      metadata,
+      callback
     ) {
       if (isPushState) sendOnLeave("" + payload.page_id, trueVar);
       if (collectDataOnLeave) payload.page_id = uuid();
 
       var currentPage = definedHostname + getPath();
 
-      sendData({
-        id: payload.page_id,
-        type: pageviewText,
-        referrer: !deleteSourceInfo || sameSite ? referrer : null,
-        query: getQueryParams(deleteSourceInfo),
+      sendData(
+        {
+          id: payload.page_id,
+          type: pageviewText,
+          referrer: !deleteSourceInfo || sameSite ? referrer : null,
+          query: query || getQueryParams(deleteSourceInfo),
 
-        metadata: stringify(metadata),
-      });
+          metadata: stringify(metadata),
+        },
+        callback
+      );
 
       previousReferrer = referrer;
       referrer = currentPage;
@@ -685,7 +690,21 @@
 
     var sameSite, userNavigated;
 
-    var pageview = function (isPushState, pathOverwrite, metadata) {
+    var pageview = function (
+      isPushState,
+      pathOverwrite,
+      metadata,
+      callbackRaw
+    ) {
+      if (!callbackRaw && isFunction(metadata)) callbackRaw = metadata;
+      var callback = isFunction(callbackRaw) ? callbackRaw : function () {};
+      var querySearch;
+      if (isString(pathOverwrite) && pathOverwrite.indexOf("?") > -1) {
+        // keep query from manual path
+        var parts = pathOverwrite.split("?");
+        pathOverwrite = parts.shift();
+        querySearch = "?" + parts.join("?");
+      }
       // Obfuscate personal data in URL by dropping the search and hash
       var path = getPath(pathOverwrite);
 
@@ -760,11 +779,15 @@
 
       var triggerSendPageView = function () {
         fetchedHighEntropyValues = trueVar;
+        var delSrc =
+          isPushState || userNavigated || !collectMetricByString("r");
         sendPageView(
           isPushState,
-          isPushState || userNavigated || !collectMetricByString("r"), // r = referrers
+          delSrc, // r = referrers
           sameSite,
-          metadata
+          querySearch ? getQueryParams(delSrc, querySearch) : undefinedVar,
+          metadata,
+          callback
         );
       };
 
@@ -855,8 +878,8 @@
 
     if (autoCollect) pageview();
 
-    window.sa_pageview = function (path, metadata) {
-      pageview(0, path, metadata);
+    window.sa_pageview = function (path, metadata, callback) {
+      pageview(0, path, metadata, callback);
     };
 
 

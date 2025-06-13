@@ -15,7 +15,7 @@
     "test": "node -r dotenv/config ./test/index.js",
     "posttest": "npm run build",
     "prettier": "prettier --check .",
-    "test:unit": "mocha ./test/unit"
+    "test:unit": "npm run build -- testing && mocha ./test/unit && git checkout dist"
   },
   "repository": {
     "type": "git",
