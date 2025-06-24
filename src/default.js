@@ -210,7 +210,13 @@
       var metadataObject = window[namespace + "_metadata"];
       if (isObject(metadataObject)) metadata = assign(metadata, metadataObject);
       var metadataCollectorFunction = window[metadataCollector];
-      if (!isFunction(metadataCollectorFunction)) return metadata;
+      if (!isFunction(metadataCollectorFunction)) {
+        if (metadataCollector)
+          warn(
+            metadataCollector + " not found, set window." + metadataCollector
+          );
+        return metadata;
+      }
       try {
         return assign(
           metadata,
