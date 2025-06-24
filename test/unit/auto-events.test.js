@@ -64,4 +64,31 @@ describe("auto-events", function () {
       done();
     }, 0);
   });
+
+  it("uses stored href when link changes before callback", function (done) {
+    const events = [];
+    const dom = createDOM({
+      beforeRun(vm) {
+        vm.sa_event = function (name, metadata, cb) {
+          events.push({ name, metadata });
+          setTimeout(cb, 0);
+        };
+        vm.sa_event_loaded = true;
+      },
+    });
+
+    const link = dom.window.document.createElement("a");
+    link.href = "https://example.com/href";
+    link.target = "_blank";
+    dom.window.document.body.appendChild(link);
+
+    dom.window.saAutomatedLink(link, "outbound");
+
+    link.removeAttribute("href");
+
+    setTimeout(() => {
+      expect(events[0]).to.deep.include({ name: "outbound_example_com" });
+      done();
+    }, 5);
+  });
 });

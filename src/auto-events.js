@@ -78,9 +78,11 @@
       if (!element) return log("no element found");
       var sent = false;
 
+      var href = element.getAttribute("href");
+
       var callback = function () {
-        if (!sent && !element.hasAttribute("target"))
-          document.location = element.getAttribute("href");
+        if (!sent && !element.hasAttribute("target") && href)
+          document.location = href;
         sent = true;
       };
 
