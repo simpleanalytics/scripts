@@ -1,4 +1,4 @@
-/* Simple Analytics - Privacy-first analytics (docs.simpleanalytics.com/script; 2025-06-13; a5d8; v12) */
+/* Simple Analytics - Privacy-first analytics (docs.simpleanalytics.com/script; 2025-06-24; 80f5; v12) */
 /* eslint-env browser */
 
 (function (
@@ -195,7 +195,13 @@
       var metadataObject = window[namespace + "_metadata"];
       if (isObject(metadataObject)) metadata = assign(metadata, metadataObject);
       var metadataCollectorFunction = window[metadataCollector];
-      if (!isFunction(metadataCollectorFunction)) return metadata;
+      if (!isFunction(metadataCollectorFunction)) {
+        if (metadataCollector)
+          warn(
+            metadataCollector + " not found, set window." + metadataCollector
+          );
+        return metadata;
+      }
       try {
         return assign(
           metadata,
