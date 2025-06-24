@@ -142,7 +142,7 @@
 
         log("collected " + clean);
 
-        return type === "email"
+        return type === "email" || type === "phone"
           ? callback()
           : window.setTimeout(callback, 5000);
       } else {
