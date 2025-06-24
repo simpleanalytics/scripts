@@ -73,13 +73,25 @@
   if (typeof optionsLink === "undefined")
     log("options object not found, please specify", "warn");
 
-  var saAutomatedLink = function saAutomatedLink(element, type) {
+  var saAutomatedLink = function saAutomatedLink(element, type, event) {
     try {
       if (!element) return log("no element found");
       var sent = false;
 
+      var openNewTab =
+        (element.hasAttribute("target") &&
+          element.getAttribute("target") !== "_self") ||
+        (event &&
+          (event.metaKey ||
+            event.ctrlKey ||
+            event.shiftKey ||
+            event.altKey ||
+            event.button === 1));
+
+      if (event && !openNewTab && event.preventDefault) event.preventDefault();
+
       var callback = function () {
-        if (!sent && !element.hasAttribute("target"))
+        if (!sent && !openNewTab && !element.hasAttribute("target"))
           document.location = element.getAttribute("href");
         sent = true;
       };
@@ -134,15 +146,18 @@
 
         log("collected " + clean);
 
-        return type === "email"
-          ? callback()
-          : window.setTimeout(callback, 5000);
+        if (type === "email") callback();
+        else window.setTimeout(callback, 5000);
+
+        return openNewTab;
       } else {
         log(saGlobal + " is not defined", "warn");
-        return callback();
+        callback();
+        return openNewTab;
       }
     } catch (error) {
       log(error.message, "warn");
+      return openNewTab;
     }
   };
 
@@ -179,18 +194,12 @@
     if (!collect) return;
 
     if (onclick) {
-      var onClickAttribute = "saAutomatedLink(this, '" + collect + "');";
-
-      if (
-        !link.hasAttribute("target") ||
-        link.getAttribute("target") === "_self"
-      )
-        onClickAttribute += " return false;";
-
+      var onClickAttribute =
+        "return saAutomatedLink(this, '" + collect + "', event);";
       link.setAttribute("onclick", onClickAttribute);
     } else {
-      link.addEventListener("click", function () {
-        saAutomatedLink(link, collect);
+      link.addEventListener("click", function (e) {
+        saAutomatedLink(link, collect, e);
       });
     }
   }
