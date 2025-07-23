@@ -1,5 +1,5 @@
 const url = require("url");
-const http = require("http");
+const https = require("https"); // Changed from http to https
 const { readFileSync } = require("fs");
 const { SERVER_PORT, DEBUG, CI } = require("../constants");
 const { getJSONBody } = require("./request");
@@ -16,7 +16,24 @@ const bool = (input) => {
   return false;
 };
 
+// Basic rate limiting
+let requestCount = 0;
+const MAX_REQUESTS = 100;
+const TIME_WINDOW = 60000; // 1 minute
+let requestTime = Date.now();
+
 const route = async (req, res) => {
+  const currentTime = Date.now();
+  if (currentTime - requestTime > TIME_WINDOW) {
+    requestCount = 0;
+    requestTime = currentTime;
+  }
+  requestCount++;
+  if (requestCount > MAX_REQUESTS) {
+    res.writeHead(429, { "Content-Type": "text/plain" });
+    return res.end("Too Many Requests");
+  }
+
   const { pathname, query } = url.parse(req.url, true);
   const {
     os,
@@ -154,7 +171,7 @@ const route = async (req, res) => {
 
 module.exports = () =>
   new Promise((resolve) => {
-    const server = http.createServer(route).listen(SERVER_PORT, () => {
+    const server = https.createServer(route).listen(SERVER_PORT, () => { // Changed from http to https
       log(`Started on port ${SERVER_PORT}`);
       resolve({
         done: () =>
