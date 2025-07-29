@@ -1,4 +1,4 @@
-/* Simple Analytics - Privacy-first analytics (docs.simpleanalytics.com/script; 2025-06-24; 80f5; v12) */
+/* Simple Analytics - Privacy-first analytics (docs.simpleanalytics.com/script; 2025-07-29; 9107; v12) */
 /* eslint-env browser */
 
 (function (
@@ -244,7 +244,7 @@
 
             // The prefix "utm_" is optional with "strictUtm" disabled
             // "ref" is only collected when "strictUtm" is disabled
-            return new RegExp(regex).test(keyValue);
+            return new RegExp(regex, "i").test(keyValue);
           })
           .join("&") || undefinedVar
       );

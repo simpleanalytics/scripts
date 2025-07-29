@@ -271,7 +271,7 @@
 
             // The prefix "utm_" is optional with "strictUtm" disabled
             // "ref" is only collected when "strictUtm" is disabled
-            return new RegExp(regex).test(keyValue);
+            return new RegExp(regex, "i").test(keyValue);
           })
           .join("&") || undefinedVar
       );
