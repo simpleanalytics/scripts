@@ -2,7 +2,7 @@ name: Browserstack
 
 on:
   pull_request:
-    types: [opened, synchronize]
+    types: [opened, synchronize, unlabeled]
   push:
     branches:
       - master
@@ -11,6 +11,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    if: "${{ github.event_name != 'pull_request' || github.event.action != 'unlabeled' || github.event.label.name == 'skip: browserstack' }}"
 
     strategy:
       matrix:
