@@ -35,15 +35,6 @@ jobs:
           ref: ${{ github.head_ref }}
           set-safe-directory: "/github/workspace"
 
-      - name: Prettier Action on PR
-        uses: creyD/prettier_action@v4.3
-        with:
-          prettier_options: "--write {**/*,*}.{js,hbs,html,json,md,yml,css,scss} !.github/workflows/**/* !dist/**/*"
-          commit_message: "Run prettier via GitHub Action"
-          file_pattern: "."
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v1
         with:
@@ -51,6 +42,19 @@ jobs:
 
       - name: Run npm ci
         run: sudo npm ci
+
+      - name: Prettier check (report only, no writes or commits)
+        if: always()
+        run: |
+          {
+            echo "## Prettier formatting report"
+            echo ""
+            echo "CI does not write or commit formatting changes. Run \`npx prettier --write .\` locally to apply anything listed below."
+            echo ""
+            echo '```'
+            npx prettier --check . 2>&1 || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Run npm test with BrowserStack Local
         run: npm run build && node ./test/index.js
