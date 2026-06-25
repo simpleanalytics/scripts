@@ -117,8 +117,8 @@
       return Array.isArray(csv)
         ? csv
         : isString(csv) && csv.length
-        ? csv.split(/, ?/)
-        : [];
+          ? csv.split(/, ?/)
+          : [];
     };
 
     var isObject = function (object) {
