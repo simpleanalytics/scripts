@@ -11,28 +11,28 @@ module.exports = async () => {
 
   expect(
     pageViewRequests,
-    "There are not enough page views requests found",
+    "There are not enough page views requests found"
   ).to.have.lengthOf(2);
 
   expect(
     pageViewRequests[0].body.unique,
-    "The first visit should be unique",
+    "The first visit should be unique"
   ).to.equal("true");
 
   expect(
     pageViewRequests[1].body.unique,
-    "The second visit should not be unique",
+    "The second visit should not be unique"
   ).to.equal("false");
 
   pageViewRequests.map((request) => {
     expect(
       request,
-      "There are no page view requests with body found",
+      "There are no page view requests with body found"
     ).to.have.property("body");
 
     expect(
       request.body,
-      "All required keys should be present",
+      "All required keys should be present"
     ).to.include.all.keys([
       "hostname",
       "https",
@@ -53,7 +53,7 @@ module.exports = async () => {
 
     expect(
       parseInt(request.body.version, 10),
-      "Version should be a valid number",
+      "Version should be a valid number"
     ).to.be.a("number");
 
     // We replace "https:" with "http:" string on CI
