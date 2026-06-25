@@ -21,7 +21,7 @@ jobs:
       - name: Check BrowserStack skip label
         id: browserstack
         env:
-          SKIP_BROWSERSTACK: "${{ github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'skip: browserstack') }}"
+          SKIP_BROWSERSTACK: "${{ github.event_name == 'pull_request' && github.event.action != 'unlabeled' && contains(github.event.pull_request.labels.*.name, 'skip: browserstack') }}"
         run: echo "skip=${SKIP_BROWSERSTACK}" >> "$GITHUB_OUTPUT"
 
       - name: "BrowserStack Env Setup"
