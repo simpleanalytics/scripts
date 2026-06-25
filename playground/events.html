@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
   <head>
     <meta charset="utf-8" />
@@ -33,9 +33,9 @@
         },
         () => {
           console.info(
-            "Simple Analytics auto events: collected before_script_load"
+            "Simple Analytics auto events: collected before_script_load",
           );
-        }
+        },
       );
     </script>
 
@@ -67,7 +67,8 @@
       @font-face {
         font-family: "Space Grotesk";
         font-weight: 500;
-        src: url("https://assets.simpleanalytics.com/fonts/SpaceGrotesk-Medium.woff2")
+        src:
+          url("https://assets.simpleanalytics.com/fonts/SpaceGrotesk-Medium.woff2")
             format("woff2"),
           url("https://assets.simpleanalytics.com/fonts/SpaceGrotesk-Medium.woff")
             format("woff");
@@ -75,7 +76,8 @@
       @font-face {
         font-family: "Space Grotesk";
         font-weight: 400;
-        src: url("https://assets.simpleanalytics.com/fonts/SpaceGrotesk-Regular.woff2")
+        src:
+          url("https://assets.simpleanalytics.com/fonts/SpaceGrotesk-Regular.woff2")
             format("woff2"),
           url("https://assets.simpleanalytics.com/fonts/SpaceGrotesk-Regular.woff")
             format("woff");
@@ -206,9 +208,8 @@
             return param;
           })
           .join(" ");
-        document.querySelector(
-          "textarea"
-        ).value += `${type.toUpperCase()}: ${line}\n`;
+        document.querySelector("textarea").value +=
+          `${type.toUpperCase()}: ${line}\n`;
       }
 
       console.log = function () {

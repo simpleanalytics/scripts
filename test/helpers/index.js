@@ -27,7 +27,7 @@ module.exports.makeUnique = (array = [], keys = []) => {
 
   return array.reduce((list, item) => {
     const has = list.find((listItem) =>
-      keys.every((key) => listItem[key] === item[key])
+      keys.every((key) => listItem[key] === item[key]),
     );
     if (!has) list.push(item);
     return list;
@@ -92,7 +92,7 @@ module.exports.navigate = async ({ browser, os, name, driver, commands }) => {
         `${amount || 1}x`,
         typeof exceeded === "number"
           ? `(found request in ${exceeded}ms)`
-          : `(exceeded timeout)`
+          : `(exceeded timeout)`,
       );
     } else if (script) {
       log(`script (${name})`, `${localhost}/?${searchParams}`);

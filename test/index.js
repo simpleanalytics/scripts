@@ -144,7 +144,7 @@ const log = (...messages) => DEBUG && console.log("    => Test:", ...messages);
 
 if (!BROWSERSTACK_USERNAME || !BROWSERSTACK_ACCESS_KEY) {
   console.error(
-    "BROWSERSTACK_USERNAME nor BROWSERSTACK_ACCESS_KEY are not defined."
+    "BROWSERSTACK_USERNAME nor BROWSERSTACK_ACCESS_KEY are not defined.",
   );
   process.exit(1);
 }
@@ -213,7 +213,7 @@ const getDeviceName = ({
 
   const suiteInstance = Mocha.Suite.create(
     mochaInstance.suite,
-    "Public Script Test Suite"
+    "Public Script Test Suite",
   );
 
   if (CI)
@@ -223,16 +223,16 @@ const getDeviceName = ({
         async function () {
           expect(
             browsers,
-            "Should have more than 20 browsers"
+            "Should have more than 20 browsers",
           ).to.have.lengthOf.at.least(20);
-        }
-      )
+        },
+      ),
     );
 
   suiteInstance.addTest(
     new Mocha.Test(`Test Node.js environment`, async function () {
       expect(process.version, "Should use Node.js 16.16").to.match(/^v16\.16/);
-    })
+    }),
   );
 
   const appendBrowserData = (browser) => {
@@ -409,7 +409,7 @@ const getDeviceName = ({
     const testName = `Testing ${browser.name} (${index + 1}/${total})`;
     const nextBrowser = browsers[index + 1];
     suiteInstance.addTest(
-      new Mocha.Test(testName, () => test(browser, nextBrowser))
+      new Mocha.Test(testName, () => test(browser, nextBrowser)),
     );
   }
 
