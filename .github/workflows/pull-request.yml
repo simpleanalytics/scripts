@@ -1,0 +1,16 @@
+name: Pull Request
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+jobs:
+  pull-request:
+    uses: simpleanalytics/github-actions/.github/workflows/pull-request.yml@main
+    secrets: inherit
+    with:
+      internal_app: false
+      claude_extra_prompt: |
+        This repository builds the customer-facing Simple Analytics tracking scripts.
+        The `/dist` directory is generated output. Skip `/dist` for review findings, bug and vulnerability checks, and validation commands. Do not report issues only present in `/dist` unless they prove that a source or build-input change is broken.
+        Focus on source files, tests, build scripts, workflow files, and package metadata.
