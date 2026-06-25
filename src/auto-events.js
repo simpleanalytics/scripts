@@ -79,7 +79,11 @@
       var sent = false;
 
       var callback = function () {
-        if (!sent && !element.hasAttribute("target"))
+        if (
+          !sent &&
+          (!element.hasAttribute("target") ||
+            element.getAttribute("target") === "_self")
+        )
           document.location = element.getAttribute("href");
         sent = true;
       };
