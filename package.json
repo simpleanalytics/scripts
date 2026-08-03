@@ -9,6 +9,7 @@
     "build": "node compile.js",
     "pretest": "npm run build -- testing",
     "test": "node -r dotenv/config ./test/index.js",
+    "test:matrix": "mocha test/helpers/get-browsers.test.js",
     "posttest": "npm run build"
   },
   "repository": {
