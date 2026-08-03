@@ -7,6 +7,11 @@ const { promisify } = require("util");
 const { DEBUG, CI } = require("./constants");
 const { version, navigate } = require("./helpers");
 const getBrowsers = require("./helpers/get-browsers");
+const {
+  MINIMUM_SESSIONS,
+  REQUIRED_BROWSERS,
+  REQUIRED_OSES,
+} = require("./helpers/browser-matrix");
 const server = require("./helpers/server");
 
 const {
@@ -219,12 +224,27 @@ const getDeviceName = ({
   if (CI)
     suiteInstance.addTest(
       new Mocha.Test(
-        `Having more than 20 browsers to test: ${browsers.length}`,
+        `Having at least ${MINIMUM_SESSIONS} browsers to test: ${browsers.length}`,
         async function () {
           expect(
             browsers,
-            "Should have more than 20 browsers"
-          ).to.have.lengthOf.at.least(20);
+            `Should have at least ${MINIMUM_SESSIONS} browsers`
+          ).to.have.lengthOf.at.least(MINIMUM_SESSIONS);
+        }
+      )
+    );
+
+  if (CI)
+    suiteInstance.addTest(
+      new Mocha.Test(
+        "Having all required browser and OS families",
+        async function () {
+          expect(browsers.map(({ browser }) => browser)).to.include.members(
+            REQUIRED_BROWSERS
+          );
+          expect(browsers.map(({ os }) => os)).to.include.members(
+            REQUIRED_OSES
+          );
         }
       )
     );
