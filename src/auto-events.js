@@ -190,8 +190,8 @@
 
       link.setAttribute("onclick", onClickAttribute);
     } else {
-      link.addEventListener("click", function (element) {
-        saAutomatedLink(element.target, collect);
+      link.addEventListener("click", function () {
+        saAutomatedLink(this, collect);
       });
     }
   }
