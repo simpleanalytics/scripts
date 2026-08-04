@@ -1,5 +1,6 @@
 const Mocha = require("mocha");
 const { expect } = require("chai");
+const { readFileSync } = require("fs");
 
 const browserstack = require("browserstack-local");
 const { Builder } = require("selenium-webdriver");
@@ -251,7 +252,10 @@ const getDeviceName = ({
 
   suiteInstance.addTest(
     new Mocha.Test(`Test Node.js environment`, async function () {
-      expect(process.version, "Should use Node.js 16.16").to.match(/^v16\.16/);
+      const expectedVersion = `v${readFileSync(".nvmrc", "utf8").trim()}`;
+      expect(process.version, `Should use Node.js ${expectedVersion}`).to.equal(
+        expectedVersion
+      );
     })
   );
 
@@ -441,6 +445,6 @@ const getDeviceName = ({
     }
 
     // Exit with exit code when having failures
-    process.exit(STOP_ON_FAIL ? amountFailures > 0 : false);
+    process.exit(STOP_ON_FAIL && amountFailures > 0 ? 1 : 0);
   });
 })();
