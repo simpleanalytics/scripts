@@ -9,10 +9,6 @@ jobs:
     runs-on: ubuntu-latest
     if: "${{ github.event.action != 'unlabeled' || github.event.label.name == 'skip: browserstack' }}"
 
-    strategy:
-      matrix:
-        node-version: [16.16]
-
     steps:
       - name: Check BrowserStack skip label
         id: browserstack
@@ -40,16 +36,23 @@ jobs:
           ref: ${{ github.head_ref }}
           set-safe-directory: "/github/workspace"
 
-      - name: Use Node.js ${{ matrix.node-version }}
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.17.0
+
+      - name: Use Node.js from .nvmrc
         uses: actions/setup-node@v6
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
 
-      - name: Run npm ci
-        run: sudo npm ci
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Test BrowserStack matrix selection
-        run: npm run test:matrix
+        run: pnpm run test:matrix
 
       - name: Prettier check (report only, no writes or commits)
         if: always()
@@ -64,9 +67,9 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Run npm test with BrowserStack Local
+      - name: Run tests with BrowserStack Local
         if: steps.browserstack.outputs.skip != 'true'
-        run: npm run build && node ./test/index.js
+        run: pnpm run build && node ./test/index.js
         env:
           CI: true
           NODE_ENV: test
