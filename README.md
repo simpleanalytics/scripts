@@ -34,8 +34,7 @@ Run `npm run test:unit` to execute a small set of tests without BrowserStack.
 
 ## Device testing is sponsored by BrowserStack
 
-We run our public script with more than [50 browsers on many different (real) devices](https://github.com/simpleanalytics/scripts/blob/main/test/helpers/get-browsers.js). We support Internet Explorer 9 (not sure who is still using that) and up. Including many mobile browsers and less common devices. We get amazing sponsorship from [BrowserStack](https://www.browserstack.com/). Thanks, BrowserStack!
-
+We run our public script on a live, representative matrix of [browsers and real devices](https://github.com/simpleanalytics/scripts/blob/main/test/helpers/get-browsers.js). Simple Analytics supports vendor-maintained browser, OS, and device versions and continues compatibility testing for two years after published end of life. Older browser versions with more than 0.1% global usage remain covered. We get amazing sponsorship from [BrowserStack](https://www.browserstack.com/). Thanks, BrowserStack!
 <img src="https://mijnimpact-adriaan-io.s3.amazonaws.com/1581763646555-browserstack-logo.png" width="300px" alt="BrowserStack Logo" />
 
 ## Contact

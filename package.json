@@ -13,6 +13,7 @@
     "lint": "./node_modules/.bin/eslint --ext .js .",
     "pretest": "npm run build -- testing",
     "test": "node -r dotenv/config ./test/index.js",
+    "test:matrix": "mocha test/helpers/get-browsers.test.js",
     "posttest": "npm run build",
     "prettier": "prettier --check .",
     "test:unit": "npm run build -- testing && mocha ./test/unit && git checkout dist"

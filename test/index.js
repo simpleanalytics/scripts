@@ -7,11 +7,11 @@ const { promisify } = require("util");
 const { DEBUG, CI } = require("./constants");
 const { version, navigate } = require("./helpers");
 const getBrowsers = require("./helpers/get-browsers");
-const server = require("./helpers/server");
-
 const {
-  BS_CAPABILITIES,
-  BS_LOCAL_OPTIONS,
+  MINIMUM_SESSIONS,
+  REQUIRED_BROWSERS,
+  REQUIRED_OSES,
+} = require("./helpers/browser-matrix");
   STOP_ON_FAIL,
   BROWSERSTACK_USERNAME,
   BROWSERSTACK_ACCESS_KEY,
@@ -219,17 +219,31 @@ const getDeviceName = ({
   if (CI)
     suiteInstance.addTest(
       new Mocha.Test(
-        `Having more than 20 browsers to test: ${browsers.length}`,
+        `Having at least ${MINIMUM_SESSIONS} browsers to test: ${browsers.length}`,
         async function () {
           expect(
             browsers,
-            "Should have more than 20 browsers"
-          ).to.have.lengthOf.at.least(20);
+            `Should have at least ${MINIMUM_SESSIONS} browsers`
+          ).to.have.lengthOf.at.least(MINIMUM_SESSIONS);
         }
       )
     );
 
-  suiteInstance.addTest(
+  if (CI)
+    suiteInstance.addTest(
+      new Mocha.Test(
+        "Having all required browser and OS families",
+        async function () {
+          expect(browsers.map(({ browser }) => browser)).to.include.members(
+            REQUIRED_BROWSERS
+          );
+          expect(browsers.map(({ os }) => os)).to.include.members(
+            REQUIRED_OSES
+          );
+        }
+      )
+    );
+
     new Mocha.Test(`Test Node.js environment`, async function () {
       expect(process.version, "Should use Node.js 22.16").to.match(/^v22\.16/);
     })

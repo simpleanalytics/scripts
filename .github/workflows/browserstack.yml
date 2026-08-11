@@ -1,0 +1,82 @@
+name: Browserstack
+
+on:
+  pull_request:
+    types: [opened, synchronize, unlabeled]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    if: "${{ github.event.action != 'unlabeled' || github.event.label.name == 'skip: browserstack' }}"
+
+    strategy:
+      matrix:
+        node-version: [16.16]
+
+    steps:
+      - name: Check BrowserStack skip label
+        id: browserstack
+        env:
+          SKIP_BROWSERSTACK: "${{ github.event.action != 'unlabeled' && contains(github.event.pull_request.labels.*.name, 'skip: browserstack') }}"
+        run: echo "skip=${SKIP_BROWSERSTACK}" >> "$GITHUB_OUTPUT"
+
+      - name: "BrowserStack Env Setup"
+        if: steps.browserstack.outputs.skip != 'true'
+        uses: "browserstack/github-actions/setup-env@master"
+        with:
+          username: ${{ secrets.BROWSERSTACK_USERNAME }}
+          access-key: ${{ secrets.BROWSERSTACK_ACCESS_KEY }}
+
+      - name: "Start BrowserStackLocal Tunnel"
+        if: steps.browserstack.outputs.skip != 'true'
+        uses: "browserstack/github-actions/setup-local@master"
+        with:
+          local-testing: "start"
+          local-logging-level: "all-logs"
+          local-identifier: "random"
+
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.head_ref }}
+          set-safe-directory: "/github/workspace"
+
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Run npm ci
+        run: sudo npm ci
+
+      - name: Test BrowserStack matrix selection
+        run: npm run test:matrix
+
+      - name: Prettier check (report only, no writes or commits)
+        if: always()
+        run: |
+          {
+            echo "## Prettier formatting report"
+            echo ""
+            echo "CI does not write or commit formatting changes. Run \`npx prettier --write .\` locally to apply anything listed below."
+            echo ""
+            echo '```'
+            npx prettier --check . 2>&1 || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Run npm test with BrowserStack Local
+        if: steps.browserstack.outputs.skip != 'true'
+        run: npm run build && node ./test/index.js
+        env:
+          CI: true
+          NODE_ENV: test
+          DEBUG: false
+          LOCATION: ${{ secrets.LOCATION }}
+          BROWSERSTACK_USERNAME: ${{ secrets.BROWSERSTACK_USERNAME }}
+          BROWSERSTACK_ACCESS_KEY: ${{ secrets.BROWSERSTACK_ACCESS_KEY }}
+
+      - name: "Stop BrowserStackLocal"
+        if: always() && steps.browserstack.outputs.skip != 'true'
+        uses: "browserstack/github-actions/setup-local@master"
+        with:
+          local-testing: "stop"
