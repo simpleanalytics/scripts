@@ -12,6 +12,11 @@ const {
   REQUIRED_BROWSERS,
   REQUIRED_OSES,
 } = require("./helpers/browser-matrix");
+const server = require("./helpers/server");
+
+const {
+  BS_CAPABILITIES,
+  BS_LOCAL_OPTIONS,
   STOP_ON_FAIL,
   BROWSERSTACK_USERNAME,
   BROWSERSTACK_ACCESS_KEY,
@@ -244,6 +249,7 @@ const getDeviceName = ({
       )
     );
 
+  suiteInstance.addTest(
     new Mocha.Test(`Test Node.js environment`, async function () {
       expect(process.version, "Should use Node.js 22.16").to.match(/^v22\.16/);
     })
