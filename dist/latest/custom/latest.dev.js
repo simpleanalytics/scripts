@@ -1,4 +1,4 @@
-/* Simple Analytics - Privacy-first analytics (docs.simpleanalytics.com/script; 2025-06-24; 67c4; v12) */
+/* Simple Analytics - Privacy-first analytics (docs.simpleanalytics.com/script; 2026-08-12; 6031; v12) */
 /* eslint-env browser */
 
 (function (
@@ -222,32 +222,40 @@
       overwriteOptions.strictUtm ||
       attr(scriptElement, "strict-utm") == trueText;
 
+    var p;
+
     var getQueryParams = function (ignoreSource, overwriteSearch) {
-      return (
-        (overwriteSearch || loc.search)
-          .slice(1)
-          .split("&")
-          .filter(function (keyValue) {
-            var ignore = ignoreSource || !collectMetricByString("ut");
+      p = !ignoreSource && collectMetricByString("p") ? "" : falseVar;
+      var q = (overwriteSearch || loc.search)
+        .slice(1)
+        .split("&")
+        .filter(function (keyValue) {
+          var i = keyValue.indexOf("=");
+          if (p !== falseVar && i > 0 && keyValue.slice(i + 1))
+            p += (p ? "," : "") + keyValue.slice(0, i);
 
-            var paramsRegexList = allowParams.map(filterRegex).join("|");
-            var regex = ignore
-              ? "^(" + paramsRegexList + ")="
-              : "^((utm_)" +
-                (strictUtm ? "" : "?") +
-                "(source|medium|content|term|campaign)" +
-                (strictUtm ? "" : "|ref") +
-                "|" +
-                paramsRegexList +
-                ")=";
-            if (ignore && !allowParams.length) return falseVar;
+          var ignore = ignoreSource || !collectMetricByString("ut");
 
-            // The prefix "utm_" is optional with "strictUtm" disabled
-            // "ref" is only collected when "strictUtm" is disabled
-            return new RegExp(regex).test(keyValue);
-          })
-          .join("&") || undefinedVar
-      );
+          var paramsRegexList = allowParams.map(filterRegex).join("|");
+          var regex = ignore
+            ? "^(" + paramsRegexList + ")="
+            : "^((utm_)" +
+              (strictUtm ? "" : "?") +
+              "(source|medium|content|term|campaign)" +
+              (strictUtm ? "" : "|ref") +
+              "|" +
+              paramsRegexList +
+              ")=";
+          if (ignore && !allowParams.length) return falseVar;
+
+          // The prefix "utm_" is optional with "strictUtm" disabled
+          // "ref" is only collected when "strictUtm" is disabled
+          return new RegExp(regex, "i").test(keyValue);
+        })
+        .join("&");
+
+      p = p || undefinedVar;
+      return q || undefinedVar;
     };
 
     // Ignore pages specified in data-ignore-pages
@@ -667,7 +675,7 @@
       isPushState,
       deleteSourceInfo,
       sameSite,
-      query,
+      search,
       metadata,
       callback
     ) {
@@ -675,13 +683,15 @@
       if (collectDataOnLeave) payload.page_id = uuid();
 
       var currentPage = definedHostname + getPath();
+      var query = getQueryParams(deleteSourceInfo, search);
 
       sendData(
         {
           id: payload.page_id,
           type: pageviewText,
           referrer: !deleteSourceInfo || sameSite ? referrer : null,
-          query: query || getQueryParams(deleteSourceInfo),
+          query: query,
+          p: p,
 
           metadata: stringify(metadata),
         },
@@ -791,7 +801,7 @@
           isPushState,
           delSrc, // r = referrers
           sameSite,
-          querySearch ? getQueryParams(delSrc, querySearch) : undefinedVar,
+          querySearch,
           metadata,
           callback
         );

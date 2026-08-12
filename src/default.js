@@ -238,43 +238,59 @@
       overwriteOptions.strictUtm ||
       attr(scriptElement, "strict-utm") == trueText;
 
-    var getQueryParams = function (ignoreSource, overwriteSearch) {
-      return (
-        (overwriteSearch || loc.search)
-          .slice(1)
-          .split("&")
-          .filter(function (keyValue) {
-            var ignore = ignoreSource || !collectMetricByString("ut");
+    /** if ignoremetrics **/
+    var p;
+    /** endif **/
 
-            /** if allowparams **/
-            var paramsRegexList = allowParams.map(filterRegex).join("|");
-            var regex = ignore
-              ? "^(" + paramsRegexList + ")="
-              : "^((utm_)" +
-                (strictUtm ? "" : "?") +
-                "(source|medium|content|term|campaign)" +
-                (strictUtm ? "" : "|ref") +
-                "|" +
-                paramsRegexList +
-                ")=";
-            if (ignore && !allowParams.length) return falseVar;
-            /** else **/
-            if (ignore) return falseVar;
-            // eslint-disable-next-line no-redeclare
-            var regex =
-              "^((utm_)" +
+    var getQueryParams = function (ignoreSource, overwriteSearch) {
+      /** if ignoremetrics **/
+      p = !ignoreSource && collectMetricByString("p") ? "" : falseVar;
+      /** endif **/
+      var q = (overwriteSearch || loc.search)
+        .slice(1)
+        .split("&")
+        .filter(function (keyValue) {
+          /** if ignoremetrics **/
+          var i = keyValue.indexOf("=");
+          if (p !== falseVar && i > 0 && keyValue.slice(i + 1))
+            p += (p ? "," : "") + keyValue.slice(0, i);
+          /** endif **/
+
+          var ignore = ignoreSource || !collectMetricByString("ut");
+
+          /** if allowparams **/
+          var paramsRegexList = allowParams.map(filterRegex).join("|");
+          var regex = ignore
+            ? "^(" + paramsRegexList + ")="
+            : "^((utm_)" +
               (strictUtm ? "" : "?") +
               "(source|medium|content|term|campaign)" +
               (strictUtm ? "" : "|ref") +
+              "|" +
+              paramsRegexList +
               ")=";
-            /** endif **/
+          if (ignore && !allowParams.length) return falseVar;
+          /** else **/
+          if (ignore) return falseVar;
+          // eslint-disable-next-line no-redeclare
+          var regex =
+            "^((utm_)" +
+            (strictUtm ? "" : "?") +
+            "(source|medium|content|term|campaign)" +
+            (strictUtm ? "" : "|ref") +
+            ")=";
+          /** endif **/
 
-            // The prefix "utm_" is optional with "strictUtm" disabled
-            // "ref" is only collected when "strictUtm" is disabled
-            return new RegExp(regex, "i").test(keyValue);
-          })
-          .join("&") || undefinedVar
-      );
+          // The prefix "utm_" is optional with "strictUtm" disabled
+          // "ref" is only collected when "strictUtm" is disabled
+          return new RegExp(regex, "i").test(keyValue);
+        })
+        .join("&");
+
+      /** if ignoremetrics **/
+      p = p || undefinedVar;
+      /** endif **/
+      return q || undefinedVar;
     };
 
     /** if ignorepages **/
@@ -756,7 +772,7 @@
       isPushState,
       deleteSourceInfo,
       sameSite,
-      query,
+      search,
       metadata,
       callback
     ) {
@@ -764,13 +780,17 @@
       if (collectDataOnLeave) payload.page_id = uuid();
 
       var currentPage = definedHostname + getPath();
+      var query = getQueryParams(deleteSourceInfo, search);
 
       sendData(
         {
           id: payload.page_id,
           type: pageviewText,
           referrer: !deleteSourceInfo || sameSite ? referrer : null,
-          query: query || getQueryParams(deleteSourceInfo),
+          query: query,
+          /** if ignoremetrics **/
+          p: p,
+          /** endif **/
 
           /** if metadata **/
           metadata: stringify(metadata),
@@ -896,7 +916,7 @@
           isPushState,
           delSrc, // r = referrers
           sameSite,
-          querySearch ? getQueryParams(delSrc, querySearch) : undefinedVar,
+          querySearch,
           metadata,
           callback
         );
