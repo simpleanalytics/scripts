@@ -1,4 +1,4 @@
-/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2026-06-25; 0dec; v11) */
+/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2026-08-17; 6b9f; v11) */
 /* eslint-env browser */
 
 (function (
@@ -112,8 +112,8 @@
       return Array.isArray(csv)
         ? csv
         : isString(csv) && csv.length
-        ? csv.split(/, ?/)
-        : [];
+          ? csv.split(/, ?/)
+          : [];
     };
 
     var isObject = function (object) {
