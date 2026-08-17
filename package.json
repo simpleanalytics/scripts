@@ -1,16 +1,26 @@
 {
   "name": "scripts",
   "version": "9.0.0",
+  "private": true,
   "description": "Simple Analytics visitor facing scripts",
   "main": "compile.js",
+  "packageManager": "pnpm@11.17.0",
+  "engines": {
+    "node": ">=24.12.0 <25",
+    "pnpm": ">=11.17.0 <12"
+  },
   "scripts": {
     "playground": "./playground.sh",
-    "watch": "node_modules/.bin/nodemon compile.js --ignore dist",
+    "watch": "nodemon compile.js --ignore dist",
     "build": "node compile.js",
-    "pretest": "npm run build -- testing",
+    "build:testing": "node compile.js testing",
+    "deploy": "node --env-file-if-exists=.env deploy.mts",
+    "pretest": "pnpm run build:testing",
     "test": "node -r dotenv/config ./test/index.js",
     "test:matrix": "mocha test/helpers/get-browsers.test.js",
-    "posttest": "npm run build"
+    "test:deploy": "node --test test/deploy.test.mts",
+    "posttest": "pnpm run build",
+    "typecheck": "tsc --noEmit"
   },
   "repository": {
     "type": "git",
@@ -23,7 +33,11 @@
     "url": "https://github.com/simpleanalytics/scripts/issues"
   },
   "homepage": "https://github.com/simpleanalytics/scripts#readme",
+  "dependencies": {
+    "@clack/prompts": "1.7.0"
+  },
   "devDependencies": {
+    "@types/node": "24.13.3",
     "browserstack-local": "^1.5.1",
     "chai": "^4.2.0",
     "dotenv": "^8.2.0",
@@ -34,6 +48,7 @@
     "nodemon": "^1.19.4",
     "request": "^2.88.0",
     "selenium-webdriver": "^4.3.1",
+    "typescript": "7.0.2",
     "uglify-js": "^3.9.4",
     "uuid-validate": "0.0.3"
   }

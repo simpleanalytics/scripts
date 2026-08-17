@@ -20,13 +20,25 @@ If you want to contribute, you probabaly want to contribute to our [`/src/defaul
 
 In `default.js` you see some weird syntax in the comments. For example, `/** if ignorepages **/` _\[some code\]_ `/** endif **/`. These comments are converted to handlebars like this: `{{#if ignorepages }}` _\[some code\]_ `{{/if}}`. In this case, [`ignorepages` is a variable](https://github.com/simpleanalytics/scripts/blob/3874b44ce5f1b0b8a7d50fb512fdcf5285a0138f/minify.js#L66) used in `minify.js` that takes care of what functionality to show in what script. Our main script is the `latest.js` script which includes all features. We also have a `light.js` script that obviously doesn't.
 
-If you contribute, make sure to use `npm run build`, copy the script to a website, and check if it works correctly.
+If you contribute, make sure to use `pnpm run build`, copy the script to a website, and check if it works correctly.
 
 ## Run this locally
 
-Just run `npm run watch` and every file will be validated and compiled on save. We minify our scripts with [UglifyJS](http://lisperator.net/uglifyjs/), a well-known JavaScript minifier.
+Install the pinned Node and pnpm versions, run `pnpm install --frozen-lockfile`, and then use `pnpm run watch`. Every file will be validated and compiled on save. We minify our scripts with [UglifyJS](http://lisperator.net/uglifyjs/), a well-known JavaScript minifier.
 
 The most important file of the repository is [`/src/default.js`](src/default.js)
+
+## Deploy
+
+Build and commit the distribution files before deploying. The deployment command itself never builds or changes local distribution files.
+
+```sh
+pnpm run deploy
+```
+
+The interactive CLI starts in dry-run mode by default. It lets you select scripts and destinations, reads the deployed files, and shows every affected path plus the first-line script-header diff. Choosing a real deployment requires a clean repository and a second confirmation.
+
+CDN writes use `BUNNY_SCRIPTS_ACCESS_KEY` and `BUNNY_SCRIPTS_ACCOUNT_KEY` from `.env`. Custom-domain reads and writes require SSH access to `app@external.simpleanalytics.com`.
 
 ## Device testing is sponsored by BrowserStack
 
