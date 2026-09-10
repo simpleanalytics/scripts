@@ -10,16 +10,21 @@ import {
   spinner,
 } from "@clack/prompts";
 import { spawn } from "node:child_process";
-import { readdir, readFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 export type ScriptChoice = "default" | "auto-events";
-export type Destination = "cdn" | "custom";
+export type Destination = "cdn" | "custom" | "caddy";
 export type EmbedVariant = "latest" | "sri" | "light" | "proxy";
 export type FileStatus = "create" | "replace" | "unchanged" | "blocked";
 type FileKind = "javascript" | "source-map";
-type ContentTransform = "none" | "cdn-sri-javascript" | "cdn-sri-map";
+type ContentTransform =
+  | "none"
+  | "cdn-sri-javascript"
+  | "cdn-sri-map"
+  | "caddy-ssi";
 
 export interface DeploySelections {
   scripts: ScriptChoice[];
@@ -67,6 +72,34 @@ interface DeploymentResult {
 const ROOT = dirname(fileURLToPath(import.meta.url));
 const CUSTOM_HOST = "app@external.simpleanalytics.com";
 const CUSTOM_ROOT = "/var/www/default";
+// New Caddy-based custom-domains setup (elastic-infra ansible/vars/apps/custom-domains.yml).
+// Caddy injects the request hostname at serve time with its templates
+// directive, so the nginx SSI directives are rewritten to Go template
+// placeholders (or their static defaults) on upload.
+const CADDY_HOST = "user@esapp05.simpleanalytics.com";
+const CADDY_ROOT = "/home/user/apps/custom-domains-www";
+const CADDY_SSI_REPLACEMENTS: ReadonlyArray<readonly [string, string]> = [
+  ['<!--# echo var="http_host" default="" -->', "{{.Req.Host}}"],
+  // Substituted from the proxy-product query parameters at serve time
+  // (docs.simpleanalytics.com/proxy), like nginx's `set $proxy_hostname
+  // $arg_hostname`. Custom-domain requests carry no such args, so these
+  // render as "" there — matching the old nginx vhost's defined-but-empty
+  // variables (its SSI defaults never applied). Go's Query.Get
+  // percent-decodes, which covers nginx's %2F-rewrite hack too.
+  ['<!--# echo var="proxy_hostname" default="" -->', '{{.Req.URL.Query.Get "hostname"}}'],
+  ['<!--# echo var="proxy_path" default="/simple" -->', '{{.Req.URL.Query.Get "path"}}'],
+];
+
+interface RemoteTarget {
+  host: string;
+  root: string;
+}
+
+function remoteTarget(destination: "custom" | "caddy"): RemoteTarget {
+  return destination === "custom"
+    ? { host: CUSTOM_HOST, root: CUSTOM_ROOT }
+    : { host: CADDY_HOST, root: CADDY_ROOT };
+}
 const CDN_PUBLIC_ROOT = "https://scripts.simpleanalyticscdn.com";
 const CDN_STORAGE_ROOT = "https://storage.bunnycdn.com/sa-cdn";
 const CDN_PURGE_URL =
@@ -127,8 +160,13 @@ function addScriptPair(
     kind: "source-map",
     localPath: `${localPath}.map`,
     remotePath: `${remotePath}.map`,
+    // Source maps carry the SSI directive too, so caddy-ssi applies to both.
     transform:
-      transform === "cdn-sri-javascript" ? "cdn-sri-map" : "none",
+      transform === "cdn-sri-javascript"
+        ? "cdn-sri-map"
+        : transform === "caddy-ssi"
+          ? "caddy-ssi"
+          : "none",
     version,
   });
 }
@@ -144,6 +182,21 @@ export function createManifest(
   const hasVariant = (variant: EmbedVariant) =>
     selections.variants.includes(variant);
   const needsSri = hasScript("default") && hasVariant("sri");
+
+  // The old (nginx) and new (Caddy) custom-domain servers host the same
+  // files; Caddy uploads additionally rewrite the SSI directives.
+  const serverDestinations = (["custom", "caddy"] as const).filter(hasDestination);
+  const addServerPair = (
+    input: Omit<Parameters<typeof addScriptPair>[1], "destination">,
+  ) => {
+    for (const destination of serverDestinations) {
+      addScriptPair(files, {
+        ...input,
+        destination,
+        transform: destination === "caddy" ? "caddy-ssi" : input.transform,
+      });
+    }
+  };
 
   if (needsSri && version === undefined) {
     throw new Error("An SRI version is required when SRI is selected.");
@@ -169,24 +222,19 @@ export function createManifest(
       });
     }
 
-    if (hasDestination("custom")) {
-      addScriptPair(files, {
-        destination: "custom",
-        localPath: "dist/latest/custom/latest.js",
-        remotePath: "latest.js",
-      });
-      addScriptPair(files, {
-        destination: "custom",
-        localPath: "dist/latest/custom/e.js",
-        remotePath: "events.js",
-      });
-      addScriptPair(files, {
-        destination: "custom",
-        localPath: "dist/latest/custom/latest.dev.js",
-        remotePath: "latest.dev.js",
-        sourceMap: false,
-      });
-    }
+    addServerPair({
+      localPath: "dist/latest/custom/latest.js",
+      remotePath: "latest.js",
+    });
+    addServerPair({
+      localPath: "dist/latest/custom/e.js",
+      remotePath: "events.js",
+    });
+    addServerPair({
+      localPath: "dist/latest/custom/latest.dev.js",
+      remotePath: "latest.dev.js",
+      sourceMap: false,
+    });
   }
 
   if (needsSri) {
@@ -201,15 +249,12 @@ export function createManifest(
       });
     }
 
-    if (hasDestination("custom")) {
-      addScriptPair(files, {
-        destination: "custom",
-        immutable: true,
-        localPath: `dist/v${version}/custom/app.js`,
-        remotePath: `v${version}/app.js`,
-        version,
-      });
-    }
+    addServerPair({
+      immutable: true,
+      localPath: `dist/v${version}/custom/app.js`,
+      remotePath: `v${version}/app.js`,
+      version,
+    });
   }
 
   if (hasScript("default") && hasVariant("light")) {
@@ -221,39 +266,33 @@ export function createManifest(
       });
     }
 
-    if (hasDestination("custom")) {
-      addScriptPair(files, {
-        destination: "custom",
-        localPath: "dist/latest/custom/light.js",
-        remotePath: "light.js",
-      });
+    addServerPair({
+      localPath: "dist/latest/custom/light.js",
+      remotePath: "light.js",
+    });
 
-      if (needsSri) {
-        addScriptPair(files, {
-          destination: "custom",
-          immutable: true,
-          localPath: `dist/v${version}/custom/light.js`,
-          remotePath: `v${version}/light.js`,
-          version,
-        });
-      }
+    if (needsSri) {
+      addServerPair({
+        immutable: true,
+        localPath: `dist/v${version}/custom/light.js`,
+        remotePath: `v${version}/light.js`,
+        version,
+      });
     }
   }
 
   if (
     hasScript("default") &&
     hasVariant("proxy") &&
-    hasDestination("custom")
+    serverDestinations.length > 0
   ) {
-    addScriptPair(files, {
-      destination: "custom",
+    addServerPair({
       localPath: "dist/latest/custom/proxy.js",
       remotePath: "proxy.js",
     });
 
     if (needsSri) {
-      addScriptPair(files, {
-        destination: "custom",
+      addServerPair({
         immutable: true,
         localPath: `dist/v${version}/custom/proxy.js`,
         remotePath: `v${version}/proxy.js`,
@@ -271,22 +310,18 @@ export function createManifest(
       });
     }
 
-    if (hasDestination("custom")) {
-      addScriptPair(files, {
-        destination: "custom",
-        localPath: "dist/latest/custom/auto-events.js",
-        remotePath: "auto-events.js",
-      });
+    addServerPair({
+      localPath: "dist/latest/custom/auto-events.js",
+      remotePath: "auto-events.js",
+    });
 
-      if (needsSri) {
-        addScriptPair(files, {
-          destination: "custom",
-          immutable: true,
-          localPath: `dist/v${version}/custom/auto-events.js`,
-          remotePath: `v${version}/auto-events.js`,
-          version,
-        });
-      }
+    if (needsSri) {
+      addServerPair({
+        immutable: true,
+        localPath: `dist/v${version}/custom/auto-events.js`,
+        remotePath: `v${version}/auto-events.js`,
+        version,
+      });
     }
   }
 
@@ -314,6 +349,27 @@ async function discoverSriVersion(): Promise<number> {
 
 export function transformContent(file: DeployFile, content: Buffer): Buffer {
   if (file.transform === "none") return content;
+
+  if (file.transform === "caddy-ssi") {
+    let source = content.toString("utf8");
+    // Caddy's templates directive would choke on (or execute) stray actions,
+    // turning a bad build into per-request 500s — fail the deploy instead.
+    if (source.includes("{{")) {
+      throw new Error(
+        `${file.localPath} contains Go template delimiters ("{{"); Caddy's templates directive cannot serve it safely.`,
+      );
+    }
+    for (const [pattern, replacement] of CADDY_SSI_REPLACEMENTS) {
+      source = source.replaceAll(pattern, replacement);
+    }
+    if (source.includes("<!--#")) {
+      throw new Error(
+        `${file.localPath} contains an SSI directive with no Caddy replacement.`,
+      );
+    }
+    return Buffer.from(source);
+  }
+
   if (file.version === undefined) {
     throw new Error(`Missing version for ${file.localPath}.`);
   }
@@ -473,6 +529,7 @@ function shellQuote(value: string): string {
 
 async function readCustomFiles(
   remotePaths: string[],
+  target: RemoteTarget,
 ): Promise<Map<string, Buffer | null>> {
   const uniquePaths = [...new Set(remotePaths)];
   if (uniquePaths.length === 0) return new Map();
@@ -482,7 +539,7 @@ async function readCustomFiles(
   const command = [
     `for relative_path in ${pathArguments}; do`,
     `printf '__SA_FILE__:%s\\n' "$relative_path";`,
-    `full_path=${shellQuote(CUSTOM_ROOT)}/$relative_path;`,
+    `full_path=${shellQuote(target.root)}/$relative_path;`,
     'if test -f "$full_path"; then',
     `printf '__SA_DATA__:'; base64 "$full_path" | tr -d '\\n'; printf '\\n';`,
     "else printf '__SA_MISSING__\\n'; fi;",
@@ -490,7 +547,7 @@ async function readCustomFiles(
   ].join(" ");
   const { stdout } = await runCommand(
     "ssh",
-    ["-o", "BatchMode=yes", "-o", "ConnectTimeout=10", CUSTOM_HOST, command],
+    ["-o", "BatchMode=yes", "-o", "ConnectTimeout=10", target.host, command],
     { timeout: 45_000 },
   );
 
@@ -524,25 +581,30 @@ async function readCustomFiles(
 }
 
 async function inspectFiles(files: PreparedFile[]): Promise<PreviewFile[]> {
-  const cdnPaths = files
-    .filter((file) => file.destination === "cdn")
-    .map((file) => file.remotePath);
-  const customPaths = files
-    .filter((file) => file.destination === "custom")
-    .map((file) => file.remotePath);
+  const pathsFor = (destination: Destination) =>
+    files
+      .filter((file) => file.destination === destination)
+      .map((file) => file.remotePath);
 
-  const [cdnEntries, customFiles] = await Promise.all([
+  const [cdnEntries, customFiles, caddyFiles] = await Promise.all([
     Promise.all(
-      cdnPaths.map(async (remotePath) => [remotePath, await readCdnFile(remotePath)] as const),
+      pathsFor("cdn").map(
+        async (remotePath) => [remotePath, await readCdnFile(remotePath)] as const,
+      ),
     ),
-    readCustomFiles(customPaths),
+    readCustomFiles(pathsFor("custom"), remoteTarget("custom")),
+    readCustomFiles(pathsFor("caddy"), remoteTarget("caddy")),
   ]);
   const cdnFiles = new Map(cdnEntries);
 
   return files.map((file) => {
-    const remoteContent =
-      (file.destination === "cdn" ? cdnFiles : customFiles).get(file.remotePath) ??
-      null;
+    const remoteFiles =
+      file.destination === "cdn"
+        ? cdnFiles
+        : file.destination === "custom"
+          ? customFiles
+          : caddyFiles;
+    const remoteContent = remoteFiles.get(file.remotePath) ?? null;
     return {
       ...file,
       remoteContent,
@@ -556,9 +618,9 @@ async function inspectFiles(files: PreparedFile[]): Promise<PreviewFile[]> {
 }
 
 function remoteLabel(file: DeployFile): string {
-  return file.destination === "cdn"
-    ? `${CDN_PUBLIC_ROOT}/${file.remotePath}`
-    : `${CUSTOM_HOST}:${CUSTOM_ROOT}/${file.remotePath}`;
+  if (file.destination === "cdn") return `${CDN_PUBLIC_ROOT}/${file.remotePath}`;
+  const target = remoteTarget(file.destination);
+  return `${target.host}:${target.root}/${file.remotePath}`;
 }
 
 function statusLabel(status: FileStatus): string {
@@ -599,13 +661,18 @@ function renderPreview(
     "Deployment preview",
   );
 
-  for (const destination of ["cdn", "custom"] as const) {
+  const destinationLabels: Record<Destination, string> = {
+    caddy: "Custom domain (new Caddy setup)",
+    cdn: "CDN",
+    custom: "Custom domain",
+  };
+  for (const destination of ["cdn", "custom", "caddy"] as const) {
     const destinationFiles = files.filter(
       (file) => file.destination === destination,
     );
     if (destinationFiles.length === 0) continue;
 
-    console.log(`\n  ${ansi.bold(destination === "cdn" ? "CDN" : "Custom domain")}`);
+    console.log(`\n  ${ansi.bold(destinationLabels[destination])}`);
     for (const file of destinationFiles) {
       console.log(
         `  ${statusLabel(file.status).padEnd(process.stdout.isTTY ? 19 : 8)} ${ansi.cyan(
@@ -655,7 +722,11 @@ async function readCurrentFile(
   if (file.destination === "cdn") {
     return readCdnFile(file.remotePath, credentials?.accessKey);
   }
-  return (await readCustomFiles([file.remotePath])).get(file.remotePath) ?? null;
+  const remoteFiles = await readCustomFiles(
+    [file.remotePath],
+    remoteTarget(file.destination),
+  );
+  return remoteFiles.get(file.remotePath) ?? null;
 }
 
 async function uploadCdnFile(
@@ -705,6 +776,36 @@ async function uploadCustomFile(file: PreparedFile): Promise<void> {
   await runCommand("rsync", args, { timeout: 120_000 });
 }
 
+async function uploadCaddyFile(file: PreparedFile): Promise<void> {
+  assertSafeRemotePath(file.remotePath);
+
+  // Unlike the old server, the deployed bytes differ from the local file
+  // (SSI directives become Caddy template placeholders), so upload the
+  // transformed content from a temporary file.
+  const remoteDirectory = dirname(`${CADDY_ROOT}/${file.remotePath}`);
+  await runCommand("ssh", [
+    "-o",
+    "BatchMode=yes",
+    "-o",
+    "ConnectTimeout=10",
+    CADDY_HOST,
+    `mkdir -p -- ${shellQuote(remoteDirectory)}`,
+  ]);
+
+  const temporaryDirectory = await mkdtemp(join(tmpdir(), "sa-deploy-"));
+  try {
+    const temporaryPath = join(temporaryDirectory, basename(file.remotePath));
+    await writeFile(temporaryPath, file.localContent);
+
+    const args = ["--quiet"];
+    if (file.immutable) args.push("--ignore-existing");
+    args.push(temporaryPath, `${CADDY_HOST}:${CADDY_ROOT}/${file.remotePath}`);
+    await runCommand("rsync", args, { timeout: 120_000 });
+  } finally {
+    await rm(temporaryDirectory, { force: true, recursive: true });
+  }
+}
+
 async function purgeCdn(credentials: CdnCredentials): Promise<void> {
   const response = await fetch(CDN_PURGE_URL, {
     headers: { AccessKey: credentials.accountKey },
@@ -722,11 +823,19 @@ async function verifyUploadedFiles(
 ): Promise<void> {
   const cdnFiles = files.filter((file) => file.destination === "cdn");
   const customFiles = files.filter((file) => file.destination === "custom");
-  const [cdnContents, customContents] = await Promise.all([
+  const caddyFiles = files.filter((file) => file.destination === "caddy");
+  const [cdnContents, customContents, caddyContents] = await Promise.all([
     Promise.all(
       cdnFiles.map((file) => readCdnFile(file.remotePath, credentials?.accessKey)),
     ),
-    readCustomFiles(customFiles.map((file) => file.remotePath)),
+    readCustomFiles(
+      customFiles.map((file) => file.remotePath),
+      remoteTarget("custom"),
+    ),
+    readCustomFiles(
+      caddyFiles.map((file) => file.remotePath),
+      remoteTarget("caddy"),
+    ),
   ]);
 
   for (const [index, file] of cdnFiles.entries()) {
@@ -737,6 +846,11 @@ async function verifyUploadedFiles(
   for (const file of customFiles) {
     if (!customContents.get(file.remotePath)?.equals(file.localContent)) {
       throw new Error(`Custom-domain verification failed for ${file.remotePath}.`);
+    }
+  }
+  for (const file of caddyFiles) {
+    if (!caddyContents.get(file.remotePath)?.equals(file.localContent)) {
+      throw new Error(`Caddy verification failed for ${file.remotePath}.`);
     }
   }
 }
@@ -789,6 +903,8 @@ async function deployFiles(
         if (file.destination === "cdn") {
           if (!credentials) throw new Error("Missing CDN credentials.");
           await uploadCdnFile(file, credentials);
+        } else if (file.destination === "caddy") {
+          await uploadCaddyFile(file);
         } else {
           await uploadCustomFile(file);
         }
@@ -860,6 +976,13 @@ function selectedValue<T>(value: T | symbol): T {
 async function main(): Promise<void> {
   intro("Simple Analytics script deployment");
 
+  // --caddy-only deploys exclusively to the new Caddy custom-domains setup,
+  // leaving the CDN and the old external server untouched.
+  const caddyOnly = process.argv.includes("--caddy-only");
+  if (caddyOnly) {
+    log.info("Deploying only to the new Caddy custom-domains setup (--caddy-only).");
+  }
+
   const dryRun = selectedValue(
     await confirm({
       initialValue: true,
@@ -883,17 +1006,20 @@ async function main(): Promise<void> {
       required: true,
     }),
   );
-  const destinations = selectedValue(
-    await multiselect<Destination>({
-      initialValues: ["cdn", "custom"],
-      message: "Where do you want to deploy these scripts?",
-      options: [
-        { label: "CDN", value: "cdn" },
-        { label: "Custom domain", value: "custom" },
-      ],
-      required: true,
-    }),
-  );
+  const destinations: Destination[] = caddyOnly
+    ? ["caddy"]
+    : selectedValue(
+        await multiselect<Destination>({
+          initialValues: ["cdn", "custom"],
+          message: "Where do you want to deploy these scripts?",
+          options: [
+            { label: "CDN", value: "cdn" },
+            { label: "Custom domain", value: "custom" },
+            { label: "Custom domain (new Caddy setup)", value: "caddy" },
+          ],
+          required: true,
+        }),
+      );
 
   let variants: EmbedVariant[] = [];
   if (scripts.includes("default")) {
@@ -902,7 +1028,7 @@ async function main(): Promise<void> {
       { label: "SRI", value: "sri" },
       { label: "Light", value: "light" },
     ];
-    if (destinations.includes("custom")) {
+    if (destinations.includes("custom") || destinations.includes("caddy")) {
       options.push({ label: "Proxy", value: "proxy" });
     }
     variants = selectedValue(
@@ -960,7 +1086,7 @@ async function main(): Promise<void> {
 
   const result = await deployFiles(previews, credentials);
   renderDeploymentResult(result);
-  if (variants.includes("sri")) {
+  if (variants.includes("sri") && destinations.includes("custom")) {
     log.warn(
       "Add the SRI version to /etc/nginx/sa-client-site-with-ssl.conf and update https://docs.simpleanalytics.com/sri.",
     );
