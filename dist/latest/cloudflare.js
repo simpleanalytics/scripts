@@ -1,4 +1,4 @@
-/* Simple Analytics - Privacy-first analytics (docs.simpleanalytics.com/script; 2026-08-12; 9ec6; v12) */
+/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2026-08-17; 6b9f; v11) */
 /* eslint-env browser */
 
 (function (
@@ -193,17 +193,11 @@
       attr(scriptElement, namespaceText) ||
       defaultNamespace;
 
+    var metadataObject = window[namespace + "_metadata"];
     var appendMetadata = function (metadata, data) {
-      var metadataObject = window[namespace + "_metadata"];
       if (isObject(metadataObject)) metadata = assign(metadata, metadataObject);
       var metadataCollectorFunction = window[metadataCollector];
-      if (!isFunction(metadataCollectorFunction)) {
-        if (metadataCollector)
-          warn(
-            metadataCollector + " not found, set window." + metadataCollector
-          );
-        return metadata;
-      }
+      if (!isFunction(metadataCollectorFunction)) return metadata;
       try {
         return assign(
           metadata,
@@ -224,40 +218,32 @@
       overwriteOptions.strictUtm ||
       attr(scriptElement, "strict-utm") == trueText;
 
-    var p;
+    var getQueryParams = function (ignoreSource) {
+      return (
+        loc.search
+          .slice(1)
+          .split("&")
+          .filter(function (keyValue) {
+            var ignore = ignoreSource || !collectMetricByString("ut");
 
-    var getQueryParams = function (ignoreSource, overwriteSearch) {
-      p = !ignoreSource && collectMetricByString("p") ? "" : falseVar;
-      var q = (overwriteSearch || loc.search)
-        .slice(1)
-        .split("&")
-        .filter(function (keyValue) {
-          var i = keyValue.indexOf("=");
-          if (p !== falseVar && i > 0 && keyValue.slice(i + 1))
-            p += (p ? "," : "") + keyValue.slice(0, i);
+            var paramsRegexList = allowParams.map(filterRegex).join("|");
+            var regex = ignore
+              ? "^(" + paramsRegexList + ")="
+              : "^((utm_)" +
+                (strictUtm ? "" : "?") +
+                "(source|medium|content|term|campaign)" +
+                (strictUtm ? "" : "|ref") +
+                "|" +
+                paramsRegexList +
+                ")=";
+            if (ignore && !allowParams.length) return falseVar;
 
-          var ignore = ignoreSource || !collectMetricByString("ut");
-
-          var paramsRegexList = allowParams.map(filterRegex).join("|");
-          var regex = ignore
-            ? "^(" + paramsRegexList + ")="
-            : "^((utm_)" +
-              (strictUtm ? "" : "?") +
-              "(source|medium|content|term|campaign)" +
-              (strictUtm ? "" : "|ref") +
-              "|" +
-              paramsRegexList +
-              ")=";
-          if (ignore && !allowParams.length) return falseVar;
-
-          // The prefix "utm_" is optional with "strictUtm" disabled
-          // "ref" is only collected when "strictUtm" is disabled
-          return new RegExp(regex, "i").test(keyValue);
-        })
-        .join("&");
-
-      p = p || undefinedVar;
-      return q || undefinedVar;
+            // The prefix "utm_" is optional with "strictUtm" disabled
+            // "ref" is only collected when "strictUtm" is disabled
+            return new RegExp(regex).test(keyValue);
+          })
+          .join("&") || undefinedVar
+      );
     };
 
     // Ignore pages specified in data-ignore-pages
@@ -447,13 +433,12 @@
     // PAYLOAD FOR BOTH PAGE VIEWS AND EVENTS
     //
 
-    var phantom = window.phantom;
     var bot =
       nav.webdriver ||
       window.__nightmare ||
       window.callPhantom ||
       window._phantom ||
-      (phantom && !phantom.solana) ||
+      window.phantom ||
       window.__polypane ||
       window._bot ||
       isBotAgent ||
@@ -527,12 +512,8 @@
     var lastSendPath;
 
     var getReferrer = function () {
-      // Customers can overwrite their referrer, here we check for that
-      var overwrittenReferrer =
-        overwriteOptions.referrer || attr(scriptElement, "referrer");
-
       return (
-        (overwrittenReferrer || doc.referrer || "")
+        (doc.referrer || "")
           .replace(locationHostname, definedHostname)
           .replace(/^https?:\/\/((m|l|w{2,3}([0-9]+)?)\.)?([^?#]+)(.*)$/, "$4")
           .replace(/^([^/]+)$/, "$1") || undefinedVar
@@ -573,12 +554,7 @@
         // sendData will assign payload to request
         sendData(append, undefinedVar, trueVar);
       } else {
-        try {
-          nav.sendBeacon.bind(nav)(fullApiUrl + "/append", stringify(append));
-        } catch (e) {
-          // Fallback for browsers throwing "Illegal invocation" when the URL is invalid
-          sendData(append, undefinedVar, trueVar);
-        }
+        nav.sendBeacon(fullApiUrl + "/append", stringify(append));
       }
     };
 
@@ -675,28 +651,21 @@
       isPushState,
       deleteSourceInfo,
       sameSite,
-      search,
-      metadata,
-      callback
+      metadata
     ) {
       if (isPushState) sendOnLeave("" + payload.page_id, trueVar);
       if (collectDataOnLeave) payload.page_id = uuid();
 
       var currentPage = definedHostname + getPath();
-      var query = getQueryParams(deleteSourceInfo, search);
 
-      sendData(
-        {
-          id: payload.page_id,
-          type: pageviewText,
-          referrer: !deleteSourceInfo || sameSite ? referrer : null,
-          query: query,
-          p: p,
+      sendData({
+        id: payload.page_id,
+        type: pageviewText,
+        referrer: !deleteSourceInfo || sameSite ? referrer : null,
+        query: getQueryParams(deleteSourceInfo),
 
-          metadata: stringify(metadata),
-        },
-        callback
-      );
+        metadata: stringify(metadata),
+      });
 
       previousReferrer = referrer;
       referrer = currentPage;
@@ -706,21 +675,7 @@
 
     var sameSite, userNavigated;
 
-    var pageview = function (
-      isPushState,
-      pathOverwrite,
-      metadata,
-      callbackRaw
-    ) {
-      if (!callbackRaw && isFunction(metadata)) callbackRaw = metadata;
-      var callback = isFunction(callbackRaw) ? callbackRaw : function () {};
-      var querySearch;
-      if (isString(pathOverwrite) && pathOverwrite.indexOf("?") > -1) {
-        // keep query from manual path
-        var parts = pathOverwrite.split("?");
-        pathOverwrite = parts.shift();
-        querySearch = "?" + parts.join("?");
-      }
+    var pageview = function (isPushState, pathOverwrite, metadata) {
       // Obfuscate personal data in URL by dropping the search and hash
       var path = getPath(pathOverwrite);
 
@@ -783,10 +738,7 @@
         : falseVar;
 
       // We set unique variable based on pushstate or back navigation, if no match we check the referrer
-      page.unique =
-        /__cf_/.test(getReferrer()) || isPushState || userNavigated
-          ? falseVar
-          : !sameSite;
+      page.unique = isPushState || userNavigated ? falseVar : !sameSite;
 
       metadata = appendMetadata(metadata, {
         type: pageviewText,
@@ -795,15 +747,11 @@
 
       var triggerSendPageView = function () {
         fetchedHighEntropyValues = trueVar;
-        var delSrc =
-          isPushState || userNavigated || !collectMetricByString("r");
         sendPageView(
           isPushState,
-          delSrc, // r = referrers
+          isPushState || userNavigated || !collectMetricByString("r"), // r = referrers
           sameSite,
-          querySearch,
-          metadata,
-          callback
+          metadata
         );
       };
 
@@ -893,11 +841,11 @@
     }
 
     if (autoCollect) pageview();
-
-    window.sa_pageview = function (path, metadata, callback) {
-      pageview(0, path, metadata, callback);
-    };
-
+    else {
+      window.sa_pageview = function (path, metadata) {
+        pageview(0, path, metadata);
+      };
+    }
 
     /////////////////////
     // EVENTS
@@ -990,6 +938,6 @@
   {"hostname":INSTALL_OPTIONS.hostname,"collectDnt":typeof INSTALL_OPTIONS.collect_dnt === 'boolean' ? INSTALL_OPTIONS.collect_dnt : null,"mode":INSTALL_OPTIONS.hash_mode ? 'hash' : 'normal',"strictUtm":INSTALL_OPTIONS.advanced_settings_toggle && INSTALL_OPTIONS.strict_utm,"allowParams":INSTALL_OPTIONS.advanced_settings_toggle && INSTALL_OPTIONS.allow_url_parameters,"nonUniqueHostnames":INSTALL_OPTIONS.advanced_settings_toggle && INSTALL_OPTIONS.non_unique_hostnames,"ignorePages":INSTALL_OPTIONS.advanced_settings_toggle && INSTALL_OPTIONS.ignore_pages,"namespace":INSTALL_OPTIONS.overwrite_namespace && INSTALL_OPTIONS.namespace},
   INSTALL_OPTIONS.custom_domain || "queue.simpleanalyticscdn.com",
   "",
-  "cloudflare_12",
+  "cloudflare_11",
   "sa"
 );
