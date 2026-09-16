@@ -51,7 +51,7 @@ describe("pageview query", function () {
       );
       expect(req, "pageview request").to.exist;
       const url = new URL(req.url);
-      expect(url.searchParams.get("p")).to.equal("gclid,foo");
+      expect(url.searchParams.get("k")).to.equal("gclid,foo");
       expect(req.url).not.to.include("secret");
       expect(req.url).not.to.include("another");
       done();
@@ -60,7 +60,7 @@ describe("pageview query", function () {
 
   it("allows parameter name collection to be ignored", function (done) {
     const dom = createDOM({
-      settings: { autoCollect: false, ignoreMetrics: "params" },
+      settings: { autoCollect: false, ignoreMetrics: "querykeys" },
     });
 
     dom.window.sa_pageview("/manual?gclid=secret");
@@ -71,7 +71,7 @@ describe("pageview query", function () {
       );
       expect(req, "pageview request").to.exist;
       const url = new URL(req.url);
-      expect(url.searchParams.has("p")).to.equal(false);
+      expect(url.searchParams.has("k")).to.equal(false);
       done();
     }, 10);
   });

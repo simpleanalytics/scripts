@@ -239,12 +239,12 @@
       attr(scriptElement, "strict-utm") == trueText;
 
     /** if ignoremetrics **/
-    var p;
+    var k;
     /** endif **/
 
     var getQueryParams = function (ignoreSource, overwriteSearch) {
       /** if ignoremetrics **/
-      p = !ignoreSource && collectMetricByString("p") ? "" : falseVar;
+      k = !ignoreSource && collectMetricByString("q") ? "" : falseVar;
       /** endif **/
       var q = (overwriteSearch || loc.search)
         .slice(1)
@@ -252,8 +252,8 @@
         .filter(function (keyValue) {
           /** if ignoremetrics **/
           var i = keyValue.indexOf("=");
-          if (p !== falseVar && i > 0 && keyValue.slice(i + 1))
-            p += (p ? "," : "") + keyValue.slice(0, i);
+          if (k !== falseVar && i > 0 && keyValue.slice(i + 1))
+            k += (k ? "," : "") + keyValue.slice(0, i);
           /** endif **/
 
           var ignore = ignoreSource || !collectMetricByString("ut");
@@ -288,7 +288,7 @@
         .join("&");
 
       /** if ignoremetrics **/
-      p = p || undefinedVar;
+      k = k || undefinedVar;
       /** endif **/
       return q || undefinedVar;
     };
@@ -789,7 +789,7 @@
           referrer: !deleteSourceInfo || sameSite ? referrer : null,
           query: query,
           /** if ignoremetrics **/
-          p: p,
+          k: k,
           /** endif **/
 
           /** if metadata **/
