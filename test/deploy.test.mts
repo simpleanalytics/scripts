@@ -206,3 +206,77 @@ describe("preview helpers", () => {
     );
   });
 });
+
+describe("Caddy custom-domains destination", () => {
+  it("mirrors the custom files with the caddy-ssi transform", () => {
+    const files = createManifest(
+      {
+        destinations: ["caddy"],
+        scripts: ["default"],
+        variants: ["latest", "sri"],
+      },
+      12,
+    );
+
+    assert.deepEqual(
+      files.map((file) => `${file.destination}:${file.remotePath}`),
+      [
+        "caddy:latest.js",
+        "caddy:latest.js.map",
+        "caddy:events.js",
+        "caddy:events.js.map",
+        "caddy:latest.dev.js",
+        "caddy:v12/app.js",
+        "caddy:v12/app.js.map",
+      ],
+    );
+    assert.equal(
+      files.every((file) => file.transform === "caddy-ssi"),
+      true,
+    );
+  });
+
+  const caddyFile: DeployFile = {
+    destination: "caddy",
+    immutable: false,
+    kind: "javascript",
+    localPath: "dist/latest/custom/latest.js",
+    remotePath: "latest.js",
+    transform: "caddy-ssi",
+  };
+
+  it("rewrites SSI directives to Caddy template placeholders", () => {
+    assert.equal(
+      transformContent(
+        caddyFile,
+        Buffer.from(
+          'a("<!--# echo var="http_host" default="" -->","<!--# echo var="proxy_hostname" default="" -->","<!--# echo var="proxy_path" default="/simple" -->")',
+        ),
+      ).toString(),
+      'a("{{.Req.Host}}","{{js (.Req.URL.Query.Get "hostname")}}","{{js (.Req.URL.Query.Get "path")}}")',
+    );
+  });
+
+  it("passes through files without directives unchanged", () => {
+    const content = Buffer.from("plain();\n");
+    assert.equal(transformContent(caddyFile, content).toString(), "plain();\n");
+  });
+
+  it("rejects stray Go template delimiters", () => {
+    assert.throws(
+      () => transformContent(caddyFile, Buffer.from('var a = "{{oops"')),
+      /Go template delimiters/,
+    );
+  });
+
+  it("rejects SSI directives without a replacement", () => {
+    assert.throws(
+      () =>
+        transformContent(
+          caddyFile,
+          Buffer.from('a("<!--# echo var="unknown_var" default="" -->")'),
+        ),
+      /no Caddy replacement/,
+    );
+  });
+});
