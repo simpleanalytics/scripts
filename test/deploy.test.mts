@@ -253,7 +253,7 @@ describe("Caddy custom-domains destination", () => {
           'a("<!--# echo var="http_host" default="" -->","<!--# echo var="proxy_hostname" default="" -->","<!--# echo var="proxy_path" default="/simple" -->")',
         ),
       ).toString(),
-      'a("{{.Req.Host}}","{{.Req.URL.Query.Get "hostname"}}","{{.Req.URL.Query.Get "path"}}")',
+      'a("{{.Req.Host}}","{{js (.Req.URL.Query.Get "hostname")}}","{{js (.Req.URL.Query.Get "path")}}")',
     );
   });
 

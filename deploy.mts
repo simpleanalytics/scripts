@@ -85,9 +85,16 @@ const CADDY_SSI_REPLACEMENTS: ReadonlyArray<readonly [string, string]> = [
   // $arg_hostname`. Custom-domain requests carry no such args, so these
   // render as "" there — matching the old nginx vhost's defined-but-empty
   // variables (its SSI defaults never applied). Go's Query.Get
-  // percent-decodes, which covers nginx's %2F-rewrite hack too.
-  ['<!--# echo var="proxy_hostname" default="" -->', '{{.Req.URL.Query.Get "hostname"}}'],
-  ['<!--# echo var="proxy_path" default="/simple" -->', '{{.Req.URL.Query.Get "path"}}'],
+  // percent-decodes, which covers nginx's %2F-rewrite hack too. Escape the
+  // decoded values before inserting them into the script's string literal.
+  [
+    '<!--# echo var="proxy_hostname" default="" -->',
+    '{{js (.Req.URL.Query.Get "hostname")}}',
+  ],
+  [
+    '<!--# echo var="proxy_path" default="/simple" -->',
+    '{{js (.Req.URL.Query.Get "path")}}',
+  ],
 ];
 
 interface RemoteTarget {
