@@ -38,6 +38,7 @@
   },
   "devDependencies": {
     "@types/node": "24.13.3",
+    "acorn": "^8.18.0",
     "browserstack-local": "^1.5.1",
     "chai": "^4.2.0",
     "dotenv": "^8.2.0",

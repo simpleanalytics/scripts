@@ -15,6 +15,9 @@ importers:
       '@types/node':
         specifier: 24.13.3
         version: 24.13.3
+      acorn:
+        specifier: ^8.18.0
+        version: 8.18.0
       browserstack-local:
         specifier: ^1.5.1
         version: 1.5.1(supports-color@5.5.0)
@@ -210,6 +213,11 @@ packages:
 
   acorn@7.1.1:
     resolution: {integrity: sha512-add7dgA5ppRPxCFJoAGfMDi7PIBXq1RtGo7BhbLaxwrXPOmw8gq48Y9ozT01hUKy9byMjlR20EJhu5zlkErEkg==}
+    engines: {node: '>=0.4.0'}
+    hasBin: true
+
+  acorn@8.18.0:
+    resolution: {integrity: sha512-lGq+9yr1/GuAWaVYIHRjvvySG5/4VfKIvC8EWxStPdcDh/Ka7FG3twP6v4d5BkravUilhIAsG4Qj83t02LWUPQ==}
     engines: {node: '>=0.4.0'}
     hasBin: true
 
@@ -1909,6 +1917,8 @@ snapshots:
       acorn: 7.1.1
 
   acorn@7.1.1: {}
+
+  acorn@8.18.0: {}
 
   agent-base@6.0.2(supports-color@5.5.0):
     dependencies:
