@@ -1,5 +1,3 @@
-const request = require("request");
-
 const { selectBrowsers } = require("./browser-matrix");
 const {
   BROWSERSTACK_USERNAME,
@@ -81,22 +79,21 @@ const withRetries = async (
   );
 };
 
-const requestJson = (options) =>
-  new Promise((resolve, reject) => {
-    request(
-      { method: "GET", json: true, timeout: REQUEST_TIMEOUT, ...options },
-      (error, response, body) => {
-        if (error) return reject(error);
-        if (
-          !response ||
-          response.statusCode < 200 ||
-          response.statusCode >= 300
-        )
-          return reject(new Error(`HTTP ${response?.statusCode || "unknown"}`));
-        return resolve(body);
+const requestJson = async ({ url, auth }) => {
+  const headers = auth
+    ? {
+        Authorization:
+          "Basic " +
+          Buffer.from(`${auth.user}:${auth.pass}`).toString("base64"),
       }
-    );
+    : undefined;
+  const response = await fetch(url, {
+    headers,
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT),
   });
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  return response.json();
+};
 
 const requireArray = (source, value) => {
   if (!Array.isArray(value) || !value.length)

@@ -149,6 +149,18 @@
 
     if (logSettings) warn("Settings", overwriteOptions);
 
+    // A server-created initial pageview can be enriched by this script.
+    var pageLoadId =
+      overwriteOptions.pageLoadId || attr(scriptElement, "page-load-id");
+    if (
+      typeof pageLoadId !== "string" ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+        pageLoadId
+      )
+    ) {
+      pageLoadId = undefinedVar;
+    }
+
     /** if ignoremetrics **/
     // Customers can skip data points
     var ignoreMetrics = convertCommaSeparatedToArray(
@@ -538,10 +550,13 @@
 
       https: loc.protocol == https,
       timezone: timezone,
-      page_id: collectDataOnLeave ? uuid() : undefinedVar,
+      collected_client_side: trueVar,
+      page_id: pageLoadId || (collectDataOnLeave ? uuid() : undefinedVar),
 
       // se = sessions
-      session_id: collectMetricByString("se") ? uuid() : undefinedVar,
+      session_id: collectMetricByString("se")
+        ? pageLoadId || uuid()
+        : undefinedVar,
     });
 
     /** if sri **/
@@ -777,7 +792,9 @@
       callback
     ) {
       if (isPushState) sendOnLeave("" + payload.page_id, trueVar);
-      if (collectDataOnLeave) payload.page_id = uuid();
+      var originalId = pages === 0 ? pageLoadId : undefinedVar;
+      payload.page_id =
+        originalId || (collectDataOnLeave ? uuid() : undefinedVar);
 
       var currentPage = definedHostname + getPath();
       var query = getQueryParams(deleteSourceInfo, search);
@@ -785,7 +802,8 @@
       sendData(
         {
           id: payload.page_id,
-          type: pageviewText,
+          original_id: originalId,
+          type: originalId ? "append" : pageviewText,
           referrer: !deleteSourceInfo || sameSite ? referrer : null,
           query: query,
           /** if ignoremetrics **/
