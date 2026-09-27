@@ -1,0 +1,251 @@
+const { expect } = require("chai");
+const { runInContext } = require("vm");
+const { createDOM } = require("./helpers/dom");
+
+const pageLoadId = "2c304ecc-1e0a-4fa6-86a8-1ba4684db774";
+const attributeId = "e35432dd-4af3-40c3-90ad-5a95d8e4fb1f";
+const requests = (dom) =>
+  dom.sent
+    .filter(({ type }) => type === "image")
+    .map(({ url }) => new URL(url).searchParams);
+const wait = () => new Promise((resolve) => setTimeout(resolve, 20));
+
+describe("server page-load ID", function () {
+  it("keeps accepted manual attribution while client hints are pending", async function () {
+    const dom = createDOM({
+      url: "https://example.com/ignore",
+      settings: { pageLoadId, autoCollect: false, ignorePages: "/ignore" },
+      beforeRun(context) {
+        runInContext(
+          `Object.defineProperty(navigator, "userAgentData", {
+            value: {
+              brands: [],
+              mobile: false,
+              getHighEntropyValues: function() {
+                return new Promise(function(resolve) {
+                  window.resolveClientHints = resolve;
+                });
+              }
+            }
+          });`,
+          context
+        );
+      },
+    });
+    dom.window.sa_pageview("/allowed");
+    dom.window.sa_event("pending_hints");
+    await wait();
+    const early = requests(dom).find(
+      (params) => params.get("event") === "pending_hints"
+    );
+    expect(early.get("page_id")).to.equal(pageLoadId);
+    expect(early.get("session_id")).to.equal(pageLoadId);
+
+    // A later ignored call must not discard the accepted pageview's ID.
+    dom.window.sa_pageview("/ignore");
+    dom.window.dispatchEvent(new dom.window.Event("pagehide"));
+    const leave = JSON.parse(
+      dom.sent.find(({ type }) => type === "beacon").data
+    );
+    expect(leave.original_id).to.equal(pageLoadId);
+
+    dom.window.resolveClientHints({ platform: "macOS", platformVersion: "15" });
+    await wait();
+    const initial = requests(dom).find(
+      (params) => params.get("type") === "append"
+    );
+    expect(initial.get("path")).to.equal("/allowed");
+    expect(initial.get("id")).to.equal(pageLoadId);
+    expect(initial.get("original_id")).to.equal(pageLoadId);
+    dom.window.close();
+  });
+
+  it("withholds ignored-URL attribution until a manual allowed pageview is declared", async function () {
+    const dom = createDOM({
+      url: "https://example.com/ignore",
+      settings: { pageLoadId, autoCollect: false, ignorePages: "/ignore" },
+    });
+    dom.window.sa_event("before_pageview");
+    dom.window.dispatchEvent(new dom.window.Event("pagehide"));
+    await wait();
+    const before = requests(dom).find(
+      (params) => params.get("event") === "before_pageview"
+    );
+    expect(before.get("page_id")).not.to.equal(pageLoadId);
+    expect(before.get("session_id")).not.to.equal(pageLoadId);
+    expect(dom.sent.filter(({ type }) => type === "beacon")).to.be.empty;
+
+    dom.window.sa_pageview("/allowed");
+    dom.window.sa_event("after_pageview");
+    dom.window.dispatchEvent(new dom.window.Event("pagehide"));
+    await wait();
+    const initial = requests(dom).find(
+      (params) => params.get("type") === "append"
+    );
+    expect(initial.get("original_id")).to.equal(pageLoadId);
+    const after = requests(dom).find(
+      (params) => params.get("event") === "after_pageview"
+    );
+    expect(after.get("page_id")).to.equal(pageLoadId);
+    expect(after.get("session_id")).to.equal(pageLoadId);
+    const leave = JSON.parse(
+      dom.sent.find(({ type }) => type === "beacon").data
+    );
+    expect(leave.original_id).to.equal(pageLoadId);
+    dom.window.close();
+  });
+
+  it("does not attribute ignored-page events or leave data to the server record", async function () {
+    const dom = createDOM({
+      url: "https://example.com/ignore",
+      settings: { pageLoadId, ignorePages: "/ignore" },
+    });
+    dom.window.sa_event("ignored_event");
+    dom.window.dispatchEvent(new dom.window.Event("pagehide"));
+    await wait();
+    const event = requests(dom).find(
+      (params) => params.get("type") === "event"
+    );
+    expect(event.get("page_id")).not.to.equal(pageLoadId);
+    expect(event.get("session_id")).not.to.equal(pageLoadId);
+    const leave = JSON.parse(
+      dom.sent.find(({ type }) => type === "beacon").data
+    );
+    expect(leave.original_id).not.to.equal(pageLoadId);
+    dom.window.close();
+  });
+
+  it("keeps the merge ID consistent for a manual allowed path on an ignored URL", async function () {
+    const dom = createDOM({
+      url: "https://example.com/ignore",
+      settings: { pageLoadId, autoCollect: false, ignorePages: "/ignore" },
+    });
+    dom.window.sa_pageview("/allowed");
+    dom.window.sa_event("allowed_event");
+    await wait();
+    const initial = requests(dom).find(
+      (params) => params.get("type") === "append"
+    );
+    expect(initial.get("path")).to.equal("/allowed");
+    expect(initial.get("id")).to.equal(pageLoadId);
+    expect(initial.get("original_id")).to.equal(pageLoadId);
+    const event = requests(dom).find(
+      (params) => params.get("type") === "event"
+    );
+    expect(event.get("page_id")).to.equal(pageLoadId);
+    dom.window.close();
+  });
+
+  it("does not merge a later pageview into an ignored initial page", async function () {
+    const dom = createDOM({
+      settings: { pageLoadId, autoCollect: false, ignorePages: "/ignore" },
+    });
+    dom.window.sa_pageview("/ignore");
+    dom.window.sa_pageview("/allowed");
+    await wait();
+    const allowed = requests(dom).filter(
+      (params) => params.get("path") === "/allowed"
+    );
+    expect(allowed).to.have.lengthOf(1);
+    expect(allowed[0].get("type")).to.equal("pageview");
+    expect(allowed[0].has("original_id")).to.equal(false);
+    expect(allowed[0].get("id")).not.to.equal(pageLoadId);
+    dom.window.close();
+  });
+
+  it("links events emitted before a manual first pageview to the server record", async function () {
+    const dom = createDOM({ settings: { pageLoadId, autoCollect: false } });
+    dom.window.sa_event("early_event");
+    await wait();
+    const event = requests(dom).find(
+      (params) => params.get("type") === "event"
+    );
+    expect(event.get("page_id")).to.equal(pageLoadId);
+    expect(event.get("session_id")).to.equal(pageLoadId);
+    dom.window.close();
+  });
+
+  it("enriches the initial record and creates new records for later pageviews", async function () {
+    const dom = createDOM({ settings: { pageLoadId, autoCollect: false } });
+    dom.window.sa_pageview("/first");
+    await wait();
+    dom.window.sa_event("signup");
+    dom.window.sa_pageview("/second");
+    await wait();
+
+    const initial = requests(dom).find(
+      (params) =>
+        params.get("path") === "/first" && params.get("type") === "append"
+    );
+    expect(initial.get("original_id")).to.equal(pageLoadId);
+    expect(initial.get("session_id")).to.equal(pageLoadId);
+    expect(initial.get("collected_client_side")).to.equal("true");
+    const event = requests(dom).find(
+      (params) => params.get("type") === "event"
+    );
+    expect(event.get("page_id")).to.equal(pageLoadId);
+    expect(event.get("id")).not.to.equal(pageLoadId);
+    const second = requests(dom).find(
+      (params) => params.get("type") === "pageview"
+    );
+    expect(second.get("path")).to.equal("/second");
+    expect(second.get("id")).not.to.equal(pageLoadId);
+    expect(second.get("session_id")).to.equal(pageLoadId);
+    expect(second.has("original_id")).to.equal(false);
+    dom.window.close();
+  });
+
+  for (const settings of [{}, { pageLoadId }]) {
+    it(`reads the attribute with ${settings.pageLoadId ? "JavaScript precedence" : "no JavaScript setting"}`, async function () {
+      const dom = createDOM({
+        settings,
+        beforeRun(context) {
+          runInContext(
+            `Object.defineProperty(document, "currentScript", { value: { getAttribute: function(name) { return name === "data-page-load-id" ? "${attributeId}" : null; } } });`,
+            context
+          );
+        },
+      });
+      await wait();
+      expect(requests(dom)[0].get("original_id")).to.equal(
+        settings.pageLoadId || attributeId
+      );
+      dom.window.close();
+    });
+  }
+
+  for (const invalidId of [
+    undefined,
+    "not-a-uuid",
+    "e35432dd-4af3-70c3-90ad-5a95d8e4fb1f",
+  ]) {
+    it(`keeps normal collection for ${invalidId || "an absent ID"}`, async function () {
+      const dom = createDOM({ settings: { pageLoadId: invalidId } });
+      await wait();
+      const initial = requests(dom)[0];
+      expect(initial.get("type")).to.equal("pageview");
+      expect(initial.has("original_id")).to.equal(false);
+      dom.window.close();
+    });
+  }
+
+  it("merges when duration and scroll are disabled, without reusing the record on navigation", async function () {
+    const dom = createDOM({
+      settings: {
+        pageLoadId,
+        autoCollect: false,
+        ignoreMetrics: "timeonpage,scrolled,sessions",
+      },
+    });
+    dom.window.sa_pageview("/first");
+    await wait();
+    dom.window.sa_pageview("/next");
+    await wait();
+    const [initial, next] = requests(dom);
+    expect(initial.get("original_id")).to.equal(pageLoadId);
+    expect(initial.has("session_id")).to.equal(false);
+    expect(next.get("type")).to.equal("pageview");
+    expect(next.get("id")).not.to.equal(pageLoadId);
+    dom.window.close();
+  });
+});

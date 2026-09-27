@@ -149,6 +149,18 @@
 
     if (logSettings) warn("Settings", overwriteOptions);
 
+    // A server-created initial pageview can be enriched by this script.
+    var pageLoadId =
+      overwriteOptions.pageLoadId || attr(scriptElement, "page-load-id");
+    if (
+      typeof pageLoadId !== "string" ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+        pageLoadId
+      )
+    ) {
+      pageLoadId = undefinedVar;
+    }
+
     /** if ignoremetrics **/
     // Customers can skip data points
     var ignoreMetrics = convertCommaSeparatedToArray(
@@ -538,10 +550,13 @@
 
       https: loc.protocol == https,
       timezone: timezone,
-      page_id: collectDataOnLeave ? uuid() : undefinedVar,
+      collected_client_side: trueVar,
+      page_id: pageLoadId || (collectDataOnLeave ? uuid() : undefinedVar),
 
       // se = sessions
-      session_id: collectMetricByString("se") ? uuid() : undefinedVar,
+      session_id: collectMetricByString("se")
+        ? pageLoadId || uuid()
+        : undefinedVar,
     });
 
     /** if sri **/
@@ -634,6 +649,7 @@
 
     var sendOnLeave = function (id, push) {
       if (!collectDataOnLeave) return;
+      if (pageLoadId && !lastSendPath && !getPath()) return;
 
       var append = assign(basePayload, {
         type: "append",
@@ -777,7 +793,9 @@
       callback
     ) {
       if (isPushState) sendOnLeave("" + payload.page_id, trueVar);
-      if (collectDataOnLeave) payload.page_id = uuid();
+      var originalId = pages === 0 ? pageLoadId : undefinedVar;
+      payload.page_id =
+        originalId || (collectDataOnLeave ? uuid() : undefinedVar);
 
       var currentPage = definedHostname + getPath();
       var query = getQueryParams(deleteSourceInfo, search);
@@ -785,7 +803,8 @@
       sendData(
         {
           id: payload.page_id,
-          type: pageviewText,
+          original_id: originalId,
+          type: originalId ? "append" : pageviewText,
           referrer: !deleteSourceInfo || sameSite ? referrer : null,
           query: query,
           /** if ignoremetrics **/
@@ -824,6 +843,13 @@
       }
       // Obfuscate personal data in URL by dropping the search and hash
       var path = getPath(pathOverwrite);
+
+      if (!path && !lastSendPath && pageLoadId) {
+        // An ignored initial page must not receive event or leave enrichment.
+        payload.page_id = collectDataOnLeave ? uuid() : undefinedVar;
+        if (payload.session_id === pageLoadId) payload.session_id = uuid();
+        pageLoadId = undefinedVar;
+      }
 
       // Don't send the last path again (this could happen when pushState is used to change the path hash or search)
       if (!path || lastSendPath == path) return;
@@ -1068,6 +1094,12 @@
 
       var eventParams = { type: eventText, event: event };
       var firstPage = !userNavigated && pages < 2;
+
+      // Manual collection may not have declared an allowed pageview yet.
+      if (pageLoadId && !lastSendPath && !getPath()) {
+        eventParams.page_id = undefinedVar;
+        eventParams.session_id = undefinedVar;
+      }
 
       /** if metadata **/
       metadata = appendMetadata(metadata, eventParams);
