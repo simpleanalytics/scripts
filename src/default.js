@@ -767,7 +767,6 @@
       /** if ignorepages **/
       // Ignore pages specified in data-ignore-pages
       if (shouldIgnore(path)) {
-        pageLoadId = undefinedVar;
         warn(notSendingWhen + "ignoring " + path);
         return;
       }
@@ -843,6 +842,13 @@
       }
       // Obfuscate personal data in URL by dropping the search and hash
       var path = getPath(pathOverwrite);
+
+      if (!path && pages === 0 && pageLoadId) {
+        // An ignored initial page must not receive event or leave enrichment.
+        payload.page_id = collectDataOnLeave ? uuid() : undefinedVar;
+        if (payload.session_id === pageLoadId) payload.session_id = uuid();
+        pageLoadId = undefinedVar;
+      }
 
       // Don't send the last path again (this could happen when pushState is used to change the path hash or search)
       if (!path || lastSendPath == path) return;
