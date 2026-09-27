@@ -11,6 +11,23 @@ const requests = (dom) =>
 const wait = () => new Promise((resolve) => setTimeout(resolve, 20));
 
 describe("server page-load ID", function () {
+  it("does not merge a later pageview into an ignored initial page", async function () {
+    const dom = createDOM({
+      settings: { pageLoadId, autoCollect: false, ignorePages: "/ignore" },
+    });
+    dom.window.sa_pageview("/ignore");
+    dom.window.sa_pageview("/allowed");
+    await wait();
+    const allowed = requests(dom).filter(
+      (params) => params.get("path") === "/allowed"
+    );
+    expect(allowed).to.have.lengthOf(1);
+    expect(allowed[0].get("type")).to.equal("pageview");
+    expect(allowed[0].has("original_id")).to.equal(false);
+    expect(allowed[0].get("id")).not.to.equal(pageLoadId);
+    dom.window.close();
+  });
+
   it("links events emitted before a manual first pageview to the server record", async function () {
     const dom = createDOM({ settings: { pageLoadId, autoCollect: false } });
     dom.window.sa_event("early_event");

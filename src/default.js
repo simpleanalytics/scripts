@@ -767,6 +767,7 @@
       /** if ignorepages **/
       // Ignore pages specified in data-ignore-pages
       if (shouldIgnore(path)) {
+        pageLoadId = undefinedVar;
         warn(notSendingWhen + "ignoring " + path);
         return;
       }

@@ -1,4 +1,4 @@
-/* Simple Analytics - Privacy-first analytics (docs.simpleanalytics.com/script; 2026-09-27; ea66; v12) */
+/* Simple Analytics - Privacy-first analytics (docs.simpleanalytics.com/script; 2026-09-27; 0c7f; v12) */
 /* eslint-env browser */
 
 (function (
@@ -673,6 +673,7 @@
 
       // Ignore pages specified in data-ignore-pages
       if (shouldIgnore(path)) {
+        pageLoadId = undefinedVar;
         warn(notSendingWhen + "ignoring " + path);
         return;
       }
