@@ -649,6 +649,7 @@
 
     var sendOnLeave = function (id, push) {
       if (!collectDataOnLeave) return;
+      if (pageLoadId && pages === 0 && !getPath()) return;
 
       var append = assign(basePayload, {
         type: "append",
@@ -1093,6 +1094,12 @@
 
       var eventParams = { type: eventText, event: event };
       var firstPage = !userNavigated && pages < 2;
+
+      // Manual collection may not have declared an allowed pageview yet.
+      if (pageLoadId && pages === 0 && !getPath()) {
+        eventParams.page_id = undefinedVar;
+        eventParams.session_id = undefinedVar;
+      }
 
       /** if metadata **/
       metadata = appendMetadata(metadata, eventParams);

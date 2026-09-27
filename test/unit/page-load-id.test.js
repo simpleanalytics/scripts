@@ -11,6 +11,41 @@ const requests = (dom) =>
 const wait = () => new Promise((resolve) => setTimeout(resolve, 20));
 
 describe("server page-load ID", function () {
+  it("withholds ignored-URL attribution until a manual allowed pageview is declared", async function () {
+    const dom = createDOM({
+      url: "https://example.com/ignore",
+      settings: { pageLoadId, autoCollect: false, ignorePages: "/ignore" },
+    });
+    dom.window.sa_event("before_pageview");
+    dom.window.dispatchEvent(new dom.window.Event("pagehide"));
+    await wait();
+    const before = requests(dom).find(
+      (params) => params.get("event") === "before_pageview"
+    );
+    expect(before.get("page_id")).not.to.equal(pageLoadId);
+    expect(before.get("session_id")).not.to.equal(pageLoadId);
+    expect(dom.sent.filter(({ type }) => type === "beacon")).to.be.empty;
+
+    dom.window.sa_pageview("/allowed");
+    dom.window.sa_event("after_pageview");
+    dom.window.dispatchEvent(new dom.window.Event("pagehide"));
+    await wait();
+    const initial = requests(dom).find(
+      (params) => params.get("type") === "append"
+    );
+    expect(initial.get("original_id")).to.equal(pageLoadId);
+    const after = requests(dom).find(
+      (params) => params.get("event") === "after_pageview"
+    );
+    expect(after.get("page_id")).to.equal(pageLoadId);
+    expect(after.get("session_id")).to.equal(pageLoadId);
+    const leave = JSON.parse(
+      dom.sent.find(({ type }) => type === "beacon").data
+    );
+    expect(leave.original_id).to.equal(pageLoadId);
+    dom.window.close();
+  });
+
   it("does not attribute ignored-page events or leave data to the server record", async function () {
     const dom = createDOM({
       url: "https://example.com/ignore",

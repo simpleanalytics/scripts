@@ -1,4 +1,4 @@
-/* Simple Analytics - Privacy-first analytics (docs.simpleanalytics.com/script; 2026-09-27; 7846; v12) */
+/* Simple Analytics - Privacy-first analytics (docs.simpleanalytics.com/script; 2026-09-27; df4b; v12) */
 /* eslint-env browser */
 
 (function (
@@ -566,6 +566,7 @@
 
     var sendOnLeave = function (id, push) {
       if (!collectDataOnLeave) return;
+      if (pageLoadId && pages === 0 && !getPath()) return;
 
       var append = assign(basePayload, {
         type: "append",
@@ -963,6 +964,12 @@
 
       var eventParams = { type: eventText, event: event };
       var firstPage = !userNavigated && pages < 2;
+
+      // Manual collection may not have declared an allowed pageview yet.
+      if (pageLoadId && pages === 0 && !getPath()) {
+        eventParams.page_id = undefinedVar;
+        eventParams.session_id = undefinedVar;
+      }
 
       metadata = appendMetadata(metadata, eventParams);
 
