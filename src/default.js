@@ -649,7 +649,7 @@
 
     var sendOnLeave = function (id, push) {
       if (!collectDataOnLeave) return;
-      if (pageLoadId && pages === 0 && !getPath()) return;
+      if (pageLoadId && !lastSendPath && !getPath()) return;
 
       var append = assign(basePayload, {
         type: "append",
@@ -844,7 +844,7 @@
       // Obfuscate personal data in URL by dropping the search and hash
       var path = getPath(pathOverwrite);
 
-      if (!path && pages === 0 && pageLoadId) {
+      if (!path && !lastSendPath && pageLoadId) {
         // An ignored initial page must not receive event or leave enrichment.
         payload.page_id = collectDataOnLeave ? uuid() : undefinedVar;
         if (payload.session_id === pageLoadId) payload.session_id = uuid();
@@ -1096,7 +1096,7 @@
       var firstPage = !userNavigated && pages < 2;
 
       // Manual collection may not have declared an allowed pageview yet.
-      if (pageLoadId && pages === 0 && !getPath()) {
+      if (pageLoadId && !lastSendPath && !getPath()) {
         eventParams.page_id = undefinedVar;
         eventParams.session_id = undefinedVar;
       }

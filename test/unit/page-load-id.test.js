@@ -11,6 +11,55 @@ const requests = (dom) =>
 const wait = () => new Promise((resolve) => setTimeout(resolve, 20));
 
 describe("server page-load ID", function () {
+  it("keeps accepted manual attribution while client hints are pending", async function () {
+    const dom = createDOM({
+      url: "https://example.com/ignore",
+      settings: { pageLoadId, autoCollect: false, ignorePages: "/ignore" },
+      beforeRun(context) {
+        runInContext(
+          `Object.defineProperty(navigator, "userAgentData", {
+            value: {
+              brands: [],
+              mobile: false,
+              getHighEntropyValues: function() {
+                return new Promise(function(resolve) {
+                  window.resolveClientHints = resolve;
+                });
+              }
+            }
+          });`,
+          context
+        );
+      },
+    });
+    dom.window.sa_pageview("/allowed");
+    dom.window.sa_event("pending_hints");
+    await wait();
+    const early = requests(dom).find(
+      (params) => params.get("event") === "pending_hints"
+    );
+    expect(early.get("page_id")).to.equal(pageLoadId);
+    expect(early.get("session_id")).to.equal(pageLoadId);
+
+    // A later ignored call must not discard the accepted pageview's ID.
+    dom.window.sa_pageview("/ignore");
+    dom.window.dispatchEvent(new dom.window.Event("pagehide"));
+    const leave = JSON.parse(
+      dom.sent.find(({ type }) => type === "beacon").data
+    );
+    expect(leave.original_id).to.equal(pageLoadId);
+
+    dom.window.resolveClientHints({ platform: "macOS", platformVersion: "15" });
+    await wait();
+    const initial = requests(dom).find(
+      (params) => params.get("type") === "append"
+    );
+    expect(initial.get("path")).to.equal("/allowed");
+    expect(initial.get("id")).to.equal(pageLoadId);
+    expect(initial.get("original_id")).to.equal(pageLoadId);
+    dom.window.close();
+  });
+
   it("withholds ignored-URL attribution until a manual allowed pageview is declared", async function () {
     const dom = createDOM({
       url: "https://example.com/ignore",
