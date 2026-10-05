@@ -1,4 +1,4 @@
-/* Simple Analytics - Privacy-first analytics (docs.simpleanalytics.com/script; 2026-09-27; a763; v12) */
+/* Simple Analytics - Privacy-first analytics (docs.simpleanalytics.com/script; 2026-10-05; 5e3b; v12) */
 /* eslint-env browser */
 
 (function (
@@ -686,41 +686,39 @@
 
     var previousReferrer;
 
-    // Send page view and append data to it
-    var sendPageView = function (
+    // Capture each accepted pageview before waiting for client hints.
+    var preparePageView = function (
       isPushState,
       deleteSourceInfo,
       sameSite,
       search,
-      metadata,
-      callback
+      metadata
     ) {
       if (isPushState) sendOnLeave("" + payload.page_id, trueVar);
       var originalId = pages === 0 ? pageLoadId : undefinedVar;
       payload.page_id =
         originalId || (collectDataOnLeave ? uuid() : undefinedVar);
 
-      var currentPage = definedHostname + getPath();
+      var currentPage = definedHostname + page.path;
       var query = getQueryParams(deleteSourceInfo, search);
 
-      sendData(
-        {
-          id: payload.page_id,
-          original_id: originalId,
-          type: originalId ? "append" : pageviewText,
-          referrer: !deleteSourceInfo || sameSite ? referrer : null,
-          query: query,
-          k: k,
+      var data = assign(page, {
+        id: payload.page_id,
+        page_id: payload.page_id,
+        original_id: originalId,
+        type: originalId ? "append" : pageviewText,
+        referrer: !deleteSourceInfo || sameSite ? referrer : null,
+        query: query,
+        k: k,
 
-          metadata: stringify(metadata),
-        },
-        callback
-      );
+        metadata: stringify(metadata),
+      });
 
       previousReferrer = referrer;
       referrer = currentPage;
 
       pages++;
+      return data;
     };
 
     var sameSite, userNavigated;
@@ -819,18 +817,18 @@
         path: page.path,
       });
 
+      var delSrc = isPushState || userNavigated || !collectMetricByString("r");
+      var pageviewData = preparePageView(
+        isPushState,
+        delSrc, // r = referrers
+        sameSite,
+        querySearch,
+        metadata
+      );
+
       var triggerSendPageView = function () {
         fetchedHighEntropyValues = trueVar;
-        var delSrc =
-          isPushState || userNavigated || !collectMetricByString("r");
-        sendPageView(
-          isPushState,
-          delSrc, // r = referrers
-          sameSite,
-          querySearch,
-          metadata,
-          callback
-        );
+        sendData(pageviewData, callback);
       };
 
       if (!fetchedHighEntropyValues) {

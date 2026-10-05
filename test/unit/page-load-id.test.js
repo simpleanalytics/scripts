@@ -11,6 +11,78 @@ const requests = (dom) =>
 const wait = () => new Promise((resolve) => setTimeout(resolve, 20));
 
 describe("server page-load ID", function () {
+  for (const autoCollect of [false, true]) {
+    for (const reverseResolution of [false, true]) {
+      it(`preserves two pending ${
+        autoCollect ? "automatic" : "manual"
+      } pageviews with ${
+        reverseResolution ? "reversed" : "ordered"
+      } client hints`, async function () {
+        const dom = createDOM({
+          url: "https://example.com/first?step=one",
+          settings: { pageLoadId, autoCollect, allowParams: "step" },
+          beforeRun(context) {
+            runInContext(
+              `window.clientHints = [];
+              Object.defineProperty(navigator, "userAgentData", {
+                value: {
+                  brands: [],
+                  mobile: false,
+                  getHighEntropyValues: function() {
+                    return new Promise(function(resolve) {
+                      window.clientHints.push(resolve);
+                    });
+                  }
+                }
+              });`,
+              context
+            );
+          },
+        });
+        if (autoCollect) {
+          dom.window.history.pushState({}, "", "/second?step=two");
+        } else {
+          dom.window.sa_pageview("/first?step=one");
+          dom.window.sa_pageview("/second?step=two");
+        }
+        dom.window.sa_event("second_pending");
+        const earlyEvent = requests(dom).find(
+          (params) => params.get("event") === "second_pending"
+        );
+        expect(earlyEvent.get("page_id")).not.to.equal(pageLoadId);
+
+        const resolvers = Array.from(dom.window.clientHints);
+        expect(resolvers).to.have.lengthOf(2);
+        if (reverseResolution) resolvers.reverse();
+        for (const resolve of resolvers) {
+          resolve({ platform: "macOS", platformVersion: "15" });
+        }
+        await wait();
+
+        const pageviews = requests(dom).filter(
+          (params) => params.get("type") !== "event" && params.has("path")
+        );
+        expect(pageviews).to.have.lengthOf(2);
+        const initial = pageviews.find(
+          (params) => params.get("path") === "/first"
+        );
+        expect(initial.get("type")).to.equal("append");
+        expect(initial.get("original_id")).to.equal(pageLoadId);
+        expect(initial.get("page_id")).to.equal(pageLoadId);
+        expect(initial.get("query")).to.equal("step=one");
+        const second = pageviews.find(
+          (params) => params.get("path") === "/second"
+        );
+        expect(second.get("type")).to.equal("pageview");
+        expect(second.has("original_id")).to.equal(false);
+        expect(second.get("id")).to.equal(earlyEvent.get("page_id"));
+        expect(second.get("query")).to.equal("step=two");
+        expect(second.get("referrer")).to.equal("example.com/first");
+        dom.window.close();
+      });
+    }
+  }
+
   it("keeps accepted manual attribution while client hints are pending", async function () {
     const dom = createDOM({
       url: "https://example.com/ignore",
@@ -196,7 +268,9 @@ describe("server page-load ID", function () {
   });
 
   for (const settings of [{}, { pageLoadId }]) {
-    it(`reads the attribute with ${settings.pageLoadId ? "JavaScript precedence" : "no JavaScript setting"}`, async function () {
+    it(`reads the attribute with ${
+      settings.pageLoadId ? "JavaScript precedence" : "no JavaScript setting"
+    }`, async function () {
       const dom = createDOM({
         settings,
         beforeRun(context) {
@@ -219,7 +293,9 @@ describe("server page-load ID", function () {
     "not-a-uuid",
     "e35432dd-4af3-70c3-90ad-5a95d8e4fb1f",
   ]) {
-    it(`keeps normal collection for ${invalidId || "an absent ID"}`, async function () {
+    it(`keeps normal collection for ${
+      invalidId || "an absent ID"
+    }`, async function () {
       const dom = createDOM({ settings: { pageLoadId: invalidId } });
       await wait();
       const initial = requests(dom)[0];
