@@ -4,7 +4,7 @@ This repository contains the public scripts for Simple Analytics. When making ch
 
 ## Development
 
-- Use **Node.js 22.16** (see `.nvmrc`).
+- Use the Node.js version pinned in `.nvmrc` (currently **24.18.0**).
 - Run `npm run build` to compile the scripts. This generates the files in `dist/` which should be committed.
 - Format code with Prettier before committing. You can run `npx prettier -w .` or validate with `npm run prettier`.
 
