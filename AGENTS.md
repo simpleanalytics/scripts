@@ -8,6 +8,12 @@ This repository contains the public scripts for Simple Analytics. When making ch
 - Run `npm run build` to compile the scripts. This generates the files in `dist/` which should be committed.
 - Format code with Prettier before committing. You can run `npx prettier -w .` or validate with `npm run prettier`.
 
+## Script size and naming
+
+- Write code in `src/` to minimize the bytes in the compiled scripts, not just the source. Reuse the predefined variables for repeated values: the compiler turns these into very short variable names, saving bytes wherever they are reused.
+- Keep source code readable and check the compiled output and size after building to verify that a change actually saves bytes.
+- Names in `overwriteOptions` and script attributes are public settings. Balance short names with readable, human-friendly names, using existing options and attributes as the reference (for example, `ignorePages` / `data-ignore-pages`). These names cannot be shortened by variable minification.
+
 ## Testing
 
 - Execute `npm run test:unit` to run the unit tests

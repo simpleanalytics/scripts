@@ -1,4 +1,4 @@
-/* Simple Analytics - Privacy-first analytics (docs.simpleanalytics.com/script; 2026-10-05; 5e3b; v12) */
+/* Simple Analytics - Privacy-first analytics (docs.simpleanalytics.com/script; 2026-10-06; 07eb; v12) */
 /* eslint-env browser */
 
 (function (
@@ -145,14 +145,6 @@
     // A server-created initial pageview can be enriched by this script.
     var pageLoadId =
       overwriteOptions.pageLoadId || attr(scriptElement, "page-load-id");
-    if (
-      typeof pageLoadId !== "string" ||
-      !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-        pageLoadId
-      )
-    ) {
-      pageLoadId = undefinedVar;
-    }
 
     // Customers can skip data points
     var ignoreMetrics = convertCommaSeparatedToArray(
@@ -482,7 +474,6 @@
 
       https: loc.protocol == https,
       timezone: timezone,
-      collected_client_side: trueVar,
       page_id: pageLoadId || (collectDataOnLeave ? uuid() : undefinedVar),
 
       // se = sessions
@@ -566,6 +557,7 @@
 
     var sendOnLeave = function (id, push) {
       if (!collectDataOnLeave) return;
+      // Don't enrich an ignored server page before an allowed manual pageview.
       if (pageLoadId && !lastSendPath && !getPath()) return;
 
       var append = assign(basePayload, {

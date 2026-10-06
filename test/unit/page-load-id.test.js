@@ -251,7 +251,7 @@ describe("server page-load ID", function () {
     );
     expect(initial.get("original_id")).to.equal(pageLoadId);
     expect(initial.get("session_id")).to.equal(pageLoadId);
-    expect(initial.get("collected_client_side")).to.equal("true");
+    expect(initial.has("collected_client_side")).to.equal(false);
     const event = requests(dom).find(
       (params) => params.get("type") === "event"
     );
@@ -288,19 +288,25 @@ describe("server page-load ID", function () {
     });
   }
 
+  it("keeps normal collection for an absent ID", async function () {
+    const dom = createDOM();
+    await wait();
+    const initial = requests(dom)[0];
+    expect(initial.get("type")).to.equal("pageview");
+    expect(initial.has("original_id")).to.equal(false);
+    dom.window.close();
+  });
+
   for (const invalidId of [
-    undefined,
     "not-a-uuid",
     "e35432dd-4af3-70c3-90ad-5a95d8e4fb1f",
   ]) {
-    it(`keeps normal collection for ${
-      invalidId || "an absent ID"
-    }`, async function () {
+    it(`leaves validation of ${invalidId} to the server`, async function () {
       const dom = createDOM({ settings: { pageLoadId: invalidId } });
       await wait();
       const initial = requests(dom)[0];
-      expect(initial.get("type")).to.equal("pageview");
-      expect(initial.has("original_id")).to.equal(false);
+      expect(initial.get("type")).to.equal("append");
+      expect(initial.get("original_id")).to.equal(invalidId);
       dom.window.close();
     });
   }
