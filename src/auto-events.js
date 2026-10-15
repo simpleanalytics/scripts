@@ -78,18 +78,6 @@
   var saAutomatedLink = function saAutomatedLink(element, type) {
     try {
       if (!element) return log("no element found");
-      var sent = false;
-
-      var callback = function () {
-        if (
-          type !== "phone" &&
-          !sent &&
-          (!element.hasAttribute("target") ||
-            element.getAttribute("target") === "_self")
-        )
-          document.location = element.getAttribute("href");
-        sent = true;
-      };
 
       if (window[saGlobal] && window[saGlobal + "_loaded"]) {
         var hostname = element.hostname;
@@ -143,16 +131,11 @@
           "_" +
           event.replace(/[^a-z0-9]+/gi, "_").replace(/(^_+|_+$)/g, "");
 
-        window[saGlobal](clean, metadata, callback);
+        window[saGlobal](clean, metadata, function () {}, true);
 
         log("collected " + clean);
-
-        return type === "email" || type === "phone"
-          ? callback()
-          : window.setTimeout(callback, 5000);
       } else {
         log(saGlobal + " is not defined", "warn");
-        return callback();
       }
     } catch (error) {
       log(error.message, "warn");
@@ -161,7 +144,7 @@
 
   window.saAutomatedLink = saAutomatedLink;
 
-  function collectLink(link, onclick) {
+  function collectLink(link) {
     if (link.hasAttribute("data-simple-event")) return;
     var collect = false;
 
@@ -195,21 +178,9 @@
 
     if (!collect) return;
 
-    if (onclick) {
-      var onClickAttribute = "saAutomatedLink(this, '" + collect + "');";
-
-      if (
-        !link.hasAttribute("target") ||
-        link.getAttribute("target") === "_self"
-      )
-        onClickAttribute += " return false;";
-
-      link.setAttribute("onclick", onClickAttribute);
-    } else {
-      link.addEventListener("click", function () {
-        saAutomatedLink(this, collect);
-      });
-    }
+    link.addEventListener("click", function () {
+      saAutomatedLink(this, collect);
+    });
   }
 
   function onDOMContentLoaded() {
@@ -224,16 +195,7 @@
         // Skip links that don't have an href
         if (!href) continue;
 
-        // We don't want to overwrite website behaviour so we check for the onclick attribute
-        if (
-          !link.getAttribute("onclick") &&
-          !/^mailto:/.test(href) &&
-          !/^tel:/.test(href)
-        ) {
-          collectLink(link, true);
-        } else {
-          collectLink(link, false);
-        }
+        collectLink(link);
       }
     } catch (error) {
       log(error.message, "warn");
