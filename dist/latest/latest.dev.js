@@ -1,4 +1,4 @@
-/* Simple Analytics - Privacy-first analytics (docs.simpleanalytics.com/script; 2026-09-16; 4ae9; v12) */
+/* Simple Analytics - Privacy-first analytics (docs.simpleanalytics.com/script; 2026-10-15; 59b9; v12) */
 /* eslint-env browser */
 
 (function (
@@ -714,21 +714,20 @@
     ) {
       if (!callbackRaw && isFunction(metadata)) callbackRaw = metadata;
       var callback = isFunction(callbackRaw) ? callbackRaw : function () {};
+      var path = getPath(pathOverwrite);
       var querySearch;
       if (isString(pathOverwrite) && pathOverwrite.indexOf("?") > -1) {
         // keep query from manual path
         var parts = pathOverwrite.split("?");
-        pathOverwrite = parts.shift();
+        parts.shift();
         querySearch = "?" + parts.join("?");
       }
-      // Obfuscate personal data in URL by dropping the search and hash
-      var path = getPath(pathOverwrite);
 
       // Don't send the last path again (this could happen when pushState is used to change the path hash or search)
       if (!path || lastSendPath == path) return;
 
       lastSendPath = path;
-      page.path = path;
+      page.path = querySearch ? path.split("?")[0] : path;
 
       // v = viewportsizes
       if (collectMetricByString("v")) {

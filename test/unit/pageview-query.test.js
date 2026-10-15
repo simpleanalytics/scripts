@@ -2,6 +2,30 @@ const { expect } = require("chai");
 const { createDOM } = require("./helpers/dom");
 
 describe("pageview query", function () {
+  it("keeps manual pageviews that differ only in their query", function () {
+    const dom = createDOM({ settings: { autoCollect: false } });
+    dom.window.sa_pageview("/product?product-id=1");
+    dom.window.sa_pageview("/product?product-id=2");
+    const paths = dom.sent
+      .filter((request) => request.type === "image")
+      .map((request) => new URL(request.url).searchParams.get("path"));
+    expect(paths).to.deep.equal(["/product", "/product"]);
+    dom.window.close();
+  });
+
+  it("passes the complete manual path to the path overwriter", function () {
+    const dom = createDOM({
+      settings: { autoCollect: false, pathOverwriter: "rewrite" },
+      beforeRun(context) {
+        context.rewrite = (data) => data.path.replace("?product-id=", "/");
+      },
+    });
+    dom.window.sa_pageview("/product?product-id=1");
+    const url = new URL(dom.sent[0].url);
+    expect(url.searchParams.get("path")).to.equal("/product/1");
+    dom.window.close();
+  });
+
   it("sends query params from manual path", function (done) {
     const dom = createDOM({
       settings: { autoCollect: false, allowParams: "foo" },
