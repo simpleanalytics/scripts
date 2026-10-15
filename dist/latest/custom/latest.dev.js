@@ -1,4 +1,4 @@
-/* Simple Analytics - Privacy-first analytics (docs.simpleanalytics.com/script; 2026-09-16; 3665; v12) */
+/* Simple Analytics - Privacy-first analytics (docs.simpleanalytics.com/script; 2026-10-15; 6b30; v12) */
 /* eslint-env browser */
 
 (function (
@@ -894,7 +894,11 @@
 
     if (autoCollect) pageview();
 
-    window.sa_pageview = function (path, metadata, callback) {
+    window[namespace + "_" + pageviewText] = function (
+      path,
+      metadata,
+      callback
+    ) {
       pageview(0, path, metadata, callback);
     };
 

@@ -1015,11 +1015,15 @@
     if (autoCollect) pageview();
 
     /** if metadata **/
-    window.sa_pageview = function (path, metadata, callback) {
+    window[namespace + "_" + pageviewText] = function (
+      path,
+      metadata,
+      callback
+    ) {
       pageview(0, path, metadata, callback);
     };
     /** else **/
-    window.sa_pageview = function (path, callback) {
+    window[namespace + "_" + pageviewText] = function (path, callback) {
       pageview(0, path, undefinedVar, callback);
     };
     /** endif **/
