@@ -924,7 +924,7 @@
       page.unique =
         isPushState || userNavigated
           ? falseVar
-          : !sameSite || (!pages && /\?__cf_/.test(getReferrer(trueVar)));
+          : !sameSite || (!pages && /[?&]__cf_/.test(getReferrer(trueVar)));
       /** endif **/
 
       /** if metadata **/

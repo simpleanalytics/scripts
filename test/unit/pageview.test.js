@@ -8,13 +8,13 @@ describe("pageview", function () {
     ["https://external.example/?__cf_chl_tk=challenge", true],
     ["https://external.example/?source=mail&__cf_chl_rt_tk=challenge", true],
     ["https://example.com/?__cf_chl_tk=challenge", true],
-    ["https://example.com/?source=mail&__cf_chl_rt_tk=challenge", false],
+    ["https://example.com/?source=mail&__cf_chl_rt_tk=challenge", true],
     ["https://example.com/previous", false],
     ["https://example.com/docs/__cf_workers", false],
     ["https://example.com/?next=?__cf_chl_tk=challenge", true],
     ["https://example.com/#?__cf_chl_tk=challenge", true],
   ]) {
-    it(`uses the literal Cloudflare marker for ${referrer}`, function () {
+    it(`uses the simple Cloudflare marker for ${referrer}`, function () {
       const dom = createDOM({
         beforeRun(context) {
           Object.defineProperty(context.document, "referrer", {

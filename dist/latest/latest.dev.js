@@ -1,4 +1,4 @@
-/* Simple Analytics - Privacy-first analytics (docs.simpleanalytics.com/script; 2026-10-15; b4a4; v12) */
+/* Simple Analytics - Privacy-first analytics (docs.simpleanalytics.com/script; 2026-10-15; 233d; v12) */
 /* eslint-env browser */
 
 (function (
@@ -808,7 +808,7 @@
       page.unique =
         isPushState || userNavigated
           ? falseVar
-          : !sameSite || (!pages && /\?__cf_/.test(getReferrer(trueVar)));
+          : !sameSite || (!pages && /[?&]__cf_/.test(getReferrer(trueVar)));
 
       metadata = appendMetadata(metadata, {
         type: pageviewText,
