@@ -369,7 +369,7 @@
         Date.now();
 
       /** if events **/
-      // Inline events must survive navigation without taking over links or forms.
+      // Events must survive navigation without taking over links or forms.
       if (keepalive && window.fetch) {
         try {
           window
@@ -920,12 +920,11 @@
       /** endif **/
 
       /** if uniques **/
-      // Only the first pageview can use a Cloudflare challenge referrer as a unique arrival.
+      // Only the first pageview can use a Cloudflare referrer as a unique arrival.
       page.unique =
         isPushState || userNavigated
           ? falseVar
-          : !sameSite ||
-            (!pages && /^[^?#]*\?([^#]*&)?__cf_/.test(getReferrer(trueVar)));
+          : !sameSite || (!pages && /\?__cf_/.test(getReferrer(trueVar)));
       /** endif **/
 
       /** if metadata **/
@@ -1124,8 +1123,8 @@
       }
     };
 
-    var defaultEventFunc = function (event, metadata, callback) {
-      sendEvent(event, metadata, callback);
+    var defaultEventFunc = function (event, metadata, callback, keepalive) {
+      sendEvent(event, metadata, callback, keepalive);
     };
 
     // Set default function if user didn't define a function
