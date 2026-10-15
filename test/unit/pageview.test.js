@@ -4,6 +4,70 @@ const { runInContext } = require("vm");
 const { createDOM, SCRIPT_PATH } = require("./helpers/dom");
 
 describe("pageview", function () {
+  for (const [referrer, unique] of [
+    ["https://external.example/?__cf_chl_tk=challenge", true],
+    ["https://external.example/?source=mail&__cf_chl_rt_tk=challenge", true],
+    ["https://example.com/?__cf_chl_tk=challenge", true],
+    ["https://example.com/?source=mail&__cf_chl_rt_tk=challenge", false],
+    ["https://example.com/previous", false],
+    ["https://example.com/docs/__cf_workers", false],
+    ["https://example.com/?next=?__cf_chl_tk=challenge", true],
+    ["https://example.com/#?__cf_chl_tk=challenge", true],
+  ]) {
+    it(`uses the literal Cloudflare marker for ${referrer}`, function () {
+      const dom = createDOM({
+        beforeRun(context) {
+          Object.defineProperty(context.document, "referrer", {
+            value: referrer,
+          });
+        },
+      });
+      const url = new URL(dom.sent[0].url);
+      expect(url.searchParams.get("unique")).to.equal(String(unique));
+      expect(url.searchParams.get("referrer")).not.to.include("challenge");
+      dom.window.close();
+    });
+  }
+
+  it("recognizes challenge arrivals in an overwritten referrer without sending its query", function () {
+    const dom = createDOM({
+      settings: { referrer: "https://example.com/?__cf_chl_tk=challenge" },
+    });
+    const url = new URL(dom.sent[0].url);
+    expect(url.searchParams.get("unique")).to.equal("true");
+    expect(url.searchParams.get("referrer")).to.equal("example.com/");
+    dom.window.close();
+  });
+
+  for (const navigationType of ["reload", "back_forward"]) {
+    it(`keeps ${navigationType} non-unique with a challenge referrer`, function () {
+      const dom = createDOM({
+        navigationType,
+        settings: { referrer: "https://example.com/?__cf_chl_tk=challenge" },
+      });
+      const url = new URL(dom.sent[0].url);
+      expect(url.searchParams.get("unique")).to.equal("false");
+      dom.window.close();
+    });
+  }
+
+  it("counts only the first pageview as unique after a challenge", function () {
+    const dom = createDOM({
+      settings: { referrer: "https://example.com/?__cf_chl_tk=challenge" },
+    });
+    dom.window.sa_pageview("/manual");
+    dom.window.history.pushState({}, "", "/spa");
+    const pageviews = dom.sent.filter(
+      (request) => new URL(request.url).searchParams.get("type") === "pageview"
+    );
+    expect(
+      pageviews.map((request) =>
+        new URL(request.url).searchParams.get("unique")
+      )
+    ).to.deep.equal(["true", "false", "false"]);
+    dom.window.close();
+  });
+
   it("exposes the pageview function under its configured namespace", function () {
     const dom = createDOM({
       settings: { namespace: "ba", autoCollect: false },
