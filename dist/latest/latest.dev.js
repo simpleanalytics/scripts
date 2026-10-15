@@ -1,4 +1,4 @@
-/* Simple Analytics - Privacy-first analytics (docs.simpleanalytics.com/script; 2026-10-15; 0ec2; v12) */
+/* Simple Analytics - Privacy-first analytics (docs.simpleanalytics.com/script; 2026-10-15; f948; v12) */
 /* eslint-env browser */
 
 (function (
@@ -804,13 +804,12 @@
           currentReferrerHostname == locationHostname
         : falseVar;
 
-      // We set unique variable based on pushstate or back navigation, if no match we check the referrer
+      // Only the first pageview can use a Cloudflare challenge referrer as a unique arrival.
       page.unique =
-        /^[^?#]*\?([^#]*&)?__cf_/.test(getReferrer(trueVar)) ||
-        isPushState ||
-        userNavigated
+        isPushState || userNavigated
           ? falseVar
-          : !sameSite;
+          : !sameSite ||
+            (!pages && /^[^?#]*\?([^#]*&)?__cf_/.test(getReferrer(trueVar)));
 
       metadata = appendMetadata(metadata, {
         type: pageviewText,
@@ -918,9 +917,12 @@
 
     if (autoCollect) pageview();
 
-    window.sa_pageview = function (path, metadata, callback) {
+    var manualPageview = function (path, metadata, callback) {
       pageview(0, path, metadata, callback);
     };
+    window[namespace + "_" + pageviewText] = manualPageview;
+    var defaultPageview = defaultNamespace + "_" + pageviewText;
+    if (!window[defaultPageview]) window[defaultPageview] = manualPageview;
 
 
     /////////////////////
