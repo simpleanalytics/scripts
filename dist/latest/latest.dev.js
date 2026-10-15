@@ -1,4 +1,4 @@
-/* Simple Analytics - Privacy-first analytics (docs.simpleanalytics.com/script; 2026-10-15; 0e2c; v12) */
+/* Simple Analytics - Privacy-first analytics (docs.simpleanalytics.com/script; 2026-10-15; 233d; v12) */
 /* eslint-env browser */
 
 (function (
@@ -543,13 +543,17 @@
     var page = {};
     var lastSendPath;
 
-    var getReferrer = function () {
+    var getReferrer = function (raw) {
       // Customers can overwrite their referrer, here we check for that
-      var overwrittenReferrer =
-        overwriteOptions.referrer || attr(scriptElement, "referrer");
+      var referrer =
+        overwriteOptions.referrer ||
+        attr(scriptElement, "referrer") ||
+        doc.referrer ||
+        "";
 
+      if (raw) return referrer;
       return (
-        (overwrittenReferrer || doc.referrer || "")
+        referrer
           .replace(locationHostname, definedHostname)
           .replace(/^https?:\/\/((m|l|w{2,3}([0-9]+)?)\.)?([^?#]+)(.*)$/, "$4")
           .replace(/^([^/]+)$/, "$1") || undefinedVar
@@ -800,11 +804,11 @@
           currentReferrerHostname == locationHostname
         : falseVar;
 
-      // We set unique variable based on pushstate or back navigation, if no match we check the referrer
+      // Only the first pageview can use a Cloudflare referrer as a unique arrival.
       page.unique =
-        /__cf_/.test(getReferrer()) || isPushState || userNavigated
+        isPushState || userNavigated
           ? falseVar
-          : !sameSite;
+          : !sameSite || (!pages && /[?&]__cf_/.test(getReferrer(trueVar)));
 
       metadata = appendMetadata(metadata, {
         type: pageviewText,
