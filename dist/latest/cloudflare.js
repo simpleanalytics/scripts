@@ -1,4 +1,4 @@
-/* Simple Analytics - Privacy-first analytics (docs.simpleanalytics.com/script; 2026-09-16; b9db; v12) */
+/* Simple Analytics - Privacy-first analytics (docs.simpleanalytics.com/script; 2026-10-15; df14; v12) */
 /* eslint-env browser */
 
 (function (
@@ -526,13 +526,17 @@
     var page = {};
     var lastSendPath;
 
-    var getReferrer = function () {
+    var getReferrer = function (raw) {
       // Customers can overwrite their referrer, here we check for that
-      var overwrittenReferrer =
-        overwriteOptions.referrer || attr(scriptElement, "referrer");
+      var referrer =
+        overwriteOptions.referrer ||
+        attr(scriptElement, "referrer") ||
+        doc.referrer ||
+        "";
 
+      if (raw) return referrer;
       return (
-        (overwrittenReferrer || doc.referrer || "")
+        referrer
           .replace(locationHostname, definedHostname)
           .replace(/^https?:\/\/((m|l|w{2,3}([0-9]+)?)\.)?([^?#]+)(.*)$/, "$4")
           .replace(/^([^/]+)$/, "$1") || undefinedVar
@@ -784,7 +788,9 @@
 
       // We set unique variable based on pushstate or back navigation, if no match we check the referrer
       page.unique =
-        /__cf_/.test(getReferrer()) || isPushState || userNavigated
+        /^[^?#]*\?([^#]*&)?__cf_/.test(getReferrer(trueVar)) ||
+        isPushState ||
+        userNavigated
           ? falseVar
           : !sameSite;
 

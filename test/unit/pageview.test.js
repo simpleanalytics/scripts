@@ -2,6 +2,38 @@ const { expect } = require("chai");
 const { createDOM } = require("./helpers/dom");
 
 describe("pageview", function () {
+  for (const [referrer, unique] of [
+    ["https://external.example/?__cf_chl_tk=challenge", false],
+    ["https://external.example/?source=mail&__cf_chl_rt_tk=challenge", false],
+    ["https://external.example/docs/__cf_workers", true],
+    ["https://external.example/?next=?__cf_chl_tk=challenge", true],
+    ["https://external.example/#?__cf_chl_tk=challenge", true],
+  ]) {
+    it(`uses only Cloudflare query parameter names for ${referrer}`, function () {
+      const dom = createDOM({
+        beforeRun(context) {
+          Object.defineProperty(context.document, "referrer", {
+            value: referrer,
+          });
+        },
+      });
+      const url = new URL(dom.sent[0].url);
+      expect(url.searchParams.get("unique")).to.equal(String(unique));
+      expect(url.searchParams.get("referrer")).not.to.include("challenge");
+      dom.window.close();
+    });
+  }
+
+  it("uses query markers in an overwritten referrer without sending its query", function () {
+    const dom = createDOM({
+      settings: { referrer: "https://external.example/?__cf_chl_tk=challenge" },
+    });
+    const url = new URL(dom.sent[0].url);
+    expect(url.searchParams.get("unique")).to.equal("false");
+    expect(url.searchParams.get("referrer")).to.equal("external.example/");
+    dom.window.close();
+  });
+
   it("sends pageview, event and beacon requests", function (done) {
     const dom = createDOM({ navigationType: "reload" });
 

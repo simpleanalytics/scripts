@@ -609,13 +609,19 @@
     var page = {};
     var lastSendPath;
 
-    var getReferrer = function () {
+    var getReferrer = function (raw) {
       // Customers can overwrite their referrer, here we check for that
-      var overwrittenReferrer =
-        overwriteOptions.referrer || attr(scriptElement, "referrer");
+      var referrer =
+        overwriteOptions.referrer ||
+        attr(scriptElement, "referrer") ||
+        doc.referrer ||
+        "";
 
+      /** if uniques **/
+      if (raw) return referrer;
+      /** endif **/
       return (
-        (overwrittenReferrer || doc.referrer || "")
+        referrer
           .replace(locationHostname, definedHostname)
           .replace(/^https?:\/\/((m|l|w{2,3}([0-9]+)?)\.)?([^?#]+)(.*)$/, "$4")
           .replace(/^([^/]+)$/, "$1") || undefinedVar
@@ -896,7 +902,9 @@
       /** if uniques **/
       // We set unique variable based on pushstate or back navigation, if no match we check the referrer
       page.unique =
-        /__cf_/.test(getReferrer()) || isPushState || userNavigated
+        /^[^?#]*\?([^#]*&)?__cf_/.test(getReferrer(trueVar)) ||
+        isPushState ||
+        userNavigated
           ? falseVar
           : !sameSite;
       /** endif **/
