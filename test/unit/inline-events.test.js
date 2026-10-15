@@ -110,23 +110,43 @@ describe("inline events", function () {
     expect(submits).to.equal(0);
   });
 
-  for (const helperFirst of [true, false]) {
-    it(`defers to an existing helper loaded ${helperFirst ? "before" : "after"} the tracker`, function () {
-      const insertHelper = (context) =>
-        runInContext(
-          "document.head.innerHTML += '<script src=\"https://scripts.simpleanalyticscdn.com/inline-events.js\"></script>';",
-          context
-        );
-      const dom = setup({ beforeRun: helperFirst ? insertHelper : undefined });
-      if (!helperFirst) insertHelper(dom.getInternalVMContext());
-      dom.window.document.body.innerHTML =
-        '<button data-simple-event="choose">Choose</button><form data-simple-event="signup"><button>Join</button></form>';
-      click(dom, dom.window.document.querySelector("button"));
-      const form = dom.window.document.querySelector("form");
-      submit(dom, form, form.firstChild);
-      expect(events(dom)).to.have.length(0);
+  it("does not disable built-in events when the beta helper is installed", function () {
+    const dom = setup({
+      beforeRun(context) {
+        context.document.head.innerHTML =
+          '<script src="https://scripts.simpleanalyticscdn.com/inline-events.js"></script>';
+      },
     });
-  }
+    dom.window.document.body.innerHTML =
+      '<button data-simple-event="choose">Choose</button>';
+    click(dom, dom.window.document.querySelector("button"));
+    expect(events(dom)).to.have.length(1);
+  });
+
+  it("uses the button label, trims it, and limits its length", function () {
+    const dom = setup();
+    dom.window.document.body.innerHTML =
+      '<form data-simple-event="signup"><button value="save">  Save changes  </button></form>';
+    const form = dom.window.document.querySelector("form");
+    const button = form.firstChild;
+    submit(dom, form, button);
+    expect(events(dom)[0].metadata.button_text).to.equal("Save changes");
+    button.textContent = "x".repeat(5000);
+    submit(dom, form, button);
+    expect(events(dom)[1].metadata.button_text).to.equal("x".repeat(200));
+  });
+
+  it("uses submit input labels and leaves missing submitter text empty", function () {
+    const dom = setup();
+    dom.window.document.body.innerHTML =
+      '<form data-simple-event="signup"><input name="email" value="private@example.test"><input type="submit" value="Join"></form>';
+    const form = dom.window.document.querySelector("form");
+    submit(dom, form, form.lastChild);
+    expect(events(dom)[0].metadata.button_text).to.equal("Join");
+    form.firstChild.focus();
+    submit(dom, form);
+    expect(events(dom)[1].metadata.button_text).to.equal("");
+  });
 
   it("uses a keepalive GET for inline events", function () {
     const requests = [];
@@ -261,14 +281,15 @@ describe("inline events", function () {
     expect(events(dom)).to.have.length(0);
   });
 
-  it("leaves 404 detection to an installed helper", function () {
+  it("does not issue HEAD requests for 404 in HTML attributes", function () {
     let requests = 0;
     const dom = setup({
       settings: { autoCollect: false, detect404: true },
       beforeRun(context) {
         context.document.head.innerHTML =
-          '<script src="https://scripts.simpleanalyticscdn.com/inline-events.js"></script>';
-        context.document.body.innerHTML = "Page 404 not found";
+          '<script src="/assets/main-404abc.js"></script>';
+        context.document.body.innerHTML =
+          '<div style="width: 404px" class="w-404" data-id="404">A normal page</div>';
         context.XMLHttpRequest = function () {
           requests++;
         };

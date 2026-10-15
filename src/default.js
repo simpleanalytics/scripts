@@ -1138,11 +1138,6 @@
       }
     }
 
-    // Keep existing (including cached) inline helpers in charge when installed.
-    var hasInlineHelper = function () {
-      return doc.querySelector('script[src*="inline-events.js"]');
-    };
-
     var inlineEvent = function (event) {
       var element = event.target;
       while (
@@ -1155,8 +1150,7 @@
       if (!element || element === doc) return;
       var isForm = element.tagName === "FORM";
       var name = attr(element, "simple-event");
-      if (!name || isForm !== (event.type === "submit") || hasInlineHelper())
-        return;
+      if (!name || isForm !== (event.type === "submit")) return;
 
       var metadata = { tag: element.tagName.toLowerCase() };
       var attributes = element.attributes;
@@ -1167,14 +1161,10 @@
             attribute.value;
       }
       if (isForm) {
-        var button = event.submitter || doc.activeElement;
-        metadata.button_text =
-          button &&
-          button.form === element &&
-          (button.tagName === "BUTTON" ||
-            (button.tagName === "INPUT" && button.type === "submit"))
-            ? button.value || button.textContent || ""
-            : "";
+        var button = event.submitter;
+        metadata.button_text = button
+          ? (button.textContent || button.value || "").trim().slice(0, 200)
+          : "";
       }
       sendEvent(name, metadata, undefinedVar, trueVar);
     };
@@ -1189,8 +1179,7 @@
     ) {
       var detect404 = function () {
         if (
-          hasInlineHelper() ||
-          !/[^0-9.,]404[^0-9.,]/.test(documentElement.innerHTML)
+          !/\b404\b/.test(doc.title + " " + (doc.body && doc.body.textContent))
         )
           return;
         try {
