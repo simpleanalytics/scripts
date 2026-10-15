@@ -920,13 +920,12 @@
       /** endif **/
 
       /** if uniques **/
-      // We set unique variable based on pushstate or back navigation, if no match we check the referrer
+      // Only the first pageview can use a Cloudflare challenge referrer as a unique arrival.
       page.unique =
-        /^[^?#]*\?([^#]*&)?__cf_/.test(getReferrer(trueVar)) ||
-        isPushState ||
-        userNavigated
+        isPushState || userNavigated
           ? falseVar
-          : !sameSite;
+          : !sameSite ||
+            (!pages && /^[^?#]*\?([^#]*&)?__cf_/.test(getReferrer(trueVar)));
       /** endif **/
 
       /** if metadata **/
@@ -1043,14 +1042,17 @@
     if (autoCollect) pageview();
 
     /** if metadata **/
-    window.sa_pageview = function (path, metadata, callback) {
+    var manualPageview = function (path, metadata, callback) {
       pageview(0, path, metadata, callback);
     };
     /** else **/
-    window.sa_pageview = function (path, callback) {
+    var manualPageview = function (path, callback) {
       pageview(0, path, undefinedVar, callback);
     };
     /** endif **/
+    window[namespace + "_" + pageviewText] = manualPageview;
+    var defaultPageview = defaultNamespace + "_" + pageviewText;
+    if (!window[defaultPageview]) window[defaultPageview] = manualPageview;
 
     /** else **/
     pageview();
