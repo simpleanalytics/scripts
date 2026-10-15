@@ -1,4 +1,4 @@
-/* Simple Analytics - Privacy-first analytics (docs.simpleanalytics.com/script; 2026-10-15; 5bf1; v12) */
+/* Simple Analytics - Privacy-first analytics (docs.simpleanalytics.com/script; 2026-10-15; 1d94; v12) */
 /* eslint-env browser */
 
 (function (
@@ -656,6 +656,8 @@
         }
       }
 
+      if (overwrite) path = path.split("?")[0];
+
       // Ignore pages specified in data-ignore-pages
       if (shouldIgnore(path)) {
         warn(notSendingWhen + "ignoring " + path);
@@ -714,11 +716,19 @@
       if (!callbackRaw && isFunction(metadata)) callbackRaw = metadata;
       var callback = isFunction(callbackRaw) ? callbackRaw : function () {};
       var path = getPath(pathOverwrite);
+      var querySearch = "";
+      if (isString(pathOverwrite) && pathOverwrite.indexOf("?") > -1) {
+        // keep query from manual path
+        var parts = pathOverwrite.split("?");
+        parts.shift();
+        querySearch = "?" + parts.join("?");
+      }
 
       // Don't send the last path again (this could happen when pushState is used to change the path hash or search)
-      if (!path || lastSendPath == path) return;
+      var pathKey = path + querySearch;
+      if (!path || lastSendPath == pathKey) return;
 
-      lastSendPath = path;
+      lastSendPath = pathKey;
       page.path = path;
 
       // v = viewportsizes
