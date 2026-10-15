@@ -749,7 +749,7 @@
       }
       /** endif **/
 
-      if (overwrite) path = path.split("?")[0];
+      if (overwrite && isString(path)) path = path.split("?")[0];
 
       /** if ignorepages **/
       // Ignore pages specified in data-ignore-pages
