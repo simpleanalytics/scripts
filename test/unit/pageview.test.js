@@ -9,11 +9,13 @@ describe("pageview", function () {
       settings: { namespace: "ba", autoCollect: false },
     });
     expect(dom.window.ba_pageview).to.be.a("function");
-    expect(dom.window.sa_pageview).to.be.undefined;
+    expect(dom.window.sa_pageview).to.equal(dom.window.ba_pageview);
+    dom.window.sa_pageview("/legacy");
     dom.window.ba_pageview("/namespaced");
-    expect(new URL(dom.sent[0].url).searchParams.get("path")).to.equal(
-      "/namespaced"
+    const paths = dom.sent.map((request) =>
+      new URL(request.url).searchParams.get("path")
     );
+    expect(paths).to.deep.equal(["/legacy", "/namespaced"]);
     dom.window.close();
   });
 
