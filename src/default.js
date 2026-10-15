@@ -1163,7 +1163,10 @@
       if (isForm) {
         var button = event.submitter;
         metadata.button_text = button
-          ? (button.textContent || button.value || "").trim().slice(0, 200)
+          ? (button.textContent || button.value || "")
+              .replace(/\s+/g, " ")
+              .trim()
+              .slice(0, 200)
           : "";
       }
       sendEvent(name, metadata, undefinedVar, trueVar);

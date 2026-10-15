@@ -136,6 +136,21 @@ describe("inline events", function () {
     expect(events(dom)[1].metadata.button_text).to.equal("x".repeat(200));
   });
 
+  it("keeps submit labels stable when button markup is reformatted", function () {
+    const dom = setup();
+    dom.window.document.body.innerHTML =
+      '<form data-simple-event="signup"><button>Save changes</button></form>';
+    const form = dom.window.document.querySelector("form");
+    const button = form.firstChild;
+    submit(dom, form, button);
+    button.innerHTML =
+      "\n  <svg></svg>\n  <span>Save</span>\n  <span>changes</span>\n";
+    submit(dom, form, button);
+    expect(
+      events(dom).map((event) => event.metadata.button_text)
+    ).to.deep.equal(["Save changes", "Save changes"]);
+  });
+
   it("uses submit input labels and leaves missing submitter text empty", function () {
     const dom = setup();
     dom.window.document.body.innerHTML =

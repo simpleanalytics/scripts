@@ -1,4 +1,4 @@
-/* Simple Analytics - Privacy-first analytics (docs.simpleanalytics.com/script; 2026-10-15; 4e6f; v12) */
+/* Simple Analytics - Privacy-first analytics (docs.simpleanalytics.com/script; 2026-10-15; e9a1; v12) */
 /* eslint-env browser */
 
 (function (
@@ -1027,7 +1027,10 @@
       if (isForm) {
         var button = event.submitter;
         metadata.button_text = button
-          ? (button.textContent || button.value || "").trim().slice(0, 200)
+          ? (button.textContent || button.value || "")
+              .replace(/\s+/g, " ")
+              .trim()
+              .slice(0, 200)
           : "";
       }
       sendEvent(name, metadata, undefinedVar, trueVar);
