@@ -369,7 +369,7 @@
         Date.now();
 
       /** if events **/
-      // Inline events must survive navigation without taking over links or forms.
+      // Events must survive navigation without taking over links or forms.
       if (keepalive && window.fetch) {
         try {
           window
@@ -1117,8 +1117,8 @@
       }
     };
 
-    var defaultEventFunc = function (event, metadata, callback) {
-      sendEvent(event, metadata, callback);
+    var defaultEventFunc = function (event, metadata, callback, keepalive) {
+      sendEvent(event, metadata, callback, keepalive);
     };
 
     // Set default function if user didn't define a function
