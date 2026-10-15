@@ -45,6 +45,7 @@ describe("pageview query", function () {
     const dom = createDOM({ settings: { autoCollect: false } });
     dom.window.sa_pageview("/product?product-id=1");
     dom.window.sa_pageview("/product?product-id=2");
+    dom.window.sa_pageview("/product?product-id=2");
     const paths = dom.sent
       .filter((request) => request.type === "image")
       .map((request) => new URL(request.url).searchParams.get("path"));
@@ -52,16 +53,21 @@ describe("pageview query", function () {
     dom.window.close();
   });
 
-  it("passes the complete manual path to the path overwriter", function () {
+  it("passes manual paths without the query to the path overwriter", function () {
+    const paths = [];
     const dom = createDOM({
       settings: { autoCollect: false, pathOverwriter: "rewrite" },
       beforeRun(context) {
-        context.rewrite = (data) => data.path.replace("?product-id=", "/");
+        context.rewrite = ({ path }) => {
+          paths.push(path);
+          return path === "/product" ? "/rewritten" : path;
+        };
       },
     });
     dom.window.sa_pageview("/product?product-id=1");
+    expect(paths[0]).to.equal("/product");
     const url = new URL(dom.sent[0].url);
-    expect(url.searchParams.get("path")).to.equal("/product/1");
+    expect(url.searchParams.get("path")).to.equal("/rewritten");
     dom.window.close();
   });
 

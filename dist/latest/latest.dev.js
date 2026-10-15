@@ -1,4 +1,4 @@
-/* Simple Analytics - Privacy-first analytics (docs.simpleanalytics.com/script; 2026-10-15; 9b19; v12) */
+/* Simple Analytics - Privacy-first analytics (docs.simpleanalytics.com/script; 2026-10-15; 4d4c; v12) */
 /* eslint-env browser */
 
 (function (
@@ -656,8 +656,6 @@
         }
       }
 
-      if (overwrite && isString(path)) path = path.split("?")[0];
-
       // Ignore pages specified in data-ignore-pages
       if (shouldIgnore(path)) {
         warn(notSendingWhen + "ignoring " + path);
@@ -715,14 +713,15 @@
     ) {
       if (!callbackRaw && isFunction(metadata)) callbackRaw = metadata;
       var callback = isFunction(callbackRaw) ? callbackRaw : function () {};
-      var path = getPath(pathOverwrite);
       var querySearch = "";
       if (isString(pathOverwrite) && pathOverwrite.indexOf("?") > -1) {
         // keep query from manual path
         var parts = pathOverwrite.split("?");
-        parts.shift();
+        pathOverwrite = parts.shift();
         querySearch = "?" + parts.join("?");
       }
+      // Obfuscate personal data in URL by dropping the search and hash
+      var path = getPath(pathOverwrite);
 
       // Don't send the last path again (this could happen when pushState is used to change the path hash or search)
       var pathKey = path + querySearch;
