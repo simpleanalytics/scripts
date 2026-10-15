@@ -749,6 +749,8 @@
       }
       /** endif **/
 
+      if (overwrite) path = path.split("?")[0];
+
       /** if ignorepages **/
       // Ignore pages specified in data-ignore-pages
       if (shouldIgnore(path)) {
@@ -816,7 +818,7 @@
       if (!callbackRaw && isFunction(metadata)) callbackRaw = metadata;
       var callback = isFunction(callbackRaw) ? callbackRaw : function () {};
       var path = getPath(pathOverwrite);
-      var querySearch;
+      var querySearch = "";
       if (isString(pathOverwrite) && pathOverwrite.indexOf("?") > -1) {
         // keep query from manual path
         var parts = pathOverwrite.split("?");
@@ -825,10 +827,11 @@
       }
 
       // Don't send the last path again (this could happen when pushState is used to change the path hash or search)
-      if (!path || lastSendPath == path) return;
+      var pathKey = path + querySearch;
+      if (!path || lastSendPath == pathKey) return;
 
-      lastSendPath = path;
-      page.path = querySearch ? path.split("?")[0] : path;
+      lastSendPath = pathKey;
+      page.path = path;
 
       /** if screen **/
       // v = viewportsizes

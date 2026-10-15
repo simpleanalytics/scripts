@@ -2,6 +2,26 @@ const { expect } = require("chai");
 const { createDOM } = require("./helpers/dom");
 
 describe("pageview query", function () {
+  it("keeps ignore-pages active for manual query paths", function () {
+    const dom = createDOM({
+      settings: { autoCollect: false, ignorePages: "/product" },
+    });
+    dom.window.sa_pageview("/product?product-id=1");
+    expect(dom.sent).to.deep.equal([]);
+    dom.window.close();
+  });
+
+  it("keeps the hash route when stripping a manual query", function () {
+    const dom = createDOM({
+      url: "https://example.com/#/deep",
+      settings: { autoCollect: false, mode: "hash" },
+    });
+    dom.window.sa_pageview("/product?product-id=1");
+    const url = new URL(dom.sent[0].url);
+    expect(url.searchParams.get("path")).to.equal("/product#/deep");
+    dom.window.close();
+  });
+
   it("keeps manual pageviews that differ only in their query", function () {
     const dom = createDOM({ settings: { autoCollect: false } });
     dom.window.sa_pageview("/product?product-id=1");
