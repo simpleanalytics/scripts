@@ -54,6 +54,9 @@ jobs:
       - name: Test BrowserStack matrix selection
         run: pnpm run test:matrix
 
+      - name: Test inline events
+        run: pnpm run build && pnpm exec mocha test/unit/inline-events.test.js --exit
+
       - name: Prettier check (report only, no writes or commits)
         if: always()
         run: |

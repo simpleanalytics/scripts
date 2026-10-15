@@ -1,4 +1,4 @@
-/* Simple Analytics - Privacy-first analytics (docs.simpleanalytics.com/script; 2026-09-16; b9db; v12) */
+/* Simple Analytics - Privacy-first analytics (docs.simpleanalytics.com/script; 2026-10-15; bf5b; v12) */
 /* eslint-env browser */
 
 (function (
@@ -298,7 +298,7 @@
     //
 
     // Send data via image
-    var sendData = function (data, callback, onlyThisData) {
+    var sendData = function (data, callback, onlyThisData, keepalive) {
       data = onlyThisData ? data : assign(payload, page, data);
 
       if (nav.brave && !onlyThisData) data.brave = trueVar;
@@ -310,7 +310,7 @@
         image.onerror = callback;
         image.onload = callback;
       }
-      image.src =
+      var imageUrl =
         fullApiUrl +
         "/simple.gif?" +
         Object.keys(data)
@@ -327,6 +327,23 @@
           .join("&") +
         "&time=" +
         Date.now();
+
+      // Inline events must survive navigation without taking over links or forms.
+      if (keepalive && window.fetch) {
+        try {
+          window
+            .fetch(imageUrl, {
+              keepalive: trueVar,
+              mode: "no-cors",
+              credentials: "omit",
+            })
+            .catch(function () {
+              image.src = imageUrl;
+            });
+          return;
+        } catch (error) {}
+      }
+      image.src = imageUrl;
     };
 
     // Customers can overwrite their hostname, here we check for that
@@ -905,7 +922,7 @@
 
     var validTypes = ["string", "number"];
 
-    var sendEvent = function (event, metadata, callbackRaw) {
+    var sendEvent = function (event, metadata, callbackRaw, keepalive) {
       if (!callbackRaw && isFunction(metadata)) callbackRaw = metadata;
 
       var eventIsFunction = isFunction(event);
@@ -953,7 +970,9 @@
 
             metadata: stringify(metadata),
           }),
-          callback
+          callback,
+          undefinedVar,
+          keepalive
         );
       }
     };
@@ -981,6 +1000,79 @@
           ? sendEvent.apply(null, queue[event])
           : sendEvent(queue[event]);
       }
+    }
+
+    // Keep existing (including cached) inline helpers in charge when installed.
+    var hasInlineHelper = function () {
+      return doc.querySelector('script[src*="inline-events.js"]');
+    };
+
+    var inlineEvent = function (event) {
+      var element = event.target;
+      while (
+        element &&
+        element !== doc &&
+        (!element.getAttribute || attr(element, "simple-event") === null)
+      )
+        element = element.parentNode;
+
+      if (!element || element === doc) return;
+      var isForm = element.tagName === "FORM";
+      var name = attr(element, "simple-event");
+      if (!name || isForm !== (event.type === "submit") || hasInlineHelper())
+        return;
+
+      var metadata = { tag: element.tagName.toLowerCase() };
+      var attributes = element.attributes;
+      for (var i = 0; i < attributes.length; i++) {
+        var attribute = attributes[i];
+        if (attribute.name.indexOf("data-simple-event-") === 0)
+          metadata[attribute.name.slice(18).replace(/-/g, "_")] =
+            attribute.value;
+      }
+      if (isForm) {
+        var button = event.submitter || doc.activeElement;
+        metadata.button_text =
+          button &&
+          button.form === element &&
+          (button.tagName === "BUTTON" ||
+            (button.tagName === "INPUT" && button.type === "submit"))
+            ? button.value || button.textContent || ""
+            : "";
+      }
+      sendEvent(name, metadata, undefinedVar, trueVar);
+    };
+
+    doc.addEventListener("click", inlineEvent, falseVar);
+    doc.addEventListener("submit", inlineEvent, falseVar);
+
+    // 404 confirmation adds a request, so existing installs must opt in.
+    if (
+      overwriteOptions.detect404 === trueVar ||
+      attr(scriptElement, "detect-404") == trueText
+    ) {
+      var detect404 = function () {
+        if (
+          hasInlineHelper() ||
+          !/[^0-9.,]404[^0-9.,]/.test(documentElement.innerHTML)
+        )
+          return;
+        try {
+          var request = new window.XMLHttpRequest();
+          request.open("HEAD", loc.href, trueVar);
+          request.onload = function () {
+            if (request.status === 404)
+              sendEvent("page_404", {
+                url: loc.protocol + "//" + definedHostname + loc.pathname,
+                status: 404,
+              });
+          };
+          request.send();
+        } catch (error) {}
+      };
+      if (doc.readyState === "loading")
+        doc.addEventListener("DOMContentLoaded", detect404, falseVar);
+      else detect404();
     }
   } catch (e) {
     sendError(e);
