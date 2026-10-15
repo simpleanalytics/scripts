@@ -25,7 +25,7 @@ const MINIFY_OPTIONS = {
   nameCache: null,
 };
 
-const fillTemplate = (template, { overwriteOptions = null } = {}) => {
+const fillTemplate = (template) => {
   if (!template)
     throw new Error("Parsing of the JavaScript failed, please use ES5 only.");
   return template
@@ -36,16 +36,6 @@ const fillTemplate = (template, { overwriteOptions = null } = {}) => {
     .replace(
       /\{\{\s?nginxProxyHost\s?\}\}/gi,
       '<!--# echo var="proxy_hostname" default="" --><!--# echo var="proxy_path" default="/simple" -->'
-    )
-    .replace(
-      /\\?"\{\{\s?overwriteOptions\s?\}\}\\?"/gi,
-      overwriteOptions
-        ? JSON.stringify(overwriteOptions).replace(/:"([^"]+)"/gi, ":$1")
-        : "{}"
-    )
-    .replace(
-      /"\{\{\s?cloudFlareCustomDomain\s?\}\}"/gi,
-      'INSTALL_OPTIONS.custom_domain || "queue.simpleanalyticscdn.com"'
     );
 };
 
@@ -78,7 +68,6 @@ const DEFAULTS = {
   nonuniquehostnames: true,
   ignoremetrics: true,
   dev: false,
-  skipnonwindow: false,
 };
 
 const LIGHT = {
@@ -155,36 +144,6 @@ const templates = [
       scriptName: `cdn_latest_${VERSION}`,
       baseUrl: "simpleanalyticscdn.com",
       apiUrlPrefix: "queue.",
-    },
-  },
-  {
-    type: "js",
-    input: `${__dirname}/src/default.js`,
-    output: `cloudflare.js`,
-    variables: {
-      ...DEFAULTS,
-      skipnonwindow: true,
-      minify: false,
-      version: VERSION,
-      scriptName: `cloudflare_${VERSION}`,
-      sri: false,
-      baseUrl: "{{cloudFlareCustomDomain}}",
-      overwriteOptions: {
-        hostname: "INSTALL_OPTIONS.hostname",
-        collectDnt:
-          "typeof INSTALL_OPTIONS.collect_dnt === 'boolean' ? INSTALL_OPTIONS.collect_dnt : null",
-        mode: "INSTALL_OPTIONS.hash_mode ? 'hash' : 'normal'",
-        strictUtm:
-          "INSTALL_OPTIONS.advanced_settings_toggle && INSTALL_OPTIONS.strict_utm",
-        allowParams:
-          "INSTALL_OPTIONS.advanced_settings_toggle && INSTALL_OPTIONS.allow_url_parameters",
-        nonUniqueHostnames:
-          "INSTALL_OPTIONS.advanced_settings_toggle && INSTALL_OPTIONS.non_unique_hostnames",
-        ignorePages:
-          "INSTALL_OPTIONS.advanced_settings_toggle && INSTALL_OPTIONS.ignore_pages",
-        namespace:
-          "INSTALL_OPTIONS.overwrite_namespace && INSTALL_OPTIONS.namespace",
-      },
     },
   },
   {
@@ -309,10 +268,7 @@ for (const file of files) {
   const finalFileName = output.split("/").pop();
 
   const template = Handlebars.compile(contents);
-  const rawCode = template({
-    ...variables,
-    overwriteOptions: "{{overwriteOptions}}",
-  });
+  const rawCode = template(variables);
 
   const date = new Date().toISOString().slice(0, 10);
   const hash = require("crypto")
@@ -384,7 +340,7 @@ for (const file of files) {
       `${error.message} at line ${sentence} position ${column}: ${codeSnippet}`
     );
   }
-  const code = fillTemplate(codeTemplate, variables);
+  const code = fillTemplate(codeTemplate);
 
   const validate = template({
     ...variables,
@@ -411,7 +367,7 @@ for (const file of files) {
     fs.mkdirSync(path.dirname(latestFile), { recursive: true });
   }
 
-  const compiledMap = map ? fillTemplate(map, variables) : null;
+  const compiledMap = map ? fillTemplate(map) : null;
   const isCustom = /^custom\//.test(output);
 
   if (variables.version && variables.sri) {

@@ -1,9 +1,8 @@
-/* Simple Analytics - Privacy-first analytics (docs.simpleanalytics.com/script; 2026-10-15; 233d; v12) */
+/* Simple Analytics - Privacy-first analytics (docs.simpleanalytics.com/script; 2026-10-15; 1a59; v12) */
 /* eslint-env browser */
 
 (function (
   window,
-  overwriteOptions,
   baseUrl,
   apiUrlPrefix,
   version,
@@ -11,6 +10,9 @@
   sendError,
   warn
 ) {
+  // Only initialize in a browser.
+  if (!window) return;
+
   try {
     /////////////////////
     // PREDEFINED VARIABLES FOR BETTER MINIFICATION
@@ -63,7 +65,6 @@
     var isBotAgent =
       /(bot|spider|crawl)/i.test(userAgent) && !/(cubot)/i.test(userAgent);
     var screen = window.screen;
-
 
     // Find the script element where options can be set on
     var scriptElement =
@@ -135,16 +136,14 @@
     };
 
     var settings = window.sa_settings;
-    var logSettings = settings || Object.keys(overwriteOptions).length;
+    var logSettings = settings;
+    settings = assign(settings);
 
-    // Merge overwriteOptions with sa_settings
-    overwriteOptions = assign(overwriteOptions, settings);
-
-    if (logSettings) warn("Settings", overwriteOptions);
+    if (logSettings) warn("Settings", settings);
 
     // Customers can skip data points
     var ignoreMetrics = convertCommaSeparatedToArray(
-      overwriteOptions.ignoreMetrics || attr(scriptElement, "ignore-metrics")
+      settings.ignoreMetrics || attr(scriptElement, "ignore-metrics")
     );
 
     var collectMetricByString = function (metricAbbreviation) {
@@ -187,7 +186,7 @@
     // Define namespace for the library
     var namespaceText = "namespace";
     var namespace =
-      overwriteOptions[namespaceText] ||
+      settings[namespaceText] ||
       attr(scriptElement, namespaceText) ||
       defaultNamespace;
 
@@ -219,8 +218,7 @@
     // By default we allow source, medium in the URLs. With strictUtm enabled
     // we only allow it with the utm_ prefix: utm_source, utm_medium, ...
     var strictUtm =
-      overwriteOptions.strictUtm ||
-      attr(scriptElement, "strict-utm") == trueText;
+      settings.strictUtm || attr(scriptElement, "strict-utm") == trueText;
 
     var k;
 
@@ -347,7 +345,7 @@
 
     // Customers can overwrite their hostname, here we check for that
     var overwrittenHostname =
-      overwriteOptions.hostname || attr(scriptElement, "hostname");
+      settings.hostname || attr(scriptElement, "hostname");
     var definedHostname = overwrittenHostname || locationHostname;
 
     var basePayload = {
@@ -402,11 +400,11 @@
     //
 
     // Script mode, this can be hash mode for example
-    var mode = overwriteOptions.mode || attr(scriptElement, "mode");
+    var mode = settings.mode || attr(scriptElement, "mode");
 
     // Should we record Do Not Track visits?
-    var collectDnt = isBoolean(overwriteOptions.collectDnt)
-      ? overwriteOptions.collectDnt
+    var collectDnt = isBoolean(settings.collectDnt)
+      ? settings.collectDnt
       : attr(scriptElement, "ignore-dnt") == trueText ||
         attr(scriptElement, "skip-dnt") == trueText ||
         attr(scriptElement, "collect-dnt") == trueText;
@@ -414,39 +412,37 @@
     // Some customers want to collect page views manually
     var autoCollect = !(
       attr(scriptElement, "auto-collect") == "false" ||
-      overwriteOptions.autoCollect === falseVar
+      settings.autoCollect === falseVar
     );
 
     // Event function name
     var eventFunctionName =
-      overwriteOptions.saGlobal ||
+      settings.saGlobal ||
       attr(scriptElement, "sa-global") ||
       namespace + "_" + eventText;
 
     // Customers can ignore certain pages
     var ignorePages = convertCommaSeparatedToArray(
-      overwriteOptions.ignorePages || attr(scriptElement, "ignore-pages")
+      settings.ignorePages || attr(scriptElement, "ignore-pages")
     );
 
     // Customers can allow params
     var allowParams = convertCommaSeparatedToArray(
-      overwriteOptions.allowParams || attr(scriptElement, "allow-params")
+      settings.allowParams || attr(scriptElement, "allow-params")
     );
 
     // Customers can allow params
     var nonUniqueHostnames = convertCommaSeparatedToArray(
-      overwriteOptions.nonUniqueHostnames ||
-        attr(scriptElement, "non-unique-hostnames")
+      settings.nonUniqueHostnames || attr(scriptElement, "non-unique-hostnames")
     );
 
     // Customers can overwrite certain values
     var pathOverwriter =
-      overwriteOptions.pathOverwriter || attr(scriptElement, "path-overwriter");
+      settings.pathOverwriter || attr(scriptElement, "path-overwriter");
 
     // Customers can add metadata to events and pageviews via a function
     var metadataCollector =
-      overwriteOptions.metadataCollector ||
-      attr(scriptElement, "metadata-collector");
+      settings.metadataCollector || attr(scriptElement, "metadata-collector");
 
     // This code could error on (incomplete) implementations, that's why we use try...catch
     var timezone;
@@ -546,7 +542,7 @@
     var getReferrer = function (raw) {
       // Customers can overwrite their referrer, here we check for that
       var referrer =
-        overwriteOptions.referrer ||
+        settings.referrer ||
         attr(scriptElement, "referrer") ||
         doc.referrer ||
         "";
@@ -1049,7 +1045,7 @@
 
     // 404 confirmation adds a request, so existing installs must opt in.
     if (
-      overwriteOptions.detect404 === trueVar ||
+      settings.detect404 === trueVar ||
       attr(scriptElement, "detect-404") == trueText
     ) {
       var detect404 = function () {
@@ -1078,8 +1074,7 @@
     sendError(e);
   }
 })(
-  window,
-  {},
+  typeof window != "undefined" && window,
   "simpleanalyticscdn.com",
   "queue.",
   "cdn_latest_dev_12",
