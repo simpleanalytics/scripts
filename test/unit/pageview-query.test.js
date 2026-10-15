@@ -73,10 +73,11 @@ describe("pageview query", function () {
 
   it("sends query params from manual path", function (done) {
     const dom = createDOM({
+      url: "https://example.com/?utm_source=newsletter&foo=original",
       settings: { autoCollect: false, allowParams: "foo" },
     });
 
-    dom.window.sa_pageview("/manual?foo=bar");
+    dom.window.sa_pageview("/manual?foo=bar&token=secret");
 
     setTimeout(() => {
       const req = dom.sent.find(
@@ -85,9 +86,31 @@ describe("pageview query", function () {
       expect(req, "pageview request").to.exist;
       const url = new URL(req.url);
       expect(url.searchParams.get("query")).to.equal("foo=bar");
+      expect(url.searchParams.get("path")).to.equal("/manual");
+      expect(req.url).not.to.include("secret");
+      dom.window.close();
       done();
     }, 10);
   });
+
+  for (const [path, query] of [
+    ["/manual", "utm_source=newsletter&foo=original"],
+    ["/manual?", null],
+    ["/manual?token=secret", null],
+  ]) {
+    it(`uses the browser query only when no manual query is supplied: ${path}`, function () {
+      const dom = createDOM({
+        url: "https://example.com/?utm_source=newsletter&foo=original",
+        settings: { autoCollect: false, allowParams: "foo" },
+      });
+      dom.window.sa_pageview(path);
+      expect(dom.sent).to.have.lengthOf(1);
+      const request = dom.sent[0];
+      expect(new URL(request.url).searchParams.get("query")).to.equal(query);
+      expect(request.url).not.to.include("secret");
+      dom.window.close();
+    });
+  }
 
   it("matches allowed params case insensitively", function (done) {
     const dom = createDOM({
