@@ -1035,14 +1035,17 @@
     if (autoCollect) pageview();
 
     /** if metadata **/
-    window.sa_pageview = function (path, metadata, callback) {
+    var manualPageview = function (path, metadata, callback) {
       pageview(0, path, metadata, callback);
     };
     /** else **/
-    window.sa_pageview = function (path, callback) {
+    var manualPageview = function (path, callback) {
       pageview(0, path, undefinedVar, callback);
     };
     /** endif **/
+    window[namespace + "_" + pageviewText] = manualPageview;
+    var defaultPageview = defaultNamespace + "_" + pageviewText;
+    if (!window[defaultPageview]) window[defaultPageview] = manualPageview;
 
     /** else **/
     pageview();
