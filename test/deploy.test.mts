@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import { describe, it } from "node:test";
 
 import {
@@ -17,13 +17,17 @@ import {
 
 describe("deployment headers", () => {
   it("accepts every generated JavaScript header in the current manifest", async () => {
+    const version = latestVersionFromNames(
+      await readdir(new URL("../dist", import.meta.url))
+    );
+    assert.ok(version !== undefined, "dist has no versioned SRI directory");
     const files = createManifest(
       {
         destinations: ["cdn", "custom"],
         scripts: ["default", "auto-events"],
         variants: ["latest", "sri", "light", "proxy"],
       },
-      12
+      version
     );
     for (const file of files.filter((file) => file.kind === "javascript")) {
       const content = await readFile(
