@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import { describe, it } from "node:test";
 
 import {
   classifyContent,
   createManifest,
   firstLine,
+  HEADER_PATTERN,
   latestVersionFromNames,
   repositoryPolicy,
   summarize,
@@ -12,6 +14,41 @@ import {
   type DeployFile,
   type PreviewFile,
 } from "../deploy.mts";
+
+describe("deployment headers", () => {
+  it("accepts every generated JavaScript header in the current manifest", async () => {
+    const files = createManifest(
+      {
+        destinations: ["cdn", "custom"],
+        scripts: ["default", "auto-events"],
+        variants: ["latest", "sri", "light", "proxy"],
+      },
+      12
+    );
+    for (const file of files.filter((file) => file.kind === "javascript")) {
+      const content = await readFile(
+        new URL("../" + file.localPath, import.meta.url)
+      );
+      assert.match(firstLine(content), HEADER_PATTERN, file.localPath);
+    }
+  });
+
+  it("keeps accepting legacy headers", () => {
+    assert.match(
+      "/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2024-01-01; abcd; SRI-version; v11) */",
+      HEADER_PATTERN
+    );
+  });
+
+  it("rejects malformed or unrelated headers", () => {
+    for (const header of [
+      "/* unrelated script */",
+      "/* Simple Analytics - Privacy-first analytics (docs.simpleanalytics.com/script; 2026-10-15; not-a-hash; v12) */",
+    ]) {
+      assert.doesNotMatch(header, HEADER_PATTERN);
+    }
+  });
+});
 
 describe("deployment manifest", () => {
   it("maps latest and its legacy companions to both destinations", () => {
