@@ -19,6 +19,23 @@ function setupDOM() {
 }
 
 describe("auto-events", function () {
+  it("keeps phone metadata when the title names the event", function () {
+    const dom = setupDOM();
+    const link = dom.window.document.createElement("a");
+    link.href = "tel:+31201234567?extension=42";
+    link.title = "Call sales";
+
+    dom.window.saAutomatedLink(link, "phone");
+
+    expect(dom.events).to.deep.equal([
+      {
+        name: "phone_Call_sales",
+        metadata: { title: "Call sales", phone: "+31201234567" },
+      },
+    ]);
+    dom.window.close();
+  });
+
   it("collects phone clicks by default without overriding cancelled navigation", function () {
     const events = [];
     const navigations = [];

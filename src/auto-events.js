@@ -95,9 +95,7 @@
           if (theTitle != "") useTitle = true;
         }
 
-        if (useTitle) {
-          event = theTitle;
-        } else {
+        if (!useTitle || type === "phone") {
           switch (type) {
             case "outbound": {
               event = hostname + (optionsLink.outboundFullUrl ? pathname : "");
@@ -125,6 +123,7 @@
             }
           }
         }
+        if (useTitle) event = theTitle;
 
         var clean =
           type +
