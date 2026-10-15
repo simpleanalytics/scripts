@@ -16,7 +16,7 @@ import {
 describe("deployment manifest", () => {
   it("maps latest and its legacy companions to both destinations", () => {
     const files = createManifest({
-      destinations: ["cdn", "custom"],
+      destinations: ["cdn", "caddy"],
       scripts: ["default"],
       variants: ["latest"],
     });
@@ -29,11 +29,11 @@ describe("deployment manifest", () => {
         "cdn:hello.js",
         "cdn:hello.js.map",
         "cdn:latest.dev.js",
-        "custom:latest.js",
-        "custom:latest.js.map",
-        "custom:events.js",
-        "custom:events.js.map",
-        "custom:latest.dev.js",
+        "caddy:latest.js",
+        "caddy:latest.js.map",
+        "caddy:events.js",
+        "caddy:events.js.map",
+        "caddy:latest.dev.js",
       ],
     );
   });
@@ -41,7 +41,7 @@ describe("deployment manifest", () => {
   it("includes every selected current and versioned file", () => {
     const files = createManifest(
       {
-        destinations: ["cdn", "custom"],
+        destinations: ["cdn", "caddy"],
         scripts: ["default", "auto-events"],
         variants: ["latest", "sri", "light", "proxy"],
       },
@@ -49,6 +49,12 @@ describe("deployment manifest", () => {
     );
 
     assert.equal(files.length, 30);
+    assert.equal(
+      files
+        .filter((file) => file.destination === "caddy")
+        .every((file) => file.transform === "caddy-ssi"),
+      true,
+    );
     assert.deepEqual(
       files
         .filter((file) => file.immutable)
@@ -56,21 +62,21 @@ describe("deployment manifest", () => {
       [
         "cdn:sri/v12.js",
         "cdn:sri/v12.js.map",
-        "custom:v12/app.js",
-        "custom:v12/app.js.map",
-        "custom:v12/light.js",
-        "custom:v12/light.js.map",
-        "custom:v12/proxy.js",
-        "custom:v12/proxy.js.map",
-        "custom:v12/auto-events.js",
-        "custom:v12/auto-events.js.map",
+        "caddy:v12/app.js",
+        "caddy:v12/app.js.map",
+        "caddy:v12/light.js",
+        "caddy:v12/light.js.map",
+        "caddy:v12/proxy.js",
+        "caddy:v12/proxy.js.map",
+        "caddy:v12/auto-events.js",
+        "caddy:v12/auto-events.js.map",
       ],
     );
   });
 
   it("deploys standalone auto-events without implicit SRI files", () => {
     const files = createManifest({
-      destinations: ["cdn", "custom"],
+      destinations: ["cdn", "caddy"],
       scripts: ["auto-events"],
       variants: [],
     });
@@ -80,8 +86,8 @@ describe("deployment manifest", () => {
       [
         "cdn:auto-events.js",
         "cdn:auto-events.js.map",
-        "custom:auto-events.js",
-        "custom:auto-events.js.map",
+        "caddy:auto-events.js",
+        "caddy:auto-events.js.map",
       ],
     );
     assert.equal(files.some((file) => file.immutable), false);
@@ -118,7 +124,7 @@ describe("deployment manifest", () => {
 
   it("never invents a source map for latest.dev.js", () => {
     const files = createManifest({
-      destinations: ["cdn", "custom"],
+      destinations: ["cdn", "caddy"],
       scripts: ["default"],
       variants: ["latest"],
     });
@@ -208,7 +214,7 @@ describe("preview helpers", () => {
 });
 
 describe("Caddy custom-domains destination", () => {
-  it("mirrors the custom files with the caddy-ssi transform", () => {
+  it("maps Caddy-only files with the caddy-ssi transform", () => {
     const files = createManifest(
       {
         destinations: ["caddy"],
