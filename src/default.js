@@ -242,11 +242,11 @@
     var k;
     /** endif **/
 
-    var getQueryParams = function (ignoreSource, overwriteSearch) {
+    var getQueryParams = function (ignoreSource) {
       /** if ignoremetrics **/
       k = !ignoreSource && collectMetricByString("q") ? "" : falseVar;
       /** endif **/
-      var q = (overwriteSearch || loc.search)
+      var q = loc.search
         .slice(1)
         .split("&")
         .filter(function (keyValue) {
@@ -772,7 +772,6 @@
       isPushState,
       deleteSourceInfo,
       sameSite,
-      search,
       metadata,
       callback
     ) {
@@ -780,7 +779,7 @@
       if (collectDataOnLeave) payload.page_id = uuid();
 
       var currentPage = definedHostname + getPath();
-      var query = getQueryParams(deleteSourceInfo, search);
+      var query = getQueryParams(deleteSourceInfo);
 
       sendData(
         {
@@ -816,19 +815,12 @@
       if (!callbackRaw && isFunction(metadata)) callbackRaw = metadata;
       var callback = isFunction(callbackRaw) ? callbackRaw : function () {};
       var path = getPath(pathOverwrite);
-      var querySearch;
-      if (isString(pathOverwrite) && pathOverwrite.indexOf("?") > -1) {
-        // keep query from manual path
-        var parts = pathOverwrite.split("?");
-        parts.shift();
-        querySearch = "?" + parts.join("?");
-      }
 
       // Don't send the last path again (this could happen when pushState is used to change the path hash or search)
       if (!path || lastSendPath == path) return;
 
       lastSendPath = path;
-      page.path = querySearch ? path.split("?")[0] : path;
+      page.path = path;
 
       /** if screen **/
       // v = viewportsizes
@@ -915,7 +907,6 @@
           isPushState,
           delSrc, // r = referrers
           sameSite,
-          querySearch,
           metadata,
           callback
         );

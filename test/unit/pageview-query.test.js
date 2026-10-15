@@ -9,7 +9,10 @@ describe("pageview query", function () {
     const paths = dom.sent
       .filter((request) => request.type === "image")
       .map((request) => new URL(request.url).searchParams.get("path"));
-    expect(paths).to.deep.equal(["/product", "/product"]);
+    expect(paths).to.deep.equal([
+      "/product?product-id=1",
+      "/product?product-id=2",
+    ]);
     dom.window.close();
   });
 
@@ -26,12 +29,14 @@ describe("pageview query", function () {
     dom.window.close();
   });
 
-  it("sends query params from manual path", function (done) {
+  it("keeps browser query attribution for manual pageviews and events", function (done) {
     const dom = createDOM({
+      url: "https://example.com/?utm_source=paid&foo=original",
       settings: { autoCollect: false, allowParams: "foo" },
     });
 
     dom.window.sa_pageview("/manual?foo=bar");
+    dom.window.sa_event("buy");
 
     setTimeout(() => {
       const req = dom.sent.find(
@@ -39,17 +44,24 @@ describe("pageview query", function () {
       );
       expect(req, "pageview request").to.exist;
       const url = new URL(req.url);
-      expect(url.searchParams.get("query")).to.equal("foo=bar");
+      expect(url.searchParams.get("query")).to.equal(
+        "utm_source=paid&foo=original"
+      );
+      const event = dom.sent.find((request) => /event=buy/.test(request.url));
+      expect(new URL(event.url).searchParams.get("query")).to.equal(
+        url.searchParams.get("query")
+      );
       done();
     }, 10);
   });
 
   it("matches allowed params case insensitively", function (done) {
     const dom = createDOM({
+      url: "https://example.com/?FOO=bar",
       settings: { autoCollect: false, allowParams: "foo" },
     });
 
-    dom.window.sa_pageview("/manual?FOO=bar");
+    dom.window.sa_pageview("/manual");
 
     setTimeout(() => {
       const req = dom.sent.find(
@@ -64,10 +76,11 @@ describe("pageview query", function () {
 
   it("sends non-empty parameter names without their values", function (done) {
     const dom = createDOM({
+      url: "https://example.com/?gclid=secret&foo=another&empty=&flag",
       settings: { autoCollect: false },
     });
 
-    dom.window.sa_pageview("/manual?gclid=secret&foo=another&empty=&flag");
+    dom.window.sa_pageview("/manual");
 
     setTimeout(() => {
       const req = dom.sent.find(
@@ -84,10 +97,11 @@ describe("pageview query", function () {
 
   it("allows parameter name collection to be ignored", function (done) {
     const dom = createDOM({
+      url: "https://example.com/?gclid=secret",
       settings: { autoCollect: false, ignoreMetrics: "querykeys" },
     });
 
-    dom.window.sa_pageview("/manual?gclid=secret");
+    dom.window.sa_pageview("/manual");
 
     setTimeout(() => {
       const req = dom.sent.find(
