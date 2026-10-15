@@ -1,4 +1,4 @@
-/* Simple Analytics - Privacy-first analytics (docs.simpleanalytics.com/script; 2026-10-15; a61b; v12) */
+/* Simple Analytics - Privacy-first analytics (docs.simpleanalytics.com/script; 2026-10-15; 0ac1; v12) */
 /* eslint-env browser */
 
 (function (
@@ -656,7 +656,7 @@
         }
       }
 
-      if (overwrite) path = path.split("?")[0];
+      if (overwrite && isString(path)) path = path.split("?")[0];
 
       // Ignore pages specified in data-ignore-pages
       if (shouldIgnore(path)) {

@@ -2,6 +2,25 @@ const { expect } = require("chai");
 const { createDOM } = require("./helpers/dom");
 
 describe("pageview query", function () {
+  it("keeps accepting numeric manual paths and path-overwriter results", function () {
+    const dom = createDOM({ settings: { autoCollect: false } });
+    dom.window.sa_pageview(123);
+    expect(new URL(dom.sent[0].url).searchParams.get("path")).to.equal("123");
+    dom.window.close();
+
+    const rewritten = createDOM({
+      settings: { autoCollect: false, pathOverwriter: "rewrite" },
+      beforeRun(context) {
+        context.rewrite = () => 456;
+      },
+    });
+    rewritten.window.sa_pageview("/product?product-id=1");
+    expect(new URL(rewritten.sent[0].url).searchParams.get("path")).to.equal(
+      "456"
+    );
+    rewritten.window.close();
+  });
+
   it("keeps ignore-pages active for manual query paths", function () {
     const dom = createDOM({
       settings: { autoCollect: false, ignorePages: "/product" },
