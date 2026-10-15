@@ -82,6 +82,7 @@
 
       var callback = function () {
         if (
+          type !== "phone" &&
           !sent &&
           (!element.hasAttribute("target") ||
             element.getAttribute("target") === "_self")

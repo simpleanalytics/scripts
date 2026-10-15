@@ -333,7 +333,7 @@
     //
 
     // Send data via image
-    var sendData = function (data, callback, onlyThisData) {
+    var sendData = function (data, callback, onlyThisData, keepalive) {
       data = onlyThisData ? data : assign(payload, page, data);
 
       if (nav.brave && !onlyThisData) data.brave = trueVar;
@@ -350,7 +350,7 @@
         image.onload = callback;
       }
       /** endif **/
-      image.src =
+      var imageUrl =
         fullApiUrl +
         "/simple.gif?" +
         Object.keys(data)
@@ -367,6 +367,25 @@
           .join("&") +
         "&time=" +
         Date.now();
+
+      /** if events **/
+      // Inline events must survive navigation without taking over links or forms.
+      if (keepalive && window.fetch) {
+        try {
+          window
+            .fetch(imageUrl, {
+              keepalive: trueVar,
+              mode: "no-cors",
+              credentials: "omit",
+            })
+            .catch(function () {
+              image.src = imageUrl;
+            });
+          return;
+        } catch (error) {}
+      }
+      /** endif **/
+      image.src = imageUrl;
     };
 
     // Customers can overwrite their hostname, here we check for that
@@ -815,7 +834,7 @@
     ) {
       if (!callbackRaw && isFunction(metadata)) callbackRaw = metadata;
       var callback = isFunction(callbackRaw) ? callbackRaw : function () {};
-      var querySearch;
+      var querySearch = "";
       if (isString(pathOverwrite) && pathOverwrite.indexOf("?") > -1) {
         // keep query from manual path
         var parts = pathOverwrite.split("?");
@@ -826,9 +845,10 @@
       var path = getPath(pathOverwrite);
 
       // Don't send the last path again (this could happen when pushState is used to change the path hash or search)
-      if (!path || lastSendPath == path) return;
+      var pathKey = path + querySearch;
+      if (!path || lastSendPath == pathKey) return;
 
-      lastSendPath = path;
+      lastSendPath = pathKey;
       page.path = path;
 
       /** if screen **/
@@ -1038,7 +1058,7 @@
 
     var validTypes = ["string", "number"];
 
-    var sendEvent = function (event, metadata, callbackRaw) {
+    var sendEvent = function (event, metadata, callbackRaw, keepalive) {
       if (!callbackRaw && isFunction(metadata)) callbackRaw = metadata;
 
       var eventIsFunction = isFunction(event);
@@ -1090,7 +1110,9 @@
             metadata: stringify(metadata),
             /** endif **/
           }),
-          callback
+          callback,
+          undefinedVar,
+          keepalive
         );
       }
     };
@@ -1118,6 +1140,71 @@
           ? sendEvent.apply(null, queue[event])
           : sendEvent(queue[event]);
       }
+    }
+
+    var inlineEvent = function (event) {
+      var element = event.target;
+      while (
+        element &&
+        element !== doc &&
+        (!element.getAttribute || attr(element, "simple-event") === null)
+      )
+        element = element.parentNode;
+
+      if (!element || element === doc) return;
+      var isForm = element.tagName === "FORM";
+      var name = attr(element, "simple-event");
+      if (!name || isForm !== (event.type === "submit")) return;
+
+      var metadata = { tag: element.tagName.toLowerCase() };
+      var attributes = element.attributes;
+      for (var i = 0; i < attributes.length; i++) {
+        var attribute = attributes[i];
+        if (attribute.name.indexOf("data-simple-event-") === 0)
+          metadata[attribute.name.slice(18).replace(/-/g, "_")] =
+            attribute.value;
+      }
+      if (isForm) {
+        var button = event.submitter;
+        metadata.button_text = button
+          ? (button.textContent || button.value || "")
+              .replace(/\s+/g, " ")
+              .trim()
+              .slice(0, 200)
+          : "";
+      }
+      sendEvent(name, metadata, undefinedVar, trueVar);
+    };
+
+    doc.addEventListener("click", inlineEvent, falseVar);
+    doc.addEventListener("submit", inlineEvent, falseVar);
+
+    // 404 confirmation adds a request, so existing installs must opt in.
+    if (
+      overwriteOptions.detect404 === trueVar ||
+      attr(scriptElement, "detect-404") == trueText
+    ) {
+      var detect404 = function () {
+        if (
+          !/\b404\b/.test(doc.title + " " + (doc.body && doc.body.textContent))
+        )
+          return;
+        try {
+          var request = new window.XMLHttpRequest();
+          request.open("HEAD", loc.href, trueVar);
+          request.onload = function () {
+            if (request.status === 404)
+              sendEvent("page_404", {
+                url: loc.protocol + "//" + definedHostname + loc.pathname,
+                status: 404,
+              });
+          };
+          request.send();
+        } catch (error) {}
+      };
+      if (doc.readyState === "loading")
+        doc.addEventListener("DOMContentLoaded", detect404, falseVar);
+      else detect404();
     }
     /** endif **/
   } catch (e) {

@@ -54,6 +54,9 @@ jobs:
       - name: Test BrowserStack matrix selection
         run: pnpm run test:matrix
 
+      - name: Run unit tests
+        run: pnpm run build && pnpm run test:unit
+
       - name: Prettier check (report only, no writes or commits)
         if: always()
         run: |
