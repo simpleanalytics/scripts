@@ -210,7 +210,13 @@
       var metadataObject = window[namespace + "_metadata"];
       if (isObject(metadataObject)) metadata = assign(metadata, metadataObject);
       var metadataCollectorFunction = window[metadataCollector];
-      if (!isFunction(metadataCollectorFunction)) return metadata;
+      if (!isFunction(metadataCollectorFunction)) {
+        if (metadataCollector)
+          warn(
+            metadataCollector + " not found, set window." + metadataCollector
+          );
+        return metadata;
+      }
       try {
         return assign(
           metadata,
@@ -232,43 +238,59 @@
       overwriteOptions.strictUtm ||
       attr(scriptElement, "strict-utm") == trueText;
 
-    var getQueryParams = function (ignoreSource, overwriteSearch) {
-      return (
-        (overwriteSearch || loc.search)
-          .slice(1)
-          .split("&")
-          .filter(function (keyValue) {
-            var ignore = ignoreSource || !collectMetricByString("ut");
+    /** if ignoremetrics **/
+    var k;
+    /** endif **/
 
-            /** if allowparams **/
-            var paramsRegexList = allowParams.map(filterRegex).join("|");
-            var regex = ignore
-              ? "^(" + paramsRegexList + ")="
-              : "^((utm_)" +
-                (strictUtm ? "" : "?") +
-                "(source|medium|content|term|campaign)" +
-                (strictUtm ? "" : "|ref") +
-                "|" +
-                paramsRegexList +
-                ")=";
-            if (ignore && !allowParams.length) return falseVar;
-            /** else **/
-            if (ignore) return falseVar;
-            // eslint-disable-next-line no-redeclare
-            var regex =
-              "^((utm_)" +
+    var getQueryParams = function (ignoreSource, overwriteSearch) {
+      /** if ignoremetrics **/
+      k = !ignoreSource && collectMetricByString("q") ? "" : falseVar;
+      /** endif **/
+      var q = (overwriteSearch || loc.search)
+        .slice(1)
+        .split("&")
+        .filter(function (keyValue) {
+          /** if ignoremetrics **/
+          var i = keyValue.indexOf("=");
+          if (k !== falseVar && i > 0 && keyValue.slice(i + 1))
+            k += (k ? "," : "") + keyValue.slice(0, i);
+          /** endif **/
+
+          var ignore = ignoreSource || !collectMetricByString("ut");
+
+          /** if allowparams **/
+          var paramsRegexList = allowParams.map(filterRegex).join("|");
+          var regex = ignore
+            ? "^(" + paramsRegexList + ")="
+            : "^((utm_)" +
               (strictUtm ? "" : "?") +
               "(source|medium|content|term|campaign)" +
               (strictUtm ? "" : "|ref") +
+              "|" +
+              paramsRegexList +
               ")=";
-            /** endif **/
+          if (ignore && !allowParams.length) return falseVar;
+          /** else **/
+          if (ignore) return falseVar;
+          // eslint-disable-next-line no-redeclare
+          var regex =
+            "^((utm_)" +
+            (strictUtm ? "" : "?") +
+            "(source|medium|content|term|campaign)" +
+            (strictUtm ? "" : "|ref") +
+            ")=";
+          /** endif **/
 
-            // The prefix "utm_" is optional with "strictUtm" disabled
-            // "ref" is only collected when "strictUtm" is disabled
-            return new RegExp(regex).test(keyValue);
-          })
-          .join("&") || undefinedVar
-      );
+          // The prefix "utm_" is optional with "strictUtm" disabled
+          // "ref" is only collected when "strictUtm" is disabled
+          return new RegExp(regex, "i").test(keyValue);
+        })
+        .join("&");
+
+      /** if ignoremetrics **/
+      k = k || undefinedVar;
+      /** endif **/
+      return q || undefinedVar;
     };
 
     /** if ignorepages **/
@@ -311,7 +333,7 @@
     //
 
     // Send data via image
-    var sendData = function (data, callback, onlyThisData) {
+    var sendData = function (data, callback, onlyThisData, keepalive) {
       data = onlyThisData ? data : assign(payload, page, data);
 
       if (nav.brave && !onlyThisData) data.brave = trueVar;
@@ -328,7 +350,7 @@
         image.onload = callback;
       }
       /** endif **/
-      image.src =
+      var imageUrl =
         fullApiUrl +
         "/simple.gif?" +
         Object.keys(data)
@@ -345,6 +367,25 @@
           .join("&") +
         "&time=" +
         Date.now();
+
+      /** if events **/
+      // Events must survive navigation without taking over links or forms.
+      if (keepalive && window.fetch) {
+        try {
+          window
+            .fetch(imageUrl, {
+              keepalive: trueVar,
+              mode: "no-cors",
+              credentials: "omit",
+            })
+            .catch(function () {
+              image.src = imageUrl;
+            });
+          return;
+        } catch (error) {}
+      }
+      /** endif **/
+      image.src = imageUrl;
     };
 
     // Customers can overwrite their hostname, here we check for that
@@ -750,7 +791,7 @@
       isPushState,
       deleteSourceInfo,
       sameSite,
-      query,
+      search,
       metadata,
       callback
     ) {
@@ -758,13 +799,17 @@
       if (collectDataOnLeave) payload.page_id = uuid();
 
       var currentPage = definedHostname + getPath();
+      var query = getQueryParams(deleteSourceInfo, search);
 
       sendData(
         {
           id: payload.page_id,
           type: pageviewText,
           referrer: !deleteSourceInfo || sameSite ? referrer : null,
-          query: query || getQueryParams(deleteSourceInfo),
+          query: query,
+          /** if ignoremetrics **/
+          k: k,
+          /** endif **/
 
           /** if metadata **/
           metadata: stringify(metadata),
@@ -789,7 +834,7 @@
     ) {
       if (!callbackRaw && isFunction(metadata)) callbackRaw = metadata;
       var callback = isFunction(callbackRaw) ? callbackRaw : function () {};
-      var querySearch;
+      var querySearch = "";
       if (isString(pathOverwrite) && pathOverwrite.indexOf("?") > -1) {
         // keep query from manual path
         var parts = pathOverwrite.split("?");
@@ -800,9 +845,10 @@
       var path = getPath(pathOverwrite);
 
       // Don't send the last path again (this could happen when pushState is used to change the path hash or search)
-      if (!path || lastSendPath == path) return;
+      var pathKey = path + querySearch;
+      if (!path || lastSendPath == pathKey) return;
 
-      lastSendPath = path;
+      lastSendPath = pathKey;
       page.path = path;
 
       /** if screen **/
@@ -890,7 +936,7 @@
           isPushState,
           delSrc, // r = referrers
           sameSite,
-          querySearch ? getQueryParams(delSrc, querySearch) : undefinedVar,
+          querySearch,
           metadata,
           callback
         );
@@ -989,14 +1035,17 @@
     if (autoCollect) pageview();
 
     /** if metadata **/
-    window.sa_pageview = function (path, metadata, callback) {
+    var manualPageview = function (path, metadata, callback) {
       pageview(0, path, metadata, callback);
     };
     /** else **/
-    window.sa_pageview = function (path, callback) {
+    var manualPageview = function (path, callback) {
       pageview(0, path, undefinedVar, callback);
     };
     /** endif **/
+    window[namespace + "_" + pageviewText] = manualPageview;
+    var defaultPageview = defaultNamespace + "_" + pageviewText;
+    if (!window[defaultPageview]) window[defaultPageview] = manualPageview;
 
     /** else **/
     pageview();
@@ -1009,7 +1058,7 @@
 
     var validTypes = ["string", "number"];
 
-    var sendEvent = function (event, metadata, callbackRaw) {
+    var sendEvent = function (event, metadata, callbackRaw, keepalive) {
       if (!callbackRaw && isFunction(metadata)) callbackRaw = metadata;
 
       var eventIsFunction = isFunction(event);
@@ -1061,13 +1110,15 @@
             metadata: stringify(metadata),
             /** endif **/
           }),
-          callback
+          callback,
+          undefinedVar,
+          keepalive
         );
       }
     };
 
-    var defaultEventFunc = function (event, metadata, callback) {
-      sendEvent(event, metadata, callback);
+    var defaultEventFunc = function (event, metadata, callback, keepalive) {
+      sendEvent(event, metadata, callback, keepalive);
     };
 
     // Set default function if user didn't define a function
@@ -1089,6 +1140,71 @@
           ? sendEvent.apply(null, queue[event])
           : sendEvent(queue[event]);
       }
+    }
+
+    var inlineEvent = function (event) {
+      var element = event.target;
+      while (
+        element &&
+        element !== doc &&
+        (!element.getAttribute || attr(element, "simple-event") === null)
+      )
+        element = element.parentNode;
+
+      if (!element || element === doc) return;
+      var isForm = element.tagName === "FORM";
+      var name = attr(element, "simple-event");
+      if (!name || isForm !== (event.type === "submit")) return;
+
+      var metadata = { tag: element.tagName.toLowerCase() };
+      var attributes = element.attributes;
+      for (var i = 0; i < attributes.length; i++) {
+        var attribute = attributes[i];
+        if (attribute.name.indexOf("data-simple-event-") === 0)
+          metadata[attribute.name.slice(18).replace(/-/g, "_")] =
+            attribute.value;
+      }
+      if (isForm) {
+        var button = event.submitter;
+        metadata.button_text = button
+          ? (button.textContent || button.value || "")
+              .replace(/\s+/g, " ")
+              .trim()
+              .slice(0, 200)
+          : "";
+      }
+      sendEvent(name, metadata, undefinedVar, trueVar);
+    };
+
+    doc.addEventListener("click", inlineEvent, falseVar);
+    doc.addEventListener("submit", inlineEvent, falseVar);
+
+    // 404 confirmation adds a request, so existing installs must opt in.
+    if (
+      overwriteOptions.detect404 === trueVar ||
+      attr(scriptElement, "detect-404") == trueText
+    ) {
+      var detect404 = function () {
+        if (
+          !/\b404\b/.test(doc.title + " " + (doc.body && doc.body.textContent))
+        )
+          return;
+        try {
+          var request = new window.XMLHttpRequest();
+          request.open("HEAD", loc.href, trueVar);
+          request.onload = function () {
+            if (request.status === 404)
+              sendEvent("page_404", {
+                url: loc.protocol + "//" + definedHostname + loc.pathname,
+                status: 404,
+              });
+          };
+          request.send();
+        } catch (error) {}
+      };
+      if (doc.readyState === "loading")
+        doc.addEventListener("DOMContentLoaded", detect404, falseVar);
+      else detect404();
     }
     /** endif **/
   } catch (e) {
