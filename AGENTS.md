@@ -18,6 +18,6 @@ Before working here, read the shared [Simple Analytics instructions](https://git
 
 ## Validation and review
 
-7. **Verify affected behavior locally.** Use the Node and pnpm versions declared by the repository configuration and the commands available in `package.json`; see `README.md` for setup. For script changes, rebuild before focused before/after payload and browser-interaction checks. Follow the shared testing policy and ensure committed tests run with declared dependencies. Leave the full BrowserStack matrix to CI unless explicitly requested, and report local verification separately from remote CI.
+7. **Verify affected behavior locally.** Use the Node and pnpm versions declared by the repository configuration and the commands available in `package.json`; see `README.md` for setup. For script changes, rebuild before focused before/after payload and browser-interaction checks. Prefer the offline suites in `test/unit/` for local runs. Follow the shared testing policy and ensure committed tests run with declared dependencies. Leave the full BrowserStack matrix to CI unless explicitly requested, and report local verification separately from remote CI.
 
 8. **Keep PRs easy to review.** Prefer one logical change per PR. Group related fixes under one issue, state dependencies and merge order, and branch from and target the integration branch requested by the user. Keep unrelated test-infrastructure repairs separate from tracker behavior changes.
