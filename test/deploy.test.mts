@@ -21,6 +21,13 @@ describe("deployment headers", () => {
       await readdir(new URL("../dist", import.meta.url))
     );
     assert.ok(version !== undefined, "dist has no versioned SRI directory");
+    assert.match(
+      firstLine(
+        await readFile(new URL("../dist/latest/latest.js", import.meta.url))
+      ),
+      new RegExp(`; v${version}\\) \\*/$`),
+      "SRI directory version must match dist/latest/latest.js"
+    );
     const files = createManifest(
       {
         destinations: ["cdn", "custom"],
