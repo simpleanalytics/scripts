@@ -1043,6 +1043,9 @@
     // Overwrite user defined function
     window[eventFunctionName] = defaultEventFunc;
 
+    // Automated events wait for this variable, for example ba_event_loaded
+    window[eventFunctionName + "_loaded"] = trueVar;
+
     // Post events from the queue of the user defined function
     for (var event in queue) {
       if (hasProp(queue, event)) {
