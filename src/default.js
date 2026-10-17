@@ -869,8 +869,8 @@
       }
 
       /** if screen **/
-      // sc = screensizes
-      if (screen && collectMetricByString("sc")) {
+      // scre = screensizes
+      if (screen && collectMetricByString("scre")) {
         page.screen_width = screen.width;
         page.screen_height = screen.height;
       }
