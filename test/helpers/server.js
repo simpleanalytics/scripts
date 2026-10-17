@@ -1,7 +1,7 @@
 const url = require("url");
 const http = require("http");
 const { readFileSync } = require("fs");
-const { SERVER_PORT, DEBUG, CI } = require("../constants");
+const { SERVER_PORT, DEBUG } = require("../constants");
 const { getJSONBody } = require("./request");
 
 const log = (...messages) =>

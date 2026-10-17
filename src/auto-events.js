@@ -37,6 +37,7 @@
     "outbound",
     "emails",
     "downloads",
+    "phones",
   ]);
   var fullUrls = setting("fullUrls", "bool", false);
 
@@ -45,6 +46,7 @@
     outbound: collectTypes.indexOf("outbound") > -1,
     emails: collectTypes.indexOf("emails") > -1,
     downloads: collectTypes.indexOf("downloads") > -1,
+    phones: collectTypes.indexOf("phones") > -1,
     // Downloads: enter file extensions you want to collect
     downloadsExtensions: setting("extensions", "array", [
       "pdf",
@@ -73,20 +75,9 @@
   if (typeof optionsLink === "undefined")
     log("options object not found, please specify", "warn");
 
-  window.saAutomatedLink = function saAutomatedLink(element, type) {
+  var saAutomatedLink = function saAutomatedLink(element, type) {
     try {
       if (!element) return log("no element found");
-      var sent = false;
-
-      var callback = function () {
-        if (
-          !sent &&
-          (!element.hasAttribute("target") ||
-            element.getAttribute("target") === "_self")
-        )
-          document.location = element.getAttribute("href");
-        sent = true;
-      };
 
       if (window[saGlobal] && window[saGlobal + "_loaded"]) {
         var hostname = element.hostname;
@@ -104,9 +95,7 @@
           if (theTitle != "") useTitle = true;
         }
 
-        if (useTitle) {
-          event = theTitle;
-        } else {
+        if (!useTitle || type === "phone") {
           switch (type) {
             case "outbound": {
               event = hostname + (optionsLink.outboundFullUrl ? pathname : "");
@@ -126,31 +115,36 @@
               metadata.email = event;
               break;
             }
+            case "phone": {
+              var hrefPhone = element.getAttribute("href");
+              event = (hrefPhone.split(":")[1] || "").split("?")[0];
+              metadata.phone = event;
+              break;
+            }
           }
         }
+        if (useTitle) event = theTitle;
 
         var clean =
           type +
           "_" +
           event.replace(/[^a-z0-9]+/gi, "_").replace(/(^_+|_+$)/g, "");
 
-        window[saGlobal](clean, metadata, callback);
+        window[saGlobal](clean, metadata, function () {}, true);
 
         log("collected " + clean);
-
-        return type === "email"
-          ? callback()
-          : window.setTimeout(callback, 5000);
       } else {
         log(saGlobal + " is not defined", "warn");
-        return callback();
       }
     } catch (error) {
       log(error.message, "warn");
     }
   };
 
-  function collectLink(link, onclick) {
+  window.saAutomatedLink = saAutomatedLink;
+
+  function collectLink(link) {
+    if (link.hasAttribute("data-simple-event")) return;
     var collect = false;
 
     // Collect download clicks
@@ -175,25 +169,17 @@
       // Collect email clicks
     } else if (optionsLink.emails && /^mailto:/i.test(link.href)) {
       collect = "email";
+
+      // Collect telephone clicks
+    } else if (optionsLink.phones && /^tel:/i.test(link.href)) {
+      collect = "phone";
     }
 
     if (!collect) return;
 
-    if (onclick) {
-      var onClickAttribute = "saAutomatedLink(this, '" + collect + "');";
-
-      if (
-        !link.hasAttribute("target") ||
-        link.getAttribute("target") === "_self"
-      )
-        onClickAttribute += " return false;";
-
-      link.setAttribute("onclick", onClickAttribute);
-    } else {
-      link.addEventListener("click", function () {
-        saAutomatedLink(this, collect);
-      });
-    }
+    link.addEventListener("click", function () {
+      saAutomatedLink(this, collect);
+    });
   }
 
   function onDOMContentLoaded() {
@@ -208,12 +194,7 @@
         // Skip links that don't have an href
         if (!href) continue;
 
-        // We don't want to overwrite website behaviour so we check for the onclick attribute
-        if (!link.getAttribute("onclick") && !/^mailto:/.test(href)) {
-          collectLink(link, true);
-        } else {
-          collectLink(link, false);
-        }
+        collectLink(link);
       }
     } catch (error) {
       log(error.message, "warn");
