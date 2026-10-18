@@ -1,4 +1,4 @@
-/* Simple Analytics - Privacy-first analytics (docs.simpleanalytics.com/script; 2026-10-15; 1a59; v12) */
+/* Simple Analytics - Privacy-first analytics (docs.simpleanalytics.com/script; 2026-10-18; 40d9; v12) */
 /* eslint-env browser */
 
 (function (
@@ -765,8 +765,8 @@
         if (nav[language]) page[language] = nav[language];
       }
 
-      // sc = screensizes
-      if (screen && collectMetricByString("sc")) {
+      // scre = screensizes
+      if (screen && collectMetricByString("scre")) {
         page.screen_width = screen.width;
         page.screen_height = screen.height;
       }
@@ -996,6 +996,9 @@
 
     // Overwrite user defined function
     window[eventFunctionName] = defaultEventFunc;
+
+    // Automated events wait for this variable, for example ba_event_loaded
+    window[eventFunctionName + "_loaded"] = trueVar;
 
     // Post events from the queue of the user defined function
     for (var event in queue) {
