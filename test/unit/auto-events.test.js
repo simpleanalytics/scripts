@@ -1,7 +1,8 @@
 const { expect } = require("chai");
 const { createDOM } = require("./helpers/dom-auto-events");
+const { createDOM: createTrackerDOM } = require("./helpers/dom");
 const { readFileSync } = require("fs");
-const { runInNewContext } = require("vm");
+const { runInContext, runInNewContext } = require("vm");
 
 function setupDOM() {
   const events = [];
@@ -83,6 +84,36 @@ describe("auto-events", function () {
     ]);
     expect(navigations).to.deep.equal([]);
   });
+
+  for (const [settings, saGlobal] of [
+    [{ namespace: "ba" }, "ba_event"],
+    [{ saGlobal: "my_event" }, "my_event"],
+  ]) {
+    it(`sends events through the ${saGlobal} tracker function`, function () {
+      const dom = createTrackerDOM({
+        settings: { autoCollect: false, ...settings },
+      });
+      const script = dom.window.document.createElement("script");
+      script.src = "auto-events.js";
+      script.setAttribute("data-sa-global", saGlobal);
+      dom.window.document.head.appendChild(script);
+      runInContext(
+        readFileSync("dist/latest/auto-events.js", "utf8"),
+        dom.getInternalVMContext()
+      );
+      const link = dom.window.document.createElement("a");
+      link.href = "https://example.org/path";
+
+      dom.window.saAutomatedLink(link, "outbound");
+
+      expect(
+        dom.sent.map((request) =>
+          new URL(request.url).searchParams.get("event")
+        )
+      ).to.deep.equal(["outbound_example_org"]);
+      dom.window.close();
+    });
+  }
 
   it("tracks outbound link clicks", function (done) {
     const dom = setupDOM();
