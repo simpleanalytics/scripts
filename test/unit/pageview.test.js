@@ -114,8 +114,48 @@ describe("pageview", function () {
     dom.window.close();
   });
 
+  // Lets tests move the clock the script uses for time on page
+  const withClock = (options = {}) => {
+    const clock = { time: 1e12 };
+    const dom = createDOM({
+      ...options,
+      beforeRun(context) {
+        context.Date.now = () => clock.time;
+      },
+    });
+    dom.clock = clock;
+    return dom;
+  };
+
+  const setVisibility = (dom, state) => {
+    Object.defineProperty(dom.window.document, "visibilityState", {
+      configurable: true,
+      value: state,
+    });
+    dom.window.document.dispatchEvent(new dom.window.Event("visibilitychange"));
+  };
+
+  const appends = (dom) =>
+    dom.sent
+      .filter((r) => r.type === "beacon")
+      .map((r) => JSON.parse(r.data).duration);
+
+  it("sends visible time when hidden and the total after returning", function () {
+    const dom = withClock();
+    dom.clock.time += 3000;
+    setVisibility(dom, "hidden");
+    dom.clock.time += 60000;
+    setVisibility(dom, "visible");
+    dom.clock.time += 2000;
+    dom.window.dispatchEvent(new dom.window.Event("pagehide"));
+    setVisibility(dom, "hidden");
+    expect(appends(dom)).to.deep.equal([3, 5]);
+    dom.window.close();
+  });
+
   it("sends pageview, event and beacon requests", function (done) {
-    const dom = createDOM({ navigationType: "reload" });
+    const dom = withClock({ navigationType: "reload" });
+    dom.clock.time += 2000;
 
     dom.window.sa_event("unit_test");
 
@@ -148,7 +188,8 @@ describe("pageview", function () {
   });
 
   it("falls back to pixel when sendBeacon fails", function (done) {
-    const dom = createDOM({ navigationType: "reload" });
+    const dom = withClock({ navigationType: "reload" });
+    dom.clock.time += 2000;
 
     dom.window.navigator.sendBeacon = function () {
       throw new TypeError("Illegal invocation");

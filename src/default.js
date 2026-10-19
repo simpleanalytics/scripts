@@ -432,10 +432,6 @@
     // INITIALIZE VALUES
     //
 
-    /** if duration **/
-    var start = now();
-    /** endif **/
-
     /** if scroll **/
     var scrolled = 0;
     /** endif **/
@@ -646,11 +642,51 @@
     // TIME ON PAGE AND SCROLLED LOGIC
     //
 
-    // We don't put msHidden in if duration block, because it's used outside of that functionality
-    var msHidden = 0;
+    /** if (or duration scroll) **/
+    // Values of the last queued append request of this page view. Both values
+    // only grow, so we skip requests that would not change anything.
+    var sentDuration = 0;
+    var sentScrolled = 0;
+
+    /** if duration **/
+    // Only visible time counts as time on page
+    var isVisible = function () {
+      return doc.visibilityState != "hidden";
+    };
+    var visibleMs = 0;
+    var visibleSince = isVisible() ? now() : 0;
+
+    var updateVisibleTime = function () {
+      var time = now();
+      if (visibleSince) visibleMs += time - visibleSince;
+      visibleSince = isVisible() ? time : 0;
+    };
+
+    // Optionally send the visible time when it passes thresholds (seconds),
+    // e.g. data-pings="5,60", so we keep a lower bound when no leave event fires
+    var pings = convertCommaSeparatedToArray(
+      settings.pings || attr(scriptElement, "pings")
+    ).sort(function (a, b) {
+      return a - b;
+    });
+    var pingTimer;
+    var schedulePing = function () {
+      clearTimeout(pingTimer);
+      updateVisibleTime();
+      for (var index = 0; pages && isVisible() && index < pings.length; index++) {
+        var ms = pings[index] * thousand - visibleMs;
+        // Skip invalid values and values that overflow setTimeout
+        if (ms > 0 && ms < 2e9)
+          return (pingTimer = setTimeout(function () {
+            sendOnLeave();
+            schedulePing();
+          }, ms));
+      }
+    };
+    /** endif **/
 
     var sendOnLeave = function (id, push) {
-      if (!collectDataOnLeave) return;
+      if (!collectDataOnLeave || !pages) return;
 
       var append = assign(basePayload, {
         type: "append",
@@ -660,47 +696,82 @@
       /** if duration **/
       // t = timeonpage
       if (collectMetricByString("t")) {
-        append.duration = Math.round((now() - start - msHidden) / thousand);
+        updateVisibleTime();
+        append.duration = Math.floor(visibleMs / thousand);
       }
-      msHidden = 0;
-      start = now();
       /** endif **/
 
       /** if scroll **/
       // scro = scrolled
       if (collectMetricByString("scro")) {
-        append.scrolled = Math.max(0, scrolled, position());
+        append.scrolled = scrolled = Math.max(0, scrolled, position());
       }
       /** endif **/
 
-      if (push || !nav.sendBeacon) {
-        // sendData will assign payload to request
-        sendData(append, undefinedVar, trueVar);
-      } else {
-        try {
+      if (!(append.duration > sentDuration || append.scrolled > sentScrolled))
+        return;
+
+      var queued;
+      try {
+        queued =
+          !push &&
+          nav.sendBeacon &&
           nav.sendBeacon.bind(nav)(fullApiUrl + "/append", stringify(append));
-        } catch (e) {
-          // Fallback for browsers throwing "Illegal invocation" when the URL is invalid
-          sendData(append, undefinedVar, trueVar);
-        }
+      } catch (e) {
+        // Fallback for browsers throwing "Illegal invocation" when the URL is invalid
+      }
+
+      // sendData will assign payload to request
+      if (!queued) sendData(append, undefinedVar, trueVar);
+
+      // Only skip identical values later when the beacon was queued (or for
+      // the image of a page view that just ended), so a later event can retry
+      if (queued || push) {
+        sentDuration = append.duration;
+        sentScrolled = append.scrolled;
       }
     };
 
     /** if duration **/
-    var hiddenStart;
-    addEventListenerFunc(
+    // The page can be closed or killed while hidden without any other event
+    // firing (common on mobile), so send the values every time it gets hidden.
+    // Listen on document, Safari < 14 doesn't bubble this event to window.
+    doc.addEventListener(
       "visibilitychange",
       function () {
-        if (doc.hidden) {
-          if (!("on" + pagehide in window)) sendOnLeave();
-          hiddenStart = now();
-        } else msHidden += now() - hiddenStart;
+        updateVisibleTime();
+        if (!isVisible()) sendOnLeave();
+        schedulePing();
+      },
+      falseVar
+    );
+
+    // Count nothing while the page is in the back/forward cache, even when a
+    // browser doesn't fire visibilitychange around it
+    addEventListenerFunc(
+      "pageshow",
+      function (event) {
+        if (event.persisted) {
+          visibleSince = isVisible() ? now() : 0;
+          schedulePing();
+        }
       },
       falseVar
     );
     /** endif **/
 
-    addEventListenerFunc(pagehide, sendOnLeave, falseVar);
+    addEventListenerFunc(
+      pagehide,
+      function () {
+        sendOnLeave();
+        /** if duration **/
+        visibleSince = 0;
+        clearTimeout(pingTimer);
+        /** endif **/
+      },
+      falseVar
+    );
+    /** endif **/
 
     /** if scroll **/
     var body = doc.body || {};
@@ -793,7 +864,20 @@
       metadata,
       callback
     ) {
-      if (isPushState) sendOnLeave("" + payload.page_id, trueVar);
+      /** if (or duration scroll) **/
+      // Finish the previous page view (SPA navigation or manual pageview)
+      if (pages) sendOnLeave("" + payload.page_id, trueVar);
+
+      // Every page view starts with its own counters
+      sentDuration = sentScrolled = 0;
+      /** if duration **/
+      updateVisibleTime();
+      visibleMs = 0;
+      /** endif **/
+      /** if scroll **/
+      scrolled = 0;
+      /** endif **/
+      /** endif **/
       if (collectDataOnLeave) payload.page_id = uuid();
 
       var currentPage = definedHostname + getPath();
@@ -820,6 +904,10 @@
       referrer = currentPage;
 
       pages++;
+
+      /** if duration **/
+      schedulePing();
+      /** endif **/
     };
 
     var sameSite, userNavigated;
