@@ -1143,6 +1143,7 @@
       }
     }
 
+    var lastInlineElement;
     var inlineEvent = function (event) {
       var element = event.target;
       while (
@@ -1156,12 +1157,6 @@
       var isForm = element.tagName === "FORM";
       var name = attr(element, "simple-event");
       if (!name || isForm !== (event.type === "submit")) return;
-
-      // Browsers repeat a label click on its control, so only count that one
-      var label =
-        event.target.closest &&
-        event.target.closest("a,button,input,label,select,textarea");
-      if (label && label.control && element.contains(label.control)) return;
 
       var metadata = { tag: element.tagName.toLowerCase() };
       var attributes = element.attributes;
@@ -1179,6 +1174,13 @@
               .trim()
               .slice(0, 200)
           : "";
+      } else {
+        // A label click also clicks its control, count one click per task
+        if (element === lastInlineElement) return;
+        lastInlineElement = element;
+        setTimeout(function () {
+          lastInlineElement = undefinedVar;
+        });
       }
       sendEvent(name, metadata, undefinedVar, trueVar);
     };
