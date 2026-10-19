@@ -1143,6 +1143,7 @@
       }
     }
 
+    var lastInlineElement;
     var inlineEvent = function (event) {
       var element = event.target;
       while (
@@ -1173,6 +1174,13 @@
               .trim()
               .slice(0, 200)
           : "";
+      } else {
+        // A label click also clicks its control, count one click per task
+        if (element === lastInlineElement) return;
+        lastInlineElement = element;
+        setTimeout(function () {
+          lastInlineElement = undefinedVar;
+        });
       }
       sendEvent(name, metadata, undefinedVar, trueVar);
     };

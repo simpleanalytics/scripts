@@ -42,12 +42,13 @@ describe("inline events", function () {
 
   afterEach(() => windows.splice(0).forEach((window) => window.close()));
 
-  it("tracks nested clicks and new elements with current metadata", function () {
+  it("tracks nested clicks and new elements with current metadata", async function () {
     const dom = setup();
     dom.window.document.body.innerHTML =
       '<button data-simple-event="choose" data-simple-event-plan-name="pro"><span>Choose</span></button>';
     const button = dom.window.document.querySelector("button");
     click(dom, button.firstChild);
+    await new Promise((resolve) => setTimeout(resolve, 10));
     button.setAttribute("data-simple-event", "upgrade");
     button.setAttribute("data-simple-event-plan-name", "enterprise");
     click(dom, button);
@@ -55,6 +56,24 @@ describe("inline events", function () {
       { name: "choose", metadata: { tag: "button", plan_name: "pro" } },
       { name: "upgrade", metadata: { tag: "button", plan_name: "enterprise" } },
     ]);
+  });
+
+  it("counts a label click once, and independent clicks separately", async function () {
+    const dom = setup();
+    dom.window.document.body.innerHTML =
+      '<div data-simple-event="plan"><label for="y">Yearly</label><input id="y" type="radio"><label><input type="checkbox"> <span>Monthly</span></label></div>';
+    const [forLabel, wrapLabel] = dom.window.document.querySelectorAll("label");
+    const nextTask = () => new Promise((resolve) => setTimeout(resolve, 10));
+    click(dom, forLabel);
+    await nextTask();
+    click(dom, wrapLabel.querySelector("span"));
+    await nextTask();
+    wrapLabel.control.click();
+    await nextTask();
+    forLabel.addEventListener("click", (event) => event.preventDefault());
+    click(dom, forLabel);
+    expect(forLabel.control.checked).to.equal(true);
+    expect(events(dom)).to.have.length(4);
   });
 
   it("leaves link behavior and modified clicks untouched", function () {
