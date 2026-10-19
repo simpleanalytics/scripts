@@ -58,7 +58,6 @@
     var offsetHeight = "offset" + Height;
     var clientHeight = "client" + Height;
     var clientWidth = "client" + Width;
-    var pagehide = "pagehide";
     var platformText = "platform";
     var platformVersionText = "platformVersion";
     var docsUrl = "https://docs.simpleanalytics.com";
@@ -643,15 +642,10 @@
     //
 
     /** if (or duration scroll) **/
-    // Values of the last queued append request of this page view. Both values
-    // only grow, so we skip requests that would not change anything.
-    var sentDuration = 0;
-    var sentScrolled = 0;
-
     /** if duration **/
     // Only visible time counts as time on page
     var isVisible = function () {
-      return doc.visibilityState != "hidden";
+      return !doc.hidden;
     };
     var visibleMs = 0;
     var visibleSince = isVisible() ? now() : 0;
@@ -675,8 +669,7 @@
       updateVisibleTime();
       for (var index = 0; pages && isVisible() && index < pings.length; index++) {
         var ms = pings[index] * thousand - visibleMs;
-        // Skip invalid values and values that overflow setTimeout
-        if (ms > 0 && ms < 2e9)
+        if (ms > 0)
           return (pingTimer = setTimeout(function () {
             sendOnLeave();
             schedulePing();
@@ -686,7 +679,7 @@
     /** endif **/
 
     var sendOnLeave = function (id, push) {
-      if (!collectDataOnLeave || !pages) return;
+      if (!collectDataOnLeave) return;
 
       var append = assign(basePayload, {
         type: "append",
@@ -708,34 +701,18 @@
       }
       /** endif **/
 
-      if (!(append.duration > sentDuration || append.scrolled > sentScrolled))
-        return;
-
-      var queued;
-      try {
-        queued =
-          !push &&
-          nav.sendBeacon &&
-          nav.sendBeacon.bind(nav)(fullApiUrl + "/append", stringify(append));
-      } catch (e) {
-        // Fallback for browsers throwing "Illegal invocation" when the URL is invalid
-      }
+      // The queue drops appends without values
+      if (!append.duration && !append.scrolled) return;
 
       // sendData will assign payload to request
-      if (!queued) sendData(append, undefinedVar, trueVar);
-
-      // Only skip identical values later when the beacon was queued, so a
-      // later event can retry after the image fallback
-      if (queued) {
-        sentDuration = append.duration;
-        sentScrolled = append.scrolled;
-      }
+      if (push || !nav.sendBeacon) sendData(append, undefinedVar, trueVar);
+      else nav.sendBeacon(fullApiUrl + "/append", stringify(append));
     };
 
     /** if duration **/
-    // The page can be closed or killed while hidden without any other event
-    // firing (common on mobile), so send the values every time it gets hidden.
-    // Listen on document, Safari < 14 doesn't bubble this event to window.
+    // Getting hidden is the last event that fires reliably, also when mobile
+    // browsers are killed later, so send the values every time it happens.
+    // Leaving a page fires it too, so we don't listen to pagehide.
     doc.addEventListener(
       "visibilitychange",
       function () {
@@ -745,32 +722,7 @@
       },
       falseVar
     );
-
-    // Count nothing while the page is in the back/forward cache, even when a
-    // browser doesn't fire visibilitychange around it
-    addEventListenerFunc(
-      "pageshow",
-      function (event) {
-        if (event.persisted) {
-          visibleSince = isVisible() ? now() : 0;
-          schedulePing();
-        }
-      },
-      falseVar
-    );
     /** endif **/
-
-    addEventListenerFunc(
-      pagehide,
-      function () {
-        sendOnLeave();
-        /** if duration **/
-        visibleSince = 0;
-        clearTimeout(pingTimer);
-        /** endif **/
-      },
-      falseVar
-    );
     /** endif **/
 
     /** if scroll **/
@@ -869,7 +821,6 @@
       if (pages) sendOnLeave("" + payload.page_id, trueVar);
 
       // Every page view starts with its own counters
-      sentDuration = sentScrolled = 0;
       /** if duration **/
       updateVisibleTime();
       visibleMs = 0;

@@ -128,9 +128,9 @@ describe("pageview", function () {
   };
 
   const setVisibility = (dom, state) => {
-    Object.defineProperty(dom.window.document, "visibilityState", {
+    Object.defineProperty(dom.window.document, "hidden", {
       configurable: true,
-      value: state,
+      value: state == "hidden",
     });
     dom.window.document.dispatchEvent(new dom.window.Event("visibilitychange"));
   };
@@ -147,7 +147,6 @@ describe("pageview", function () {
     dom.clock.time += 60000;
     setVisibility(dom, "visible");
     dom.clock.time += 2000;
-    dom.window.dispatchEvent(new dom.window.Event("pagehide"));
     setVisibility(dom, "hidden");
     expect(appends(dom)).to.deep.equal([3, 5]);
     dom.window.close();
@@ -158,15 +157,7 @@ describe("pageview", function () {
     dom.clock.time += 2000;
 
     dom.window.sa_event("unit_test");
-
-    if (!("onpagehide" in dom.window)) {
-      dom.window.document.hidden = true;
-      dom.window.document.dispatchEvent(
-        new dom.window.Event("visibilitychange")
-      );
-    } else {
-      dom.window.dispatchEvent(new dom.window.Event("pagehide"));
-    }
+    setVisibility(dom, "hidden");
 
     setTimeout(() => {
       const gif = dom.sent.find(
@@ -183,37 +174,6 @@ describe("pageview", function () {
       expect(beacon.url).to.match(/\/append$/);
       expect(beacon.data).to.include('"type":"append"');
 
-      done();
-    }, 10);
-  });
-
-  it("falls back to pixel when sendBeacon fails", function (done) {
-    const dom = withClock({ navigationType: "reload" });
-    dom.clock.time += 2000;
-
-    dom.window.navigator.sendBeacon = function () {
-      throw new TypeError("Illegal invocation");
-    };
-
-    dom.window.sa_event("unit_test");
-
-    if (!("onpagehide" in dom.window)) {
-      dom.window.document.hidden = true;
-      dom.window.document.dispatchEvent(
-        new dom.window.Event("visibilitychange")
-      );
-    } else {
-      dom.window.dispatchEvent(new dom.window.Event("pagehide"));
-    }
-
-    setTimeout(() => {
-      const beacon = dom.sent.find((r) => r.type === "beacon");
-      const appendGif = dom.sent.find(
-        (r) => r.type === "image" && /type=append/.test(r.url)
-      );
-
-      expect(beacon, "append beacon request").to.not.exist;
-      expect(appendGif, "append gif request").to.exist;
       done();
     }, 10);
   });
