@@ -1143,15 +1143,8 @@
       }
     }
 
-    var labelControl;
     var inlineEvent = function (event) {
       var element = event.target;
-      // The clicked element and its ancestors, also in open shadow roots
-      var path = event.composedPath ? event.composedPath() : [element];
-      // Browsers repeat a label click on its control, count only the first
-      if (event.type === "click" && path.indexOf(labelControl) > -1)
-        return (labelControl = undefinedVar);
-
       while (
         element &&
         element !== doc &&
@@ -1163,6 +1156,12 @@
       var isForm = element.tagName === "FORM";
       var name = attr(element, "simple-event");
       if (!name || isForm !== (event.type === "submit")) return;
+
+      // Browsers repeat a label click on its control, so only count that one
+      var label =
+        event.target.closest &&
+        event.target.closest("a,button,input,label,select,textarea");
+      if (label && label.control && element.contains(label.control)) return;
 
       var metadata = { tag: element.tagName.toLowerCase() };
       var attributes = element.attributes;
@@ -1180,18 +1179,6 @@
               .trim()
               .slice(0, 200)
           : "";
-      } else {
-        var label = path[0];
-        for (var j = 1; label && label.tagName !== "LABEL"; j++)
-          label = path[j];
-        // Remember the control, unless the click was on or inside it
-        if (label && label.control && path.indexOf(label.control) < 0) {
-          labelControl = label.control;
-          // Forget it when the browser doesn't click it (cancelled click)
-          setTimeout(function () {
-            labelControl = undefinedVar;
-          });
-        }
       }
       sendEvent(name, metadata, undefinedVar, trueVar);
     };

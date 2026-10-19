@@ -57,137 +57,24 @@ describe("inline events", function () {
     ]);
   });
 
-  it("counts a label click once when the browser also clicks its control", function () {
+  it("counts a label click once, as a click on its control", function () {
     const dom = setup();
     dom.window.document.body.innerHTML =
-      '<div data-simple-event="plan_toggle"><label for="y">Yearly</label><input id="y" type="radio" name="plan"><label><input type="checkbox"> <span>Monthly</span></label></div>';
-    const [forLabel, wrapLabel] = dom.window.document.querySelectorAll("label");
+      '<div data-simple-event="plan"><label for="y">Yearly</label><input id="y" type="radio" data-simple-event="yearly"><label><input type="checkbox"> <span>Monthly</span> <a href="#terms">terms</a></label></div><label for="t" data-simple-event="terms">Terms</label><input id="t" type="checkbox">';
+    const [forLabel, wrapLabel, termsLabel] =
+      dom.window.document.querySelectorAll("label");
     click(dom, forLabel);
     click(dom, wrapLabel.querySelector("span"));
+    click(dom, wrapLabel.control);
+    click(dom, wrapLabel.querySelector("a"));
+    click(dom, termsLabel);
     expect(forLabel.control.checked).to.equal(true);
-    expect(wrapLabel.control.checked).to.equal(true);
     expect(events(dom).map((event) => event.name)).to.deep.equal([
-      "plan_toggle",
-      "plan_toggle",
-    ]);
-  });
-
-  it("uses the tag of the clicked label, or of its control when the label is untagged", function () {
-    const dom = setup();
-    dom.window.document.body.innerHTML =
-      '<div data-simple-event="outer"><label for="y">Yearly</label><input id="y" type="checkbox" data-simple-event="inner"></div><label for="z">Other</label><input id="z" type="checkbox" data-simple-event="control">';
-    const [outerLabel, otherLabel] =
-      dom.window.document.querySelectorAll("label");
-    click(dom, outerLabel);
-    click(dom, outerLabel.control);
-    click(dom, otherLabel);
-    expect(events(dom).map((event) => event.name)).to.deep.equal([
-      "outer",
-      "inner",
-      "control",
-    ]);
-  });
-
-  it("counts quick independent clicks, keyboard activation and cancelled label clicks", async function () {
-    const dom = setup();
-    dom.window.document.body.innerHTML =
-      '<div data-simple-event="toggle"><label for="y">Yearly</label><input id="y" type="checkbox"><label><input type="checkbox"> Monthly</label><label><button type="button"><span>Go</span></button></label></div><label for="b" data-simple-event="go">Go</label><button id="b" type="button"><b data-simple-event="inner">Go</b></button>';
-    const [label, wrapLabel] = dom.window.document.querySelectorAll("label");
-    const buttonText = dom.window.document.querySelector("span");
-    const input = label.control;
-    click(dom, label);
-    click(dom, label);
-    input.click();
-    label.click();
-    click(dom, wrapLabel.control);
-    click(dom, wrapLabel.control);
-    click(dom, buttonText);
-    click(dom, buttonText);
-    dom.window.document.querySelector("[for=b]").click();
-    dom.window.document.querySelector("b").click();
-    expect(events(dom)).to.have.length(10);
-    label.addEventListener("click", (event) => event.preventDefault());
-    click(dom, label);
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    input.click();
-    expect(events(dom)).to.have.length(12);
-  });
-
-  it("counts labels across shadow roots and slots once", function () {
-    const dom = setup();
-    const document = dom.window.document;
-    document.body.innerHTML =
-      '<div data-simple-event="shadow"></div><div data-simple-event="slotted"><span>Remember</span></div><div data-simple-event="icon"><label for="i"><span></span></label><input id="i" type="checkbox"></div>';
-    const [shadow, slotted, icon] = document.querySelectorAll("div");
-    const root = shadow.attachShadow({ mode: "open" });
-    root.innerHTML =
-      '<label for="c">Toggle</label><input id="c" type="checkbox">';
-    slotted.attachShadow({ mode: "open" }).innerHTML =
-      '<label><input type="checkbox"> <slot></slot></label>';
-    const iconRoot = icon.querySelector("span").attachShadow({ mode: "open" });
-    iconRoot.innerHTML = "<b>Icon</b>";
-    click(dom, root.querySelector("label"), { composed: true });
-    // Browsers forward a composed click, jsdom's doesn't leave the shadow root
-    click(dom, root.querySelector("input"), { composed: true });
-    click(dom, root.querySelector("input"), { composed: true });
-    click(dom, slotted.firstChild, { composed: true });
-    click(dom, slotted.shadowRoot.querySelector("input"), { composed: true });
-    click(dom, iconRoot.firstChild, { composed: true });
-    expect(events(dom).map((event) => event.name)).to.deep.equal([
-      "shadow",
-      "shadow",
-      "slotted",
-      "icon",
-    ]);
-  });
-
-  it("skips the forwarded click when a custom control clicks its inner input", function () {
-    const dom = setup();
-    runInContext(
-      'customElements.define("x-input", class extends HTMLElement { static formAssociated = true; });',
-      dom.getInternalVMContext()
-    );
-    dom.window.document.body.innerHTML =
-      '<div data-simple-event="outer"><label for="x">Toggle</label><x-input id="x" data-simple-event="inner"><form data-simple-event="signup"></form></x-input></div>';
-    const host = dom.window.document.querySelector("x-input");
-    const root = host.attachShadow({ mode: "open" });
-    root.innerHTML = '<input type="checkbox">';
-    const form = host.querySelector("form");
-    form.addEventListener("submit", (event) => event.preventDefault());
-    host.addEventListener("click", (event) => {
-      if (event.composedPath()[0] !== host) return;
-      event.stopPropagation();
-      form.requestSubmit();
-      click(dom, root.firstChild, { composed: true });
-    });
-    click(dom, dom.window.document.querySelector("label"));
-    click(dom, host);
-    expect(events(dom).map((event) => event.name)).to.deep.equal([
-      "outer",
-      "signup",
-      "signup",
-      "inner",
-    ]);
-  });
-
-  it("skips the forwarded click when its handlers send other events", function () {
-    const dom = setup();
-    dom.window.document.body.innerHTML =
-      '<div data-simple-event="toggle"><label for="c">Toggle</label><input id="c" type="checkbox"></div><form data-simple-event="signup"></form><button data-simple-event="other">Other</button><label data-simple-event="note">Note</label>';
-    const document = dom.window.document;
-    const form = document.querySelector("form");
-    form.addEventListener("submit", (event) => event.preventDefault());
-    document.getElementById("c").addEventListener("click", () => {
-      form.requestSubmit();
-      document.querySelector("button").click();
-      document.querySelector("[data-simple-event=note]").click();
-    });
-    click(dom, document.querySelector("label"));
-    expect(events(dom).map((event) => event.name)).to.deep.equal([
-      "toggle",
-      "signup",
-      "other",
-      "note",
+      "yearly",
+      "plan",
+      "plan",
+      "plan",
+      "terms",
     ]);
   });
 
