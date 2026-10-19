@@ -2,6 +2,10 @@
 
 Before working here, read the shared [Simple Analytics instructions](https://github.com/simpleanalytics/ide-config/blob/main/AGENTS.md) through the approved GitHub access method. Apply them alongside applicable parent and nested instructions; more specific instructions take precedence.
 
+## Dist
+
+- `dist/` is generated output. Builds and `pnpm test` rewrite it (each build stamps the date), and a maintainer builds and commits it separately before deploying. Never commit `dist/` changes in feature work; restore it with `git checkout HEAD -- dist` before committing, and skip `dist/` when reviewing or validating changes.
+
 ## Tracker changes
 
 1. **Minimize shipped bytes.** Keep changes small and reuse existing helpers and variables. Measure minified and gzip byte differences for affected scripts against the target branch using the same build and compression settings. Test proposed optimizations: extracting repeated strings can increase gzip size.
