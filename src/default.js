@@ -704,7 +704,7 @@
       /** if scroll **/
       // scro = scrolled
       if (collectMetricByString("scro")) {
-        append.scrolled = scrolled = Math.max(0, scrolled, position());
+        append.scrolled = Math.max(0, scrolled, position());
       }
       /** endif **/
 
@@ -724,9 +724,9 @@
       // sendData will assign payload to request
       if (!queued) sendData(append, undefinedVar, trueVar);
 
-      // Only skip identical values later when the beacon was queued (or for
-      // the image of a page view that just ended), so a later event can retry
-      if (queued || push) {
+      // Only skip identical values later when the beacon was queued, so a
+      // later event can retry after the image fallback
+      if (queued) {
         sentDuration = append.duration;
         sentScrolled = append.scrolled;
       }
