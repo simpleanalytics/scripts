@@ -8,7 +8,9 @@ Before working here, read the shared [Simple Analytics instructions](https://git
 
 ## Tracker changes
 
-1. **Minimize shipped bytes.** Keep changes small and reuse existing helpers and variables. Measure minified and gzip byte differences for affected scripts against the target branch using the same build and compression settings. Test proposed optimizations: extracting repeated strings can increase gzip size.
+1. **Minimize shipped bytes.** Keep changes small and reuse existing helpers and variables. Measure minified, gzip, and brotli byte differences for affected scripts against the target branch using the same build and compression settings. Test proposed optimizations: extracting repeated strings can increase gzip size.
+
+   The tracker should balance size against edge cases, not handle every edge case. Cover the common browsers and flows; accept small data loss in rare cases, such as old browser versions, unusual event orders, or invalid settings, instead of adding code for them. When a change fixes edge cases, list each part with its minified/gzip/brotli cost and what is lost without it, so each part can be kept or dropped on purpose.
 
 2. **Preserve existing installations.** Unless the user explicitly accepts a behavior change, preserve existing settings and integrations. Check affected combinations against the [customer documentation](https://docs.simpleanalytics.com/), including manual pageviews, query handling, attribution, namespaces, ignored metrics, metadata, and automatic events. Report concrete before/after effects on customer data, event names, and counts, separately from additions that leave existing installations unchanged.
 
