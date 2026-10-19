@@ -20,7 +20,7 @@ Before working here, read the shared [Simple Analytics instructions](https://git
 
 5. **Keep collection deliberate.** Honor collection settings and opt-outs. Distinguish query-parameter names from values when checking what is sent. Keep form field values out of automatic form tracking, sanitize automatically reported URLs, and keep extra diagnostic requests such as 404 confirmation opt-in. Make changes to collection defaults explicit for review.
 
-6. **Preserve browser and build compatibility.** Keep visitor-facing output ES5-compatible and respect feature boundaries such as event-free `light.js`. Build affected scripts from source and commit their generated distributions. Review source and build inputs first, using relevant generated output to verify those changes. Keep previously published pinned versions and their SRI bytes unchanged unless explicitly requested.
+6. **Preserve browser and build compatibility.** Keep visitor-facing output ES5-compatible and respect feature boundaries such as event-free `light.js`. Build affected scripts from source to verify them, but leave `dist/` out of commits (see Dist). Review source and build inputs first, using relevant generated output to verify those changes. Keep previously published pinned versions and their SRI bytes unchanged unless explicitly requested.
 
 ## Validation and review
 
