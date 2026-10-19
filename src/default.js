@@ -844,7 +844,12 @@
 
       // Don't send the last path again (this could happen when pushState is used to change the path hash or search)
       var pathKey = path + querySearch;
+      /** if (or spa hash) **/
+      // Manual pageview callbacks also run when the pageview is skipped
+      if (!path || lastSendPath == pathKey) return callback();
+      /** else **/
       if (!path || lastSendPath == pathKey) return;
+      /** endif **/
 
       lastSendPath = pathKey;
       page.path = path;
