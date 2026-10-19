@@ -669,7 +669,8 @@
       updateVisibleTime();
       for (var index = 0; pages && isVisible() && index < pings.length; index++) {
         var ms = pings[index] * thousand - visibleMs;
-        if (ms > 0)
+        // Skip invalid values and values too large for setTimeout
+        if (ms > 0 && ms < 2e9)
           return (pingTimer = setTimeout(function () {
             sendOnLeave();
             schedulePing();
@@ -679,7 +680,7 @@
     /** endif **/
 
     var sendOnLeave = function (id, push) {
-      if (!collectDataOnLeave) return;
+      if (!collectDataOnLeave || !pages) return;
 
       var append = assign(basePayload, {
         type: "append",
