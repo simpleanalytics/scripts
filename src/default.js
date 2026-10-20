@@ -841,6 +841,11 @@
           type: pageviewText,
           referrer: !deleteSourceInfo || sameSite ? referrer : null,
           query: query,
+          // Script URL without query, to see which scripts sites embed
+          src:
+            scriptElement &&
+            scriptElement.src &&
+            scriptElement.src.split("?")[0],
           /** if ignoremetrics **/
           k: k,
           /** endif **/
