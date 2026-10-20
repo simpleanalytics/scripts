@@ -58,7 +58,6 @@
     var offsetHeight = "offset" + Height;
     var clientHeight = "client" + Height;
     var clientWidth = "client" + Width;
-    var pagehide = "pagehide";
     var platformText = "platform";
     var platformVersionText = "platformVersion";
     var docsUrl = "https://docs.simpleanalytics.com";
@@ -432,10 +431,6 @@
     // INITIALIZE VALUES
     //
 
-    /** if duration **/
-    var start = now();
-    /** endif **/
-
     /** if scroll **/
     var scrolled = 0;
     /** endif **/
@@ -646,11 +641,46 @@
     // TIME ON PAGE AND SCROLLED LOGIC
     //
 
-    // We don't put msHidden in if duration block, because it's used outside of that functionality
-    var msHidden = 0;
+    /** if (or duration scroll) **/
+    /** if duration **/
+    // Only visible time counts as time on page
+    var isVisible = function () {
+      return !doc.hidden;
+    };
+    var visibleMs = 0;
+    var visibleSince = isVisible() ? now() : 0;
+
+    var updateVisibleTime = function () {
+      var time = now();
+      if (visibleSince) visibleMs += time - visibleSince;
+      visibleSince = isVisible() ? time : 0;
+    };
+
+    // Optionally send the visible time when it passes thresholds (seconds),
+    // e.g. data-pings="5,60", so we keep a lower bound when no leave event fires
+    var pings = convertCommaSeparatedToArray(
+      settings.pings || attr(scriptElement, "pings")
+    ).sort(function (a, b) {
+      return a - b;
+    });
+    var pingTimer;
+    var schedulePing = function () {
+      clearTimeout(pingTimer);
+      updateVisibleTime();
+      for (var index = 0; pages && isVisible() && index < pings.length; index++) {
+        var ms = pings[index] * thousand - visibleMs;
+        // Skip invalid values and values too large for setTimeout
+        if (ms > 0 && ms < 2e9)
+          return (pingTimer = setTimeout(function () {
+            sendOnLeave();
+            schedulePing();
+          }, ms));
+      }
+    };
+    /** endif **/
 
     var sendOnLeave = function (id, push) {
-      if (!collectDataOnLeave) return;
+      if (!collectDataOnLeave || !pages) return;
 
       var append = assign(basePayload, {
         type: "append",
@@ -660,10 +690,9 @@
       /** if duration **/
       // t = timeonpage
       if (collectMetricByString("t")) {
-        append.duration = Math.round((now() - start - msHidden) / thousand);
+        updateVisibleTime();
+        append.duration = Math.floor(visibleMs / thousand);
       }
-      msHidden = 0;
-      start = now();
       /** endif **/
 
       /** if scroll **/
@@ -673,34 +702,29 @@
       }
       /** endif **/
 
-      if (push || !nav.sendBeacon) {
-        // sendData will assign payload to request
-        sendData(append, undefinedVar, trueVar);
-      } else {
-        try {
-          nav.sendBeacon.bind(nav)(fullApiUrl + "/append", stringify(append));
-        } catch (e) {
-          // Fallback for browsers throwing "Illegal invocation" when the URL is invalid
-          sendData(append, undefinedVar, trueVar);
-        }
-      }
+      // The queue drops appends without values
+      if (!append.duration && !append.scrolled) return;
+
+      // sendData will assign payload to request
+      if (push || !nav.sendBeacon) sendData(append, undefinedVar, trueVar);
+      else nav.sendBeacon(fullApiUrl + "/append", stringify(append));
     };
 
     /** if duration **/
-    var hiddenStart;
-    addEventListenerFunc(
+    // Getting hidden is the last event that fires reliably, also when mobile
+    // browsers are killed later, so send the values every time it happens.
+    // Leaving a page fires it too, so we don't listen to pagehide.
+    doc.addEventListener(
       "visibilitychange",
       function () {
-        if (doc.hidden) {
-          if (!("on" + pagehide in window)) sendOnLeave();
-          hiddenStart = now();
-        } else msHidden += now() - hiddenStart;
+        updateVisibleTime();
+        if (!isVisible()) sendOnLeave();
+        schedulePing();
       },
       falseVar
     );
     /** endif **/
-
-    addEventListenerFunc(pagehide, sendOnLeave, falseVar);
+    /** endif **/
 
     /** if scroll **/
     var body = doc.body || {};
@@ -793,7 +817,19 @@
       metadata,
       callback
     ) {
-      if (isPushState) sendOnLeave("" + payload.page_id, trueVar);
+      /** if (or duration scroll) **/
+      // Finish the previous page view (SPA navigation or manual pageview)
+      if (pages) sendOnLeave("" + payload.page_id, trueVar);
+
+      // Every page view starts with its own counters
+      /** if duration **/
+      updateVisibleTime();
+      visibleMs = 0;
+      /** endif **/
+      /** if scroll **/
+      scrolled = 0;
+      /** endif **/
+      /** endif **/
       if (collectDataOnLeave) payload.page_id = uuid();
 
       var currentPage = definedHostname + getPath();
@@ -820,6 +856,10 @@
       referrer = currentPage;
 
       pages++;
+
+      /** if duration **/
+      schedulePing();
+      /** endif **/
     };
 
     var sameSite, userNavigated;
