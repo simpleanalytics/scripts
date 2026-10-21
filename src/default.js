@@ -967,10 +967,14 @@
 
       /** if uniques **/
       // Only the first pageview can use a Cloudflare referrer as a unique arrival.
+      // Challenges run on this site, so other non-unique hostnames stay non-unique.
       page.unique =
         isPushState || userNavigated
           ? falseVar
-          : !sameSite || (!pages && /[?&]__cf_/.test(getReferrer(trueVar)));
+          : !sameSite ||
+            (!pages &&
+              currentReferrerHostname == locationHostname &&
+              /[?&]__cf_/.test(getReferrer(trueVar)));
       /** endif **/
 
       /** if metadata **/

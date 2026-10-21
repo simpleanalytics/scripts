@@ -29,6 +29,18 @@ describe("pageview", function () {
     });
   }
 
+  it("keeps a challenge referrer from another non-unique hostname non-unique", function () {
+    const dom = createDOM({
+      settings: {
+        nonUniqueHostnames: "partner.example",
+        referrer: "https://partner.example/?__cf_chl_tk=challenge",
+      },
+    });
+    const url = new URL(dom.sent[0].url);
+    expect(url.searchParams.get("unique")).to.equal("false");
+    dom.window.close();
+  });
+
   it("recognizes challenge arrivals in an overwritten referrer without sending its query", function () {
     const dom = createDOM({
       settings: { referrer: "https://example.com/?__cf_chl_tk=challenge" },
