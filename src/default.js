@@ -952,12 +952,17 @@
 
       // Check if referrer is the same as current real hostname (not the defined hostname!)
       /** if nonuniquehostnames **/
+      // The cleaned referrer has no www. and uses the defined hostname, so compare
+      // the raw referrer. Later pageviews have our previous page as referrer.
+      var rawReferrer = getReferrer(trueVar);
+      var ownHost = rawReferrer.split(slash)[2] == locationHostname;
       var currentReferrerHostname = referrer
         ? referrer.split(slash)[0]
         : undefinedVar;
       sameSite = referrer
-        ? nonUniqueHostnames.indexOf(currentReferrerHostname) > -1 ||
-          currentReferrerHostname == locationHostname
+        ? pages ||
+          ownHost ||
+          nonUniqueHostnames.indexOf(currentReferrerHostname) > -1
         : falseVar;
       /** else **/
       sameSite = referrer
@@ -975,12 +980,11 @@
       // non-unique. We check the raw referrer because the cleaned one has no www.
       // and can have an overwritten hostname. The assignment returns undefined,
       // so `!` keeps true.
-      var rawReferrer = getReferrer(trueVar);
       page.unique =
         isPushState || userNavigated
           ? falseVar
           : (!pages &&
-              rawReferrer.split(slash)[2] == locationHostname &&
+              ownHost &&
               /[?&]__cf_/.test(rawReferrer) &&
               !(referrer = undefinedVar)) ||
             !sameSite;

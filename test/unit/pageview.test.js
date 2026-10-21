@@ -74,6 +74,35 @@ describe("pageview", function () {
     });
   }
 
+  for (const [url, settings, previousPage] of [
+    ["https://www.example.com/b", {}, "www.example.com/b"],
+    ["https://example.com/b", { hostname: "example2.com" }, "example2.com/b"],
+  ]) {
+    it(`compares real hostnames on ${url} with ${JSON.stringify(settings)}`, function () {
+      const dom = createDOM({
+        url,
+        settings,
+        beforeRun(context) {
+          Object.defineProperty(context.document, "referrer", {
+            value: url.replace("/b", "/a"),
+          });
+        },
+      });
+      dom.window.history.pushState({}, "", "/c");
+      dom.window.sa_pageview("/manual");
+      const pageviews = dom.sent
+        .map((request) => new URL(request.url).searchParams)
+        .filter((params) => params.get("type") === "pageview");
+      expect(pageviews.map((params) => params.get("unique"))).to.deep.equal([
+        "false",
+        "false",
+        "false",
+      ]);
+      expect(pageviews[1].get("referrer")).to.equal(previousPage);
+      dom.window.close();
+    });
+  }
+
   it("recognizes challenge arrivals in an overwritten referrer without sending it", function () {
     const dom = createDOM({
       settings: { referrer: "https://example.com/?__cf_chl_tk=challenge" },
