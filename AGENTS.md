@@ -4,7 +4,8 @@ Before working here, read the shared [Simple Analytics instructions](https://git
 
 ## Dist
 
-- `dist/` is generated output. Builds and `pnpm test` rewrite it (each build stamps the date), and a maintainer builds and commits it separately before deploying. Never commit `dist/` changes in feature work; restore it with `git checkout HEAD -- dist` before committing, and skip `dist/` when reviewing or validating changes.
+- `dist/` is gitignored build output. Builds and `pnpm test` write it locally; never commit it.
+- Releases are cut by bumping `VERSION` in `compile.js` on `main`. The Release workflow then builds, tests, and publishes GitHub Release `vN` with `scripts-vN.tar.gz`, which `pnpm run deploy` uploads. Published `vN` SRI files never change.
 
 ## Tracker changes
 

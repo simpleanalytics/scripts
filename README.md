@@ -28,17 +28,24 @@ Install the pinned Node and pnpm versions, run `pnpm install --frozen-lockfile`,
 
 The most important file of the repository is [`/src/default.js`](src/default.js)
 
-## Deploy
+## Release
 
-Build and commit the distribution files before deploying. The deployment command itself never builds or changes local distribution files.
+Each release is one script version, `vN`. Its SRI file (`sri/vN.js`) never changes after publication, and the `latest` files serve the newest deployed release. `dist/` is build output and is not committed.
+
+1. Open a pull request on `main` that bumps `VERSION` in [`compile.js`](compile.js).
+2. Merging it runs the [Release workflow](.github/workflows/release.yml). It builds the scripts once, runs the unit and BrowserStack tests on those files, and publishes GitHub Release `vN` with `scripts-vN.tar.gz`.
+
+## Deploy
 
 ```sh
 pnpm run deploy
 ```
 
-The interactive CLI starts in dry-run mode by default. It lets you select scripts and destinations, reads the deployed files, and shows every affected path plus the first-line script-header diff. Choosing a real deployment requires a clean repository and a second confirmation.
+The interactive CLI starts in dry-run mode by default. You pick a release (the newest by default), and the CLI downloads its `scripts-vN.tar.gz` and checks the file against the SHA-256 digest GitHub recorded. It then shows the release each destination runs now, every affected path, and the first-line script-header diff. It never builds or reads local `dist/` files. Choosing a real deployment requires a clean repository and a second confirmation. To roll back, deploy an older release; published SRI files are never overwritten.
 
-CDN writes use `BUNNY_SCRIPTS_ACCESS_KEY` and `BUNNY_SCRIPTS_ACCOUNT_KEY` from `.env`. Custom-domain reads and writes require SSH access to `app@external.simpleanalytics.com`.
+After a real deployment, the CLI records a GitHub deployment for each destination (`cdn` and `custom-domains`), so [Deployments](https://github.com/simpleanalytics/scripts/deployments) shows what is live. It runs `gh`, or the command in `DEPLOY_GH_COMMAND`.
+
+CDN writes use `BUNNY_SCRIPTS_ACCESS_KEY` and `BUNNY_SCRIPTS_ACCOUNT_KEY` from `.env`. Caddy reads and writes require SSH access to `user@esapp05.simpleanalytics.com`.
 
 ## Device testing is sponsored by BrowserStack
 
