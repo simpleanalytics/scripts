@@ -30,7 +30,7 @@ describe("deployment headers", () => {
     );
     const files = createManifest(
       {
-        destinations: ["cdn", "custom"],
+        destinations: ["cdn", "caddy"],
         scripts: ["default", "auto-events"],
         variants: ["latest", "sri", "light", "proxy"],
       },
