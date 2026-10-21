@@ -37,20 +37,27 @@ describe("auto-events", function () {
     dom.window.close();
   });
 
-  it("collects phone clicks by default without overriding cancelled navigation", function () {
-    const events = [];
+  // Runs auto-events.js on a single link and returns what the click sends
+  function clickLink(href, hostname, event) {
+    const calls = [];
     const navigations = [];
-    let click;
+    const attributes = [];
+    const listeners = [];
     const link = {
-      href: "tel:+31201234567",
+      href,
+      hostname,
+      pathname: "/",
       getAttribute(name) {
         return name === "href" ? this.href : null;
       },
       hasAttribute() {
         return false;
       },
+      setAttribute(name) {
+        attributes.push(name);
+      },
       addEventListener(type, listener) {
-        click = listener;
+        listeners.push({ type, listener });
       },
     };
     const document = {
@@ -65,9 +72,8 @@ describe("auto-events", function () {
       document,
       location: { hostname: "example.com" },
       sa_event_loaded: true,
-      sa_event(name, metadata, callback) {
-        events.push({ name, metadata });
-        callback();
+      sa_event() {
+        calls.push([...arguments]);
       },
     };
     runInNewContext(readFileSync("dist/latest/auto-events.js", "utf8"), {
@@ -75,13 +81,42 @@ describe("auto-events", function () {
       document,
       console,
     });
-    click.call(link, { defaultPrevented: true });
-    expect(events).to.deep.equal([
+    for (const { listener } of listeners) listener.call(link, event);
+    return { calls, navigations, attributes, listeners };
+  }
+
+  it("collects phone clicks by default without overriding cancelled navigation", function () {
+    const { calls, navigations } = clickLink("tel:+31201234567", "", {
+      defaultPrevented: true,
+    });
+    expect(calls.map(([name, metadata]) => ({ name, metadata }))).to.deep.equal(
+      [
+        {
+          name: "phone_31201234567",
+          metadata: { title: undefined, phone: "+31201234567" },
+        },
+      ]
+    );
+    expect(navigations).to.deep.equal([]);
+  });
+
+  it("sends outbound clicks with keepalive without cancelling the click", function () {
+    let prevented = false;
+    const { calls, navigations, attributes, listeners } = clickLink(
+      "https://example.org/",
+      "example.org",
       {
-        name: "phone_31201234567",
-        metadata: { title: undefined, phone: "+31201234567" },
-      },
-    ]);
+        preventDefault() {
+          prevented = true;
+        },
+      }
+    );
+    expect(attributes).to.deep.equal([]);
+    expect(listeners.map(({ type }) => type)).to.deep.equal(["click"]);
+    expect(calls).to.have.length(1);
+    expect(calls[0][0]).to.equal("outbound_example_org");
+    expect(calls[0][3]).to.equal(true);
+    expect(prevented).to.equal(false);
     expect(navigations).to.deep.equal([]);
   });
 
