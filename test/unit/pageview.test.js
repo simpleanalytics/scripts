@@ -54,6 +54,26 @@ describe("pageview", function () {
     dom.window.close();
   });
 
+  for (const [url, settings] of [
+    ["https://www.example.com/", {}],
+    ["https://www.example.com/", { nonUniqueHostnames: "example.com" }],
+    [
+      "https://app.mysite.com/",
+      { hostname: "mysite.com", nonUniqueHostnames: "mysite.com" },
+    ],
+  ]) {
+    it(`drops the challenge referrer on ${url} with ${JSON.stringify(settings)}`, function () {
+      const dom = createDOM({
+        url,
+        settings: { ...settings, referrer: `${url}?__cf_chl_tk=challenge` },
+      });
+      const params = new URL(dom.sent[0].url).searchParams;
+      expect(params.get("unique")).to.equal("true");
+      expect(params.get("referrer")).to.equal(null);
+      dom.window.close();
+    });
+  }
+
   it("recognizes challenge arrivals in an overwritten referrer without sending it", function () {
     const dom = createDOM({
       settings: { referrer: "https://example.com/?__cf_chl_tk=challenge" },
