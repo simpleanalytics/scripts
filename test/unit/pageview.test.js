@@ -152,6 +152,21 @@ describe("pageview", function () {
     dom.window.close();
   });
 
+  it("falls back to a pixel when sendBeacon throws", function () {
+    const dom = withClock();
+    dom.window.navigator.sendBeacon = function () {
+      throw new TypeError("Illegal invocation");
+    };
+    dom.clock.time += 2000;
+    setVisibility(dom, "hidden");
+    const append = dom.sent.find(
+      (r) => r.type === "image" && /type=append/.test(r.url)
+    );
+    expect(append, "append gif request").to.exist;
+    expect(new URL(append.url).searchParams.get("duration")).to.equal("2");
+    dom.window.close();
+  });
+
   it("sends pageview, event and beacon requests", function (done) {
     const dom = withClock({ navigationType: "reload" });
     dom.clock.time += 2000;

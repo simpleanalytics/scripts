@@ -705,9 +705,13 @@
       // The queue drops appends without values
       if (!append.duration && !append.scrolled) return;
 
-      // sendData will assign payload to request
-      if (push || !nav.sendBeacon) sendData(append, undefinedVar, trueVar);
-      else nav.sendBeacon(fullApiUrl + "/append", stringify(append));
+      // Other scripts can break sendBeacon ("Illegal invocation", see #42),
+      // then fall back to sendData, which will assign payload to request
+      try {
+        if (!push && nav.sendBeacon)
+          return nav.sendBeacon(fullApiUrl + "/append", stringify(append));
+      } catch (error) {}
+      sendData(append, undefinedVar, trueVar);
     };
 
     /** if duration **/
