@@ -4,15 +4,27 @@ const { runInContext } = require("vm");
 const { createDOM, SCRIPT_PATH } = require("./helpers/dom");
 
 describe("pageview", function () {
-  for (const [referrer, unique] of [
-    ["https://external.example/?__cf_chl_tk=challenge", true],
-    ["https://external.example/?source=mail&__cf_chl_rt_tk=challenge", true],
-    ["https://example.com/?__cf_chl_tk=challenge", true],
-    ["https://example.com/?source=mail&__cf_chl_rt_tk=challenge", true],
-    ["https://example.com/previous", false],
-    ["https://example.com/docs/__cf_workers", false],
-    ["https://example.com/?next=?__cf_chl_tk=challenge", true],
-    ["https://example.com/#?__cf_chl_tk=challenge", true],
+  for (const [referrer, unique, sentReferrer] of [
+    [
+      "https://external.example/?__cf_chl_tk=challenge",
+      true,
+      "external.example/",
+    ],
+    [
+      "https://external.example/?source=mail&__cf_chl_rt_tk=challenge",
+      true,
+      "external.example/",
+    ],
+    ["https://example.com/?__cf_chl_tk=challenge", true, null],
+    ["https://example.com/?source=mail&__cf_chl_rt_tk=challenge", true, null],
+    ["https://example.com/previous", false, "example.com/previous"],
+    [
+      "https://example.com/docs/__cf_workers",
+      false,
+      "example.com/docs/__cf_workers",
+    ],
+    ["https://example.com/?next=?__cf_chl_tk=challenge", true, null],
+    ["https://example.com/#?__cf_chl_tk=challenge", true, null],
   ]) {
     it(`uses the simple Cloudflare marker for ${referrer}`, function () {
       const dom = createDOM({
@@ -24,7 +36,7 @@ describe("pageview", function () {
       });
       const url = new URL(dom.sent[0].url);
       expect(url.searchParams.get("unique")).to.equal(String(unique));
-      expect(url.searchParams.get("referrer")).not.to.include("challenge");
+      expect(url.searchParams.get("referrer")).to.equal(sentReferrer);
       dom.window.close();
     });
   }
@@ -38,16 +50,17 @@ describe("pageview", function () {
     });
     const url = new URL(dom.sent[0].url);
     expect(url.searchParams.get("unique")).to.equal("false");
+    expect(url.searchParams.get("referrer")).to.equal("partner.example/");
     dom.window.close();
   });
 
-  it("recognizes challenge arrivals in an overwritten referrer without sending its query", function () {
+  it("recognizes challenge arrivals in an overwritten referrer without sending it", function () {
     const dom = createDOM({
       settings: { referrer: "https://example.com/?__cf_chl_tk=challenge" },
     });
     const url = new URL(dom.sent[0].url);
     expect(url.searchParams.get("unique")).to.equal("true");
-    expect(url.searchParams.get("referrer")).to.equal("example.com/");
+    expect(url.searchParams.get("referrer")).to.equal(null);
     dom.window.close();
   });
 

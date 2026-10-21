@@ -966,15 +966,21 @@
       /** endif **/
 
       /** if uniques **/
-      // Only the first pageview can use a Cloudflare referrer as a unique arrival.
-      // Challenges run on this site, so other non-unique hostnames stay non-unique.
+      // Cloudflare challenges (managed challenge, "I'm Under Attack" mode) run on
+      // this site and then load the page with the challenge URL as referrer, so
+      // new visitors look like internal navigation. The first pageview with such
+      // a referrer from this site counts as unique. We also drop that referrer:
+      // the original one is lost (the browser replaced it and we don't run on the
+      // challenge page), and the queue marks pageviews with our own hostname as
+      // referrer non-unique. The assignment returns undefined, so `!` keeps true.
       page.unique =
         isPushState || userNavigated
           ? falseVar
           : !sameSite ||
             (!pages &&
               currentReferrerHostname == locationHostname &&
-              /[?&]__cf_/.test(getReferrer(trueVar)));
+              /[?&]__cf_/.test(getReferrer(trueVar)) &&
+              !(referrer = undefinedVar));
       /** endif **/
 
       /** if metadata **/
