@@ -130,7 +130,7 @@
           "_" +
           event.replace(/[^a-z0-9]+/gi, "_").replace(/(^_+|_+$)/g, "");
 
-        window[saGlobal](clean, metadata, function () {}, true);
+        window[saGlobal](clean, metadata, 0, true);
 
         log("collected " + clean);
       } else {
