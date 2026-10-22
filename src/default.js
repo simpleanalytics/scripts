@@ -672,19 +672,23 @@
         // Skip invalid values and values too large for setTimeout
         if (ms > 0 && ms < 2e9)
           return (pingTimer = setTimeout(function () {
-            sendOnLeave();
+            sendOnLeave(undefinedVar, falseVar, trueVar);
             schedulePing();
           }, ms));
       }
     };
     /** endif **/
 
-    var sendOnLeave = function (id, push) {
+    var sendOnLeave = function (id, push, ping) {
       if (!collectDataOnLeave || !pages) return;
 
       var append = assign(basePayload, {
         type: "append",
         original_id: push ? id : payload.page_id,
+        /** if duration **/
+        // Marks pings, so the backend can block them for plans without pings
+        ping: ping,
+        /** endif **/
       });
 
       /** if duration **/
@@ -1295,7 +1299,8 @@
     /** endif **/
   }
 })(
-  typeof window != "undefined" && window,
+  // typeof is "undefined" without a window, which sorts after "u"
+  typeof window < "u" && window,
   "{{baseUrl}}",
   "{{apiUrlPrefix}}",
   "{{scriptName}}",
