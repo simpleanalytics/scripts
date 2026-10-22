@@ -17,9 +17,9 @@
     "deploy": "node --env-file-if-exists=.env deploy.mts",
     "pretest": "pnpm run build:testing",
     "test": "node -r dotenv/config ./test/index.js",
-    "test:unit": "mocha \"test/unit/*.test.js\" --exit",
+    "test:unit": "pnpm run build && mocha \"test/unit/*.test.js\" --exit",
     "test:matrix": "mocha test/helpers/get-browsers.test.js",
-    "test:deploy": "node --test test/deploy.test.mts",
+    "test:deploy": "pnpm run build && node --test test/deploy.test.mts",
     "posttest": "pnpm run build",
     "typecheck": "tsc --noEmit"
   },

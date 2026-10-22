@@ -1,0 +1,86 @@
+name: Release
+
+# Bumping VERSION in compile.js on main publishes GitHub Release vN with the
+# BrowserStack-tested build. Deploying it stays a manual `pnpm run deploy`.
+on:
+  push:
+    branches: [main]
+    paths: [compile.js]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  version:
+    # workflow_dispatch can run on any branch, but only main is released
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+      released: ${{ steps.version.outputs.released }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Read the script version
+        id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(sed -n 's/^const VERSION = \([0-9][0-9]*\);$/\1/p' compile.js)
+          if [ -z "$version" ]; then
+            echo "::error file=compile.js::Unable to read const VERSION"
+            exit 1
+          fi
+          tag="v$version"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          # A draft doesn't count (publishing can fail after it's created), and
+          # this read-only token can't see drafts anyway
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json isDraft \
+              --jq ".isDraft | not" 2> /dev/null | grep -qx true; then
+            echo "released=true" >> "$GITHUB_OUTPUT"
+            echo "$tag is already released; bump VERSION in compile.js to release." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  test:
+    needs: version
+    if: needs.version.outputs.released != 'true'
+    uses: ./.github/workflows/browserstack.yml
+    with:
+      upload-dist: true
+    secrets: inherit
+
+  publish:
+    needs: [version, test]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist
+
+      - name: Publish ${{ needs.version.outputs.tag }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.version.outputs.tag }}
+        run: |
+          tar -czf "scripts-$TAG.tar.gz" dist
+          # Reuse the draft of an earlier run whose publish failed
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            gh release upload "$TAG" "scripts-$TAG.tar.gz" --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$TAG" "scripts-$TAG.tar.gz" \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" \
+              --title "$TAG" \
+              --generate-notes \
+              --draft
+          fi
+          gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" --draft=false --latest

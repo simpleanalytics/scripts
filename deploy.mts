@@ -7,9 +7,11 @@ import {
   multiselect,
   note,
   outro,
+  select,
   spinner,
 } from "@clack/prompts";
 import { spawn } from "node:child_process";
+import { createHash } from "node:crypto";
 import { mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
@@ -69,6 +71,14 @@ interface DeploymentResult {
   failed: string[];
 }
 
+interface Release {
+  archiveDigest: string | null;
+  archiveUrl: string;
+  publishedAt: string;
+  tag: string;
+  url: string;
+}
+
 const ROOT = dirname(fileURLToPath(import.meta.url));
 // Caddy injects the request hostname at serve time with its templates
 // directive, so the nginx SSI directives are rewritten to Go template
@@ -98,6 +108,14 @@ const CDN_PUBLIC_ROOT = "https://scripts.simpleanalyticscdn.com";
 const CDN_STORAGE_ROOT = "https://storage.bunnycdn.com/sa-cdn";
 const CDN_PURGE_URL =
   "https://api.bunny.net/purge?url=https://simpleanalyticscdn.b-cdn.net/*";
+const GITHUB_REPOSITORY = "simpleanalytics/scripts";
+const GITHUB_API_ROOT = `https://api.github.com/repos/${GITHUB_REPOSITORY}`;
+// GitHub deployment environments that record which release each destination
+// runs, shown at github.com/simpleanalytics/scripts/deployments.
+const ENVIRONMENTS: Record<Destination, { name: string; url?: string }> = {
+  caddy: { name: "custom-domains" },
+  cdn: { name: "cdn", url: `${CDN_PUBLIC_ROOT}/latest.js` },
+};
 export const HEADER_PATTERN =
   /^\/\* Simple Analytics - Privacy(?: friendly|-first) analytics \(docs\.simpleanalytics\.com\/[^;]+; \d{4}-\d{2}-\d{2}; [0-9a-f]{4}(?:; SRI-version)?(?:; v\d+)?\) \*\/$/;
 
@@ -329,10 +347,10 @@ export function latestVersionFromNames(names: string[]): number | undefined {
   return versions[0];
 }
 
-async function discoverSriVersion(): Promise<number> {
-  const version = latestVersionFromNames(await readdir(resolve(ROOT, "dist")));
+async function discoverSriVersion(root: string): Promise<number> {
+  const version = latestVersionFromNames(await readdir(resolve(root, "dist")));
   if (version === undefined) {
-    throw new Error("No versioned SRI directory exists in dist.");
+    throw new Error("No versioned SRI directory exists in the release.");
   }
   return version;
 }
@@ -401,12 +419,15 @@ export function repositoryPolicy(
   );
 }
 
-async function prepareFiles(files: DeployFile[]): Promise<PreparedFile[]> {
+async function prepareFiles(
+  files: DeployFile[],
+  root: string,
+): Promise<PreparedFile[]> {
   return Promise.all(
     files.map(async (file) => {
       let source: Buffer;
       try {
-        source = await readFile(resolve(ROOT, file.localPath));
+        source = await readFile(resolve(root, file.localPath));
       } catch (error) {
         throw new Error(`Missing deployment artifact: ${file.localPath}`, {
           cause: error,
@@ -505,6 +526,81 @@ async function readCdnFile(
   }
 
   return Buffer.from(await response.arrayBuffer());
+}
+
+async function readGitHub<T>(path: string): Promise<T> {
+  const response = await fetch(`${GITHUB_API_ROOT}/${path}`, {
+    headers: { Accept: "application/vnd.github+json" },
+    signal: AbortSignal.timeout(30_000),
+  });
+  if (!response.ok) {
+    throw new Error(`Unable to read GitHub ${path}: HTTP ${response.status}`);
+  }
+  return (await response.json()) as T;
+}
+
+async function listReleases(): Promise<Release[]> {
+  const releases = await readGitHub<
+    Array<{
+      assets: Array<{
+        browser_download_url: string;
+        digest: string | null;
+        name: string;
+      }>;
+      html_url: string;
+      published_at: string;
+      tag_name: string;
+    }>
+  >("releases?per_page=100");
+
+  return releases.flatMap((release) => {
+    const archive = release.assets.find(
+      (asset) => asset.name === `scripts-${release.tag_name}.tar.gz`,
+    );
+    // Without a recorded digest the download can't be verified
+    if (!archive?.digest) return [];
+    return [
+      {
+        archiveDigest: archive.digest,
+        archiveUrl: archive.browser_download_url,
+        publishedAt: release.published_at,
+        tag: release.tag_name,
+        url: release.html_url,
+      },
+    ];
+  });
+}
+
+// Downloads the release archive built and tested by the Release workflow,
+// checks it against the digest GitHub recorded, and extracts it.
+async function downloadRelease(release: Release): Promise<string> {
+  const response = await fetch(release.archiveUrl, {
+    redirect: "follow",
+    signal: AbortSignal.timeout(60_000),
+  });
+  if (!response.ok) {
+    throw new Error(`Unable to download ${release.tag}: HTTP ${response.status}`);
+  }
+  const archive = Buffer.from(await response.arrayBuffer());
+  const digest = `sha256:${createHash("sha256").update(archive).digest("hex")}`;
+  if (digest !== release.archiveDigest) {
+    throw new Error(
+      `The ${release.tag} archive does not match the digest GitHub recorded (${
+        release.archiveDigest ?? "none"
+      }).`,
+    );
+  }
+
+  const directory = await mkdtemp(join(tmpdir(), "sa-release-"));
+  try {
+    const archivePath = join(directory, "release.tar.gz");
+    await writeFile(archivePath, archive);
+    await runCommand("tar", ["-xzf", archivePath, "-C", directory]);
+    return directory;
+  } catch (error) {
+    await rm(directory, { force: true, recursive: true });
+    throw error;
+  }
 }
 
 function assertSafeRemotePath(remotePath: string): void {
@@ -685,6 +781,130 @@ function renderPreview(
   );
 }
 
+async function renderRelease(
+  release: Release,
+  destinations: Destination[],
+): Promise<void> {
+  const lines = [
+    `${release.tag}, published ${release.publishedAt.slice(0, 10)}`,
+    release.url,
+  ];
+  for (const destination of destinations) {
+    const environment = ENVIRONMENTS[destination].name;
+    const deployments = (
+      await readGitHub<Array<{ created_at: string; id: number; ref: string }>>(
+        `deployments?environment=${environment}&per_page=10`,
+      )
+    ).sort((a, b) => b.created_at.localeCompare(a.created_at));
+
+    // A failed attempt doesn't change what runs, so the newest success does
+    let current: (typeof deployments)[number] | undefined;
+    for (const deployment of deployments) {
+      const [status] = await readGitHub<Array<{ state: string }>>(
+        `deployments/${deployment.id}/statuses?per_page=1`,
+      );
+      if (status?.state === "success") {
+        current = deployment;
+        break;
+      }
+      lines.push(
+        `${environment}: ${deployment.ref} ${status?.state ?? "without status"} on ${deployment.created_at.slice(
+          0,
+          10,
+        )}`,
+      );
+    }
+    if (!current) {
+      lines.push(
+        `${environment}: ${
+          deployments.length
+            ? `no successful deployment in the last ${deployments.length}`
+            : "no recorded deployment"
+        } → ${release.tag}`,
+      );
+      continue;
+    }
+
+    lines.push(
+      `${environment}: ${current.ref} (deployed ${current.created_at.slice(
+        0,
+        10,
+      )}) → ${release.tag}`,
+    );
+    if (current.ref !== release.tag) {
+      lines.push(
+        `  https://github.com/${GITHUB_REPOSITORY}/compare/${current.ref}...${release.tag}`,
+      );
+    }
+  }
+  note(lines.join("\n"), "Release");
+}
+
+// Records the deployment per destination so GitHub shows what is live. The
+// command defaults to gh; DEPLOY_GH_COMMAND can point to a token broker.
+async function recordDeployments(
+  release: Release,
+  selections: DeploySelections,
+  state: "success" | "failure",
+): Promise<void> {
+  const [command, ...prefix] = (process.env.DEPLOY_GH_COMMAND || "gh")
+    .trim()
+    .split(/\s+/);
+  const description = [...selections.scripts, ...selections.variants].join(", ");
+
+  for (const destination of selections.destinations) {
+    const environment = ENVIRONMENTS[destination];
+    const progress = spinner();
+    progress.start(`Recording ${release.tag} on ${environment.name} in GitHub`);
+    try {
+      const { stdout } = await runCommand(
+        command,
+        [
+          ...prefix,
+          "api",
+          `repos/${GITHUB_REPOSITORY}/deployments`,
+          "-f",
+          `ref=${release.tag}`,
+          "-f",
+          `environment=${environment.name}`,
+          "-f",
+          `description=${description}`,
+          "-F",
+          "auto_merge=false",
+          "-F",
+          "production_environment=true",
+          "-f",
+          "required_contexts[]",
+        ],
+        { timeout: 120_000 },
+      );
+      const { id } = JSON.parse(stdout.toString("utf8")) as { id: number };
+      await runCommand(
+        command,
+        [
+          ...prefix,
+          "api",
+          `repos/${GITHUB_REPOSITORY}/deployments/${id}/statuses`,
+          "-f",
+          `state=${state}`,
+          "-f",
+          `log_url=${release.url}`,
+          ...(environment.url ? ["-f", `environment_url=${environment.url}`] : []),
+        ],
+        { timeout: 120_000 },
+      );
+      progress.stop(`Recorded ${release.tag} on ${environment.name} as ${state}`);
+    } catch (error) {
+      progress.error(`Unable to record ${release.tag} on ${environment.name}`);
+      log.warn(
+        `${error instanceof Error ? error.message : String(error)}\nRun the deployment of ${
+          release.tag
+        } again: unchanged files are skipped and the deployment is recorded.`,
+      );
+    }
+  }
+}
+
 function cdnCredentials(): CdnCredentials {
   const accessKey = process.env.BUNNY_SCRIPTS_ACCESS_KEY;
   const accountKey = process.env.BUNNY_SCRIPTS_ACCOUNT_KEY;
@@ -804,9 +1024,9 @@ class DeploymentFailure extends Error {
 
 async function deployFiles(
   previews: PreviewFile[],
-  credentials?: CdnCredentials,
+  credentials: CdnCredentials | undefined,
+  result: DeploymentResult,
 ): Promise<DeploymentResult> {
-  const result: DeploymentResult = { completed: [], failed: [], skipped: [] };
   const filesToWrite: PreparedFile[] = [];
 
   try {
@@ -925,12 +1145,28 @@ async function main(): Promise<void> {
   const dirty = await isRepositoryDirty();
   if (repositoryPolicy(dryRun, dirty) === "warn") {
     log.warn(
-      "The repository has uncommitted changes. This dry run previews the current dist files only.",
+      "The repository has uncommitted changes. This dry run uses the local deployment code.",
     );
   }
 
+  const releases = await listReleases();
+  if (releases.length === 0) {
+    throw new Error("No GitHub release has a scripts-vN.tar.gz archive yet.");
+  }
+  const release = selectedValue(
+    await select<Release>({
+      message: "Which release do you want to deploy?",
+      options: releases.map((release) => ({
+        hint: `published ${release.publishedAt.slice(0, 10)}`,
+        label: release.tag,
+        value: release,
+      })),
+    }),
+  );
+
   const scripts = selectedValue(
     await multiselect<ScriptChoice>({
+      initialValues: ["default", "auto-events"],
       message: "Scripts to deploy",
       options: [
         { label: "Default embed", value: "default" },
@@ -974,8 +1210,26 @@ async function main(): Promise<void> {
   }
 
   const selections = { destinations, scripts, variants };
-  const version = variants.includes("sri") ? await discoverSriVersion() : undefined;
-  const preparedFiles = await prepareFiles(createManifest(selections, version));
+  const download = spinner();
+  download.start(`Downloading ${release.tag}`);
+  let directory: string;
+  try {
+    directory = await downloadRelease(release);
+    download.stop(`Downloaded and verified ${release.tag}`);
+  } catch (error) {
+    download.error(`Unable to download ${release.tag}`);
+    throw error;
+  }
+
+  let version: number | undefined;
+  let preparedFiles: PreparedFile[];
+  try {
+    version = variants.includes("sri") ? await discoverSriVersion(directory) : undefined;
+    preparedFiles = await prepareFiles(createManifest(selections, version), directory);
+  } finally {
+    await rm(directory, { force: true, recursive: true });
+  }
+
   const inspection = spinner();
   inspection.start("Inspecting deployed files");
   let previews: PreviewFile[];
@@ -986,6 +1240,7 @@ async function main(): Promise<void> {
     inspection.error("Unable to inspect deployed files");
     throw error;
   }
+  await renderRelease(release, destinations);
   renderPreview(previews, selections, dryRun, version);
 
   const counts = summarize(previews);
@@ -1016,8 +1271,37 @@ async function main(): Promise<void> {
     return;
   }
 
-  const result = await deployFiles(previews, credentials);
+  // Deploy and record one destination at a time, so a failure on one doesn't
+  // mark the other as failed. Only deployments with latest.js change the
+  // release a destination runs.
+  const result: DeploymentResult = { completed: [], failed: [], skipped: [] };
+  const recordRelease =
+    scripts.includes("default") && variants.includes("latest");
+  for (const destination of destinations) {
+    let state: "success" | "failure" = "failure";
+    try {
+      await deployFiles(
+        previews.filter((file) => file.destination === destination),
+        credentials,
+        result,
+      );
+      state = "success";
+    } finally {
+      if (recordRelease) {
+        await recordDeployments(
+          release,
+          { ...selections, destinations: [destination] },
+          state,
+        );
+      }
+    }
+  }
   renderDeploymentResult(result);
+  if (!recordRelease) {
+    log.info(
+      "Not recorded in GitHub: without latest.js the destinations keep running their recorded release.",
+    );
+  }
   if (variants.includes("sri")) {
     log.warn(
       "Update https://docs.simpleanalytics.com/sri with the SRI version.",
