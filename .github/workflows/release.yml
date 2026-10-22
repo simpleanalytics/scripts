@@ -38,11 +38,10 @@ jobs:
           fi
           tag="v$version"
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
-          # Only a published release with its archive counts: publishing can
-          # fail after the draft is created
-          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json isDraft,assets \
-              --jq "(.isDraft | not) and any(.assets[]; .name == \"scripts-$tag.tar.gz\")" \
-              2> /dev/null | grep -qx true; then
+          # A draft doesn't count (publishing can fail after it's created), and
+          # this read-only token can't see drafts anyway
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json isDraft \
+              --jq ".isDraft | not" 2> /dev/null | grep -qx true; then
             echo "released=true" >> "$GITHUB_OUTPUT"
             echo "$tag is already released; bump VERSION in compile.js to release." >> "$GITHUB_STEP_SUMMARY"
           fi
