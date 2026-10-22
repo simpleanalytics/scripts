@@ -551,13 +551,14 @@ async function listReleases(): Promise<Release[]> {
       published_at: string;
       tag_name: string;
     }>
-  >("releases?per_page=20");
+  >("releases?per_page=100");
 
   return releases.flatMap((release) => {
     const archive = release.assets.find(
       (asset) => asset.name === `scripts-${release.tag_name}.tar.gz`,
     );
-    if (!archive) return [];
+    // Without a recorded digest the download can't be verified
+    if (!archive?.digest) return [];
     return [
       {
         archiveDigest: archive.digest,
@@ -814,7 +815,13 @@ async function renderRelease(
       );
     }
     if (!current) {
-      lines.push(`${environment}: no successful deployment → ${release.tag}`);
+      lines.push(
+        `${environment}: ${
+          deployments.length
+            ? `no successful deployment in the last ${deployments.length}`
+            : "no recorded deployment"
+        } → ${release.tag}`,
+      );
       continue;
     }
 

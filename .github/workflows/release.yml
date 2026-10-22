@@ -28,6 +28,8 @@ jobs:
 
       - name: Read the script version
         id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           version=$(sed -n 's/^const VERSION = \([0-9][0-9]*\);$/\1/p' compile.js)
           if [ -z "$version" ]; then
@@ -36,7 +38,11 @@ jobs:
           fi
           tag="v$version"
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
-          if git ls-remote --exit-code --tags origin "refs/tags/$tag" > /dev/null; then
+          # Only a published release with its archive counts: publishing can
+          # fail after the draft is created
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json isDraft,assets \
+              --jq "(.isDraft | not) and any(.assets[]; .name == \"scripts-$tag.tar.gz\")" \
+              2> /dev/null | grep -qx true; then
             echo "released=true" >> "$GITHUB_OUTPUT"
             echo "$tag is already released; bump VERSION in compile.js to release." >> "$GITHUB_STEP_SUMMARY"
           fi

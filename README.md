@@ -43,7 +43,7 @@ pnpm run deploy
 
 The interactive CLI starts in dry-run mode by default. You pick a release (the newest by default), and the CLI downloads its `scripts-vN.tar.gz` and checks the file against the SHA-256 digest GitHub recorded. It then shows the release each destination runs now, every affected path, and the first-line script-header diff. It never builds or reads local `dist/` files. Choosing a real deployment requires a clean repository and a second confirmation. To roll back, deploy an older release; published SRI files are never overwritten.
 
-After a real deployment, the CLI records a GitHub deployment for each destination (`cdn` and `custom-domains`), so [Deployments](https://github.com/simpleanalytics/scripts/deployments) shows what is live. It runs `gh`, or the command in `DEPLOY_GH_COMMAND`.
+After a real deployment that includes `latest.js`, the CLI records a GitHub deployment for each destination (`cdn` and `custom-domains`), so [Deployments](https://github.com/simpleanalytics/scripts/deployments) shows what is live. Deployments of only auto-events, SRI or light aren't recorded, because the destination keeps running its recorded release. It runs `gh`, or the command in `DEPLOY_GH_COMMAND`.
 
 CDN writes use `BUNNY_SCRIPTS_ACCESS_KEY` and `BUNNY_SCRIPTS_ACCOUNT_KEY` from `.env`. Caddy reads and writes require SSH access to `user@esapp05.simpleanalytics.com`.
 
