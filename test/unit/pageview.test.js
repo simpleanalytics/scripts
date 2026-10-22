@@ -226,6 +226,32 @@ describe("pageview", function () {
     dom.window.close();
   });
 
+  it("marks appends sent by pings", function () {
+    const clock = { time: 1e12 };
+    const timers = [];
+    const dom = createDOM({
+      settings: { pings: [5] },
+      beforeRun(context) {
+        context.Date.now = () => clock.time;
+        context.setTimeout = (callback, ms) => timers.push({ callback, ms });
+      },
+    });
+    const ping = timers.find((timer) => timer.ms === 5000);
+    clock.time += 5000;
+    ping.callback();
+    setVisibility(dom, "hidden");
+    expect(
+      dom.sent
+        .filter((r) => r.type === "beacon")
+        .map((r) => JSON.parse(r.data))
+        .map(({ duration, ping }) => ({ duration, ping }))
+    ).to.deep.equal([
+      { duration: 5, ping: true },
+      { duration: 5, ping: undefined },
+    ]);
+    dom.window.close();
+  });
+
   it("falls back to a pixel when sendBeacon throws", function () {
     const dom = withClock();
     dom.window.navigator.sendBeacon = function () {
