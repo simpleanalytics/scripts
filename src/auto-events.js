@@ -1,6 +1,7 @@
 (function saAutomatedEvents(window) {
-  // Skip server side rendered pages
-  if (typeof window === "undefined") return;
+  // Skip server side rendered pages. Without a window the call at the bottom
+  // passes false: typeof is then "undefined", which sorts after "u".
+  if (!window) return;
 
   var log = function (message, type) {
     var logger = type === "warn" ? console.warn : console.info;
@@ -75,7 +76,7 @@
   if (typeof optionsLink === "undefined")
     log("options object not found, please specify", "warn");
 
-  var saAutomatedLink = function saAutomatedLink(element, type) {
+  function saAutomatedLink(element, type) {
     try {
       if (!element) return log("no element found");
 
@@ -139,9 +140,7 @@
     } catch (error) {
       log(error.message, "warn");
     }
-  };
-
-  window.saAutomatedLink = saAutomatedLink;
+  }
 
   function collectLink(link) {
     if (link.hasAttribute("data-simple-event")) return;
@@ -208,4 +207,4 @@
       if (event.target.readyState === "complete") onDOMContentLoaded();
     });
   }
-})(window);
+})(typeof window < "u" && window);

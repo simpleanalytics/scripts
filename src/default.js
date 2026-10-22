@@ -1299,7 +1299,8 @@
     /** endif **/
   }
 })(
-  typeof window != "undefined" && window,
+  // typeof is "undefined" without a window, which sorts after "u"
+  typeof window < "u" && window,
   "{{baseUrl}}",
   "{{apiUrlPrefix}}",
   "{{scriptName}}",
