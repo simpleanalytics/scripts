@@ -1,57 +1,25 @@
 const { expect } = require("chai");
-const { createDOM } = require("./helpers/dom-auto-events");
 const { createDOM: createTrackerDOM } = require("./helpers/dom");
 const { readFileSync } = require("fs");
 const { runInContext, runInNewContext } = require("vm");
 
-function setupDOM() {
-  const events = [];
-  const dom = createDOM({
-    beforeRun(vm) {
-      vm.sa_event = function (name, metadata, cb) {
-        events.push({ name, metadata });
-        if (typeof cb === "function") cb();
-      };
-      vm.sa_event_loaded = true;
-    },
-  });
-  dom.events = events;
-  return dom;
-}
-
 describe("auto-events", function () {
-  it("keeps phone metadata when the title names the event", function () {
-    const dom = setupDOM();
-    const link = dom.window.document.createElement("a");
-    link.href = "tel:+31201234567?extension=42";
-    link.title = "Call sales";
-
-    dom.window.saAutomatedLink(link, "phone");
-
-    expect(dom.events).to.deep.equal([
-      {
-        name: "phone_Call_sales",
-        metadata: { title: "Call sales", phone: "+31201234567" },
-      },
-    ]);
-    dom.window.close();
-  });
-
   // Runs auto-events.js on a single link and returns what the click sends
-  function clickLink(href, hostname, event) {
+  function clickLink(href, { title, event = {} } = {}) {
     const calls = [];
     const navigations = [];
     const attributes = [];
     const listeners = [];
+    const { hostname, pathname } = new URL(href);
     const link = {
       href,
       hostname,
-      pathname: "/",
+      pathname,
       getAttribute(name) {
-        return name === "href" ? this.href : null;
+        return { href, title }[name] ?? null;
       },
-      hasAttribute() {
-        return false;
+      hasAttribute(name) {
+        return this.getAttribute(name) !== null;
       },
       setAttribute(name) {
         attributes.push(name);
@@ -85,9 +53,47 @@ describe("auto-events", function () {
     return { calls, navigations, attributes, listeners };
   }
 
+  it("keeps phone metadata when the title names the event", function () {
+    const { calls } = clickLink("tel:+31201234567?extension=42", {
+      title: "Call sales",
+    });
+    expect(calls.map(([name, metadata]) => ({ name, metadata }))).to.deep.equal(
+      [
+        {
+          name: "phone_Call_sales",
+          metadata: { title: "Call sales", phone: "+31201234567" },
+        },
+      ]
+    );
+  });
+
+  for (const [href, name, metadata] of [
+    [
+      "https://example.org/path",
+      "outbound_example_org",
+      { url: "https://example.org/path" },
+    ],
+    [
+      "https://example.com/file.pdf",
+      "download_file_pdf",
+      { url: "https://example.com/file.pdf" },
+    ],
+    [
+      "mailto:test@example.com",
+      "email_test_example_com",
+      { email: "test@example.com" },
+    ],
+  ]) {
+    it(`tracks clicks on ${href}`, function () {
+      const { calls } = clickLink(href);
+      expect(calls[0][0]).to.equal(name);
+      expect(calls[0][1]).to.include(metadata);
+    });
+  }
+
   it("collects phone clicks by default without overriding cancelled navigation", function () {
-    const { calls, navigations } = clickLink("tel:+31201234567", "", {
-      defaultPrevented: true,
+    const { calls, navigations } = clickLink("tel:+31201234567", {
+      event: { defaultPrevented: true },
     });
     expect(calls.map(([name, metadata]) => ({ name, metadata }))).to.deep.equal(
       [
@@ -104,10 +110,11 @@ describe("auto-events", function () {
     let prevented = false;
     const { calls, navigations, attributes, listeners } = clickLink(
       "https://example.org/",
-      "example.org",
       {
-        preventDefault() {
-          prevented = true;
+        event: {
+          preventDefault() {
+            prevented = true;
+          },
         },
       }
     );
@@ -124,22 +131,30 @@ describe("auto-events", function () {
     [{ namespace: "ba" }, "ba_event"],
     [{ saGlobal: "my_event" }, "my_event"],
   ]) {
-    it(`sends events through the ${saGlobal} tracker function`, function () {
+    it(`sends events through the ${saGlobal} tracker function`, async function () {
       const dom = createTrackerDOM({
         settings: { autoCollect: false, ...settings },
       });
-      const script = dom.window.document.createElement("script");
+      const { document } = dom.window;
+      const script = document.createElement("script");
       script.src = "auto-events.js";
       script.setAttribute("data-sa-global", saGlobal);
-      dom.window.document.head.appendChild(script);
+      document.head.appendChild(script);
+      const link = document.createElement("a");
+      link.href = "https://example.org/path";
+      document.body.appendChild(link);
       runInContext(
         readFileSync("dist/latest/auto-events.js", "utf8"),
         dom.getInternalVMContext()
       );
-      const link = dom.window.document.createElement("a");
-      link.href = "https://example.org/path";
+      // auto-events.js binds links once the document is complete
+      await new Promise((resolve) => setTimeout(resolve));
+      // jsdom doesn't implement navigation
+      document.addEventListener("click", (event) => event.preventDefault());
 
-      dom.window.saAutomatedLink(link, "outbound");
+      link.click();
+
+      expect(dom.window.saAutomatedLink).to.equal(undefined);
 
       expect(
         dom.sent.map((request) =>
@@ -149,52 +164,4 @@ describe("auto-events", function () {
       dom.window.close();
     });
   }
-
-  it("tracks outbound link clicks", function (done) {
-    const dom = setupDOM();
-    const link = dom.window.document.createElement("a");
-    link.href = "https://example.org/path";
-    link.target = "_blank";
-    dom.window.document.body.appendChild(link);
-
-    dom.window.saAutomatedLink(link, "outbound");
-
-    setTimeout(() => {
-      expect(dom.events[0]).to.deep.include({ name: "outbound_example_org" });
-      expect(dom.events[0].metadata).to.include({ url: link.href });
-      done();
-    }, 0);
-  });
-
-  it("tracks download link clicks", function (done) {
-    const dom = setupDOM();
-    const link = dom.window.document.createElement("a");
-    link.href = "https://example.com/file.pdf";
-    link.target = "_blank";
-    dom.window.document.body.appendChild(link);
-
-    dom.window.saAutomatedLink(link, "download");
-
-    setTimeout(() => {
-      expect(dom.events[0]).to.deep.include({ name: "download_file_pdf" });
-      expect(dom.events[0].metadata).to.include({ url: link.href });
-      done();
-    }, 0);
-  });
-
-  it("tracks email link clicks", function (done) {
-    const dom = setupDOM();
-    const link = dom.window.document.createElement("a");
-    link.href = "mailto:test@example.com";
-    link.target = "_blank";
-    dom.window.document.body.appendChild(link);
-
-    dom.window.saAutomatedLink(link, "email");
-
-    setTimeout(() => {
-      expect(dom.events[0]).to.deep.include({ name: "email_test_example_com" });
-      expect(dom.events[0].metadata).to.include({ email: "test@example.com" });
-      done();
-    }, 0);
-  });
 });
