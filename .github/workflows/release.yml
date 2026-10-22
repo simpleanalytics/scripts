@@ -72,10 +72,16 @@ jobs:
           TAG: ${{ needs.version.outputs.tag }}
         run: |
           tar -czf "scripts-$TAG.tar.gz" dist
-          gh release create "$TAG" "scripts-$TAG.tar.gz" \
-            --repo "$GITHUB_REPOSITORY" \
-            --target "$GITHUB_SHA" \
-            --title "$TAG" \
-            --generate-notes \
-            --draft
-          gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false --latest
+          # Reuse the draft of an earlier run whose publish failed
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            gh release upload "$TAG" "scripts-$TAG.tar.gz" --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$TAG" "scripts-$TAG.tar.gz" \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" \
+              --title "$TAG" \
+              --generate-notes \
+              --draft
+          fi
+          gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" --draft=false --latest
