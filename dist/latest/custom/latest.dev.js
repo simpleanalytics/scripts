@@ -1,9 +1,8 @@
-/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; 2026-08-17; 1bd9; v11) */
+/* Simple Analytics - Privacy-first analytics (docs.simpleanalytics.com/script; 2026-10-18; 306e; v12) */
 /* eslint-env browser */
 
 (function (
   window,
-  overwriteOptions,
   baseUrl,
   apiUrlPrefix,
   version,
@@ -11,6 +10,9 @@
   sendError,
   warn
 ) {
+  // Only initialize in a browser.
+  if (!window) return;
+
   try {
     /////////////////////
     // PREDEFINED VARIABLES FOR BETTER MINIFICATION
@@ -63,7 +65,6 @@
     var isBotAgent =
       /(bot|spider|crawl)/i.test(userAgent) && !/(cubot)/i.test(userAgent);
     var screen = window.screen;
-
 
     // Find the script element where options can be set on
     var scriptElement =
@@ -135,16 +136,14 @@
     };
 
     var settings = window.sa_settings;
-    var logSettings = settings || Object.keys(overwriteOptions).length;
+    var logSettings = settings;
+    settings = assign(settings);
 
-    // Merge overwriteOptions with sa_settings
-    overwriteOptions = assign(overwriteOptions, settings);
-
-    if (logSettings) warn("Settings", overwriteOptions);
+    if (logSettings) warn("Settings", settings);
 
     // Customers can skip data points
     var ignoreMetrics = convertCommaSeparatedToArray(
-      overwriteOptions.ignoreMetrics || attr(scriptElement, "ignore-metrics")
+      settings.ignoreMetrics || attr(scriptElement, "ignore-metrics")
     );
 
     var collectMetricByString = function (metricAbbreviation) {
@@ -187,15 +186,21 @@
     // Define namespace for the library
     var namespaceText = "namespace";
     var namespace =
-      overwriteOptions[namespaceText] ||
+      settings[namespaceText] ||
       attr(scriptElement, namespaceText) ||
       defaultNamespace;
 
-    var metadataObject = window[namespace + "_metadata"];
     var appendMetadata = function (metadata, data) {
+      var metadataObject = window[namespace + "_metadata"];
       if (isObject(metadataObject)) metadata = assign(metadata, metadataObject);
       var metadataCollectorFunction = window[metadataCollector];
-      if (!isFunction(metadataCollectorFunction)) return metadata;
+      if (!isFunction(metadataCollectorFunction)) {
+        if (metadataCollector)
+          warn(
+            metadataCollector + " not found, set window." + metadataCollector
+          );
+        return metadata;
+      }
       try {
         return assign(
           metadata,
@@ -213,35 +218,42 @@
     // By default we allow source, medium in the URLs. With strictUtm enabled
     // we only allow it with the utm_ prefix: utm_source, utm_medium, ...
     var strictUtm =
-      overwriteOptions.strictUtm ||
-      attr(scriptElement, "strict-utm") == trueText;
+      settings.strictUtm || attr(scriptElement, "strict-utm") == trueText;
 
-    var getQueryParams = function (ignoreSource) {
-      return (
-        loc.search
-          .slice(1)
-          .split("&")
-          .filter(function (keyValue) {
-            var ignore = ignoreSource || !collectMetricByString("ut");
+    var k;
 
-            var paramsRegexList = allowParams.map(filterRegex).join("|");
-            var regex = ignore
-              ? "^(" + paramsRegexList + ")="
-              : "^((utm_)" +
-                (strictUtm ? "" : "?") +
-                "(source|medium|content|term|campaign)" +
-                (strictUtm ? "" : "|ref") +
-                "|" +
-                paramsRegexList +
-                ")=";
-            if (ignore && !allowParams.length) return falseVar;
+    var getQueryParams = function (ignoreSource, overwriteSearch) {
+      k = !ignoreSource && collectMetricByString("q") ? "" : falseVar;
+      var q = (overwriteSearch || loc.search)
+        .slice(1)
+        .split("&")
+        .filter(function (keyValue) {
+          var i = keyValue.indexOf("=");
+          if (k !== falseVar && i > 0 && keyValue.slice(i + 1))
+            k += (k ? "," : "") + keyValue.slice(0, i);
 
-            // The prefix "utm_" is optional with "strictUtm" disabled
-            // "ref" is only collected when "strictUtm" is disabled
-            return new RegExp(regex).test(keyValue);
-          })
-          .join("&") || undefinedVar
-      );
+          var ignore = ignoreSource || !collectMetricByString("ut");
+
+          var paramsRegexList = allowParams.map(filterRegex).join("|");
+          var regex = ignore
+            ? "^(" + paramsRegexList + ")="
+            : "^((utm_)" +
+              (strictUtm ? "" : "?") +
+              "(source|medium|content|term|campaign)" +
+              (strictUtm ? "" : "|ref") +
+              "|" +
+              paramsRegexList +
+              ")=";
+          if (ignore && !allowParams.length) return falseVar;
+
+          // The prefix "utm_" is optional with "strictUtm" disabled
+          // "ref" is only collected when "strictUtm" is disabled
+          return new RegExp(regex, "i").test(keyValue);
+        })
+        .join("&");
+
+      k = k || undefinedVar;
+      return q || undefinedVar;
     };
 
     // Ignore pages specified in data-ignore-pages
@@ -282,7 +294,7 @@
     //
 
     // Send data via image
-    var sendData = function (data, callback, onlyThisData) {
+    var sendData = function (data, callback, onlyThisData, keepalive) {
       data = onlyThisData ? data : assign(payload, page, data);
 
       if (nav.brave && !onlyThisData) data.brave = trueVar;
@@ -295,7 +307,7 @@
         image.onerror = callback;
         image.onload = callback;
       }
-      image.src =
+      var imageUrl =
         fullApiUrl +
         "/simple.gif?" +
         Object.keys(data)
@@ -312,11 +324,28 @@
           .join("&") +
         "&time=" +
         Date.now();
+
+      // Events must survive navigation without taking over links or forms.
+      if (keepalive && window.fetch) {
+        try {
+          window
+            .fetch(imageUrl, {
+              keepalive: trueVar,
+              mode: "no-cors",
+              credentials: "omit",
+            })
+            .catch(function () {
+              image.src = imageUrl;
+            });
+          return;
+        } catch (error) {}
+      }
+      image.src = imageUrl;
     };
 
     // Customers can overwrite their hostname, here we check for that
     var overwrittenHostname =
-      overwriteOptions.hostname || attr(scriptElement, "hostname");
+      settings.hostname || attr(scriptElement, "hostname");
     var definedHostname = overwrittenHostname || locationHostname;
 
     var basePayload = {
@@ -371,11 +400,11 @@
     //
 
     // Script mode, this can be hash mode for example
-    var mode = overwriteOptions.mode || attr(scriptElement, "mode");
+    var mode = settings.mode || attr(scriptElement, "mode");
 
     // Should we record Do Not Track visits?
-    var collectDnt = isBoolean(overwriteOptions.collectDnt)
-      ? overwriteOptions.collectDnt
+    var collectDnt = isBoolean(settings.collectDnt)
+      ? settings.collectDnt
       : attr(scriptElement, "ignore-dnt") == trueText ||
         attr(scriptElement, "skip-dnt") == trueText ||
         attr(scriptElement, "collect-dnt") == trueText;
@@ -383,39 +412,37 @@
     // Some customers want to collect page views manually
     var autoCollect = !(
       attr(scriptElement, "auto-collect") == "false" ||
-      overwriteOptions.autoCollect === falseVar
+      settings.autoCollect === falseVar
     );
 
     // Event function name
     var eventFunctionName =
-      overwriteOptions.saGlobal ||
+      settings.saGlobal ||
       attr(scriptElement, "sa-global") ||
       namespace + "_" + eventText;
 
     // Customers can ignore certain pages
     var ignorePages = convertCommaSeparatedToArray(
-      overwriteOptions.ignorePages || attr(scriptElement, "ignore-pages")
+      settings.ignorePages || attr(scriptElement, "ignore-pages")
     );
 
     // Customers can allow params
     var allowParams = convertCommaSeparatedToArray(
-      overwriteOptions.allowParams || attr(scriptElement, "allow-params")
+      settings.allowParams || attr(scriptElement, "allow-params")
     );
 
     // Customers can allow params
     var nonUniqueHostnames = convertCommaSeparatedToArray(
-      overwriteOptions.nonUniqueHostnames ||
-        attr(scriptElement, "non-unique-hostnames")
+      settings.nonUniqueHostnames || attr(scriptElement, "non-unique-hostnames")
     );
 
     // Customers can overwrite certain values
     var pathOverwriter =
-      overwriteOptions.pathOverwriter || attr(scriptElement, "path-overwriter");
+      settings.pathOverwriter || attr(scriptElement, "path-overwriter");
 
     // Customers can add metadata to events and pageviews via a function
     var metadataCollector =
-      overwriteOptions.metadataCollector ||
-      attr(scriptElement, "metadata-collector");
+      settings.metadataCollector || attr(scriptElement, "metadata-collector");
 
     // This code could error on (incomplete) implementations, that's why we use try...catch
     var timezone;
@@ -432,12 +459,13 @@
     // PAYLOAD FOR BOTH PAGE VIEWS AND EVENTS
     //
 
+    var phantom = window.phantom;
     var bot =
       nav.webdriver ||
       window.__nightmare ||
       window.callPhantom ||
       window._phantom ||
-      window.phantom ||
+      (phantom && !phantom.solana) ||
       window.__polypane ||
       window._bot ||
       isBotAgent ||
@@ -511,9 +539,17 @@
     var page = {};
     var lastSendPath;
 
-    var getReferrer = function () {
+    var getReferrer = function (raw) {
+      // Customers can overwrite their referrer, here we check for that
+      var referrer =
+        settings.referrer ||
+        attr(scriptElement, "referrer") ||
+        doc.referrer ||
+        "";
+
+      if (raw) return referrer;
       return (
-        (doc.referrer || "")
+        referrer
           .replace(locationHostname, definedHostname)
           .replace(/^https?:\/\/((m|l|w{2,3}([0-9]+)?)\.)?([^?#]+)(.*)$/, "$4")
           .replace(/^([^/]+)$/, "$1") || undefinedVar
@@ -554,7 +590,12 @@
         // sendData will assign payload to request
         sendData(append, undefinedVar, trueVar);
       } else {
-        nav.sendBeacon(fullApiUrl + "/append", stringify(append));
+        try {
+          nav.sendBeacon.bind(nav)(fullApiUrl + "/append", stringify(append));
+        } catch (e) {
+          // Fallback for browsers throwing "Illegal invocation" when the URL is invalid
+          sendData(append, undefinedVar, trueVar);
+        }
       }
     };
 
@@ -651,21 +692,28 @@
       isPushState,
       deleteSourceInfo,
       sameSite,
-      metadata
+      search,
+      metadata,
+      callback
     ) {
       if (isPushState) sendOnLeave("" + payload.page_id, trueVar);
       if (collectDataOnLeave) payload.page_id = uuid();
 
       var currentPage = definedHostname + getPath();
+      var query = getQueryParams(deleteSourceInfo, search);
 
-      sendData({
-        id: payload.page_id,
-        type: pageviewText,
-        referrer: !deleteSourceInfo || sameSite ? referrer : null,
-        query: getQueryParams(deleteSourceInfo),
+      sendData(
+        {
+          id: payload.page_id,
+          type: pageviewText,
+          referrer: !deleteSourceInfo || sameSite ? referrer : null,
+          query: query,
+          k: k,
 
-        metadata: stringify(metadata),
-      });
+          metadata: stringify(metadata),
+        },
+        callback
+      );
 
       previousReferrer = referrer;
       referrer = currentPage;
@@ -675,14 +723,29 @@
 
     var sameSite, userNavigated;
 
-    var pageview = function (isPushState, pathOverwrite, metadata) {
+    var pageview = function (
+      isPushState,
+      pathOverwrite,
+      metadata,
+      callbackRaw
+    ) {
+      if (!callbackRaw && isFunction(metadata)) callbackRaw = metadata;
+      var callback = isFunction(callbackRaw) ? callbackRaw : function () {};
+      var querySearch = "";
+      if (isString(pathOverwrite) && pathOverwrite.indexOf("?") > -1) {
+        // keep query from manual path
+        var parts = pathOverwrite.split("?");
+        pathOverwrite = parts.shift();
+        querySearch = "?" + parts.join("?");
+      }
       // Obfuscate personal data in URL by dropping the search and hash
       var path = getPath(pathOverwrite);
 
       // Don't send the last path again (this could happen when pushState is used to change the path hash or search)
-      if (!path || lastSendPath == path) return;
+      var pathKey = path + querySearch;
+      if (!path || lastSendPath == pathKey) return;
 
-      lastSendPath = path;
+      lastSendPath = pathKey;
       page.path = path;
 
       // v = viewportsizes
@@ -702,8 +765,8 @@
         if (nav[language]) page[language] = nav[language];
       }
 
-      // sc = screensizes
-      if (screen && collectMetricByString("sc")) {
+      // scre = screensizes
+      if (screen && collectMetricByString("scre")) {
         page.screen_width = screen.width;
         page.screen_height = screen.height;
       }
@@ -737,8 +800,11 @@
           currentReferrerHostname == locationHostname
         : falseVar;
 
-      // We set unique variable based on pushstate or back navigation, if no match we check the referrer
-      page.unique = isPushState || userNavigated ? falseVar : !sameSite;
+      // Only the first pageview can use a Cloudflare referrer as a unique arrival.
+      page.unique =
+        isPushState || userNavigated
+          ? falseVar
+          : !sameSite || (!pages && /[?&]__cf_/.test(getReferrer(trueVar)));
 
       metadata = appendMetadata(metadata, {
         type: pageviewText,
@@ -747,11 +813,15 @@
 
       var triggerSendPageView = function () {
         fetchedHighEntropyValues = trueVar;
+        var delSrc =
+          isPushState || userNavigated || !collectMetricByString("r");
         sendPageView(
           isPushState,
-          isPushState || userNavigated || !collectMetricByString("r"), // r = referrers
+          delSrc, // r = referrers
           sameSite,
-          metadata
+          querySearch,
+          metadata,
+          callback
         );
       };
 
@@ -841,11 +911,14 @@
     }
 
     if (autoCollect) pageview();
-    else {
-      window.sa_pageview = function (path, metadata) {
-        pageview(0, path, metadata);
-      };
-    }
+
+    var manualPageview = function (path, metadata, callback) {
+      pageview(0, path, metadata, callback);
+    };
+    window[namespace + "_" + pageviewText] = manualPageview;
+    var defaultPageview = defaultNamespace + "_" + pageviewText;
+    if (!window[defaultPageview]) window[defaultPageview] = manualPageview;
+
 
     /////////////////////
     // EVENTS
@@ -853,7 +926,7 @@
 
     var validTypes = ["string", "number"];
 
-    var sendEvent = function (event, metadata, callbackRaw) {
+    var sendEvent = function (event, metadata, callbackRaw, keepalive) {
       if (!callbackRaw && isFunction(metadata)) callbackRaw = metadata;
 
       var eventIsFunction = isFunction(event);
@@ -901,13 +974,15 @@
 
             metadata: stringify(metadata),
           }),
-          callback
+          callback,
+          undefinedVar,
+          keepalive
         );
       }
     };
 
-    var defaultEventFunc = function (event, metadata, callback) {
-      sendEvent(event, metadata, callback);
+    var defaultEventFunc = function (event, metadata, callback, keepalive) {
+      sendEvent(event, metadata, callback, keepalive);
     };
 
     // Set default function if user didn't define a function
@@ -922,6 +997,9 @@
     // Overwrite user defined function
     window[eventFunctionName] = defaultEventFunc;
 
+    // Automated events wait for this variable, for example ba_event_loaded
+    window[eventFunctionName + "_loaded"] = trueVar;
+
     // Post events from the queue of the user defined function
     for (var event in queue) {
       if (hasProp(queue, event)) {
@@ -930,14 +1008,78 @@
           : sendEvent(queue[event]);
       }
     }
+
+    var inlineEvent = function (event) {
+      var element = event.target;
+      while (
+        element &&
+        element !== doc &&
+        (!element.getAttribute || attr(element, "simple-event") === null)
+      )
+        element = element.parentNode;
+
+      if (!element || element === doc) return;
+      var isForm = element.tagName === "FORM";
+      var name = attr(element, "simple-event");
+      if (!name || isForm !== (event.type === "submit")) return;
+
+      var metadata = { tag: element.tagName.toLowerCase() };
+      var attributes = element.attributes;
+      for (var i = 0; i < attributes.length; i++) {
+        var attribute = attributes[i];
+        if (attribute.name.indexOf("data-simple-event-") === 0)
+          metadata[attribute.name.slice(18).replace(/-/g, "_")] =
+            attribute.value;
+      }
+      if (isForm) {
+        var button = event.submitter;
+        metadata.button_text = button
+          ? (button.textContent || button.value || "")
+              .replace(/\s+/g, " ")
+              .trim()
+              .slice(0, 200)
+          : "";
+      }
+      sendEvent(name, metadata, undefinedVar, trueVar);
+    };
+
+    doc.addEventListener("click", inlineEvent, falseVar);
+    doc.addEventListener("submit", inlineEvent, falseVar);
+
+    // 404 confirmation adds a request, so existing installs must opt in.
+    if (
+      settings.detect404 === trueVar ||
+      attr(scriptElement, "detect-404") == trueText
+    ) {
+      var detect404 = function () {
+        if (
+          !/\b404\b/.test(doc.title + " " + (doc.body && doc.body.textContent))
+        )
+          return;
+        try {
+          var request = new window.XMLHttpRequest();
+          request.open("HEAD", loc.href, trueVar);
+          request.onload = function () {
+            if (request.status === 404)
+              sendEvent("page_404", {
+                url: loc.protocol + "//" + definedHostname + loc.pathname,
+                status: 404,
+              });
+          };
+          request.send();
+        } catch (error) {}
+      };
+      if (doc.readyState === "loading")
+        doc.addEventListener("DOMContentLoaded", detect404, falseVar);
+      else detect404();
+    }
   } catch (e) {
     sendError(e);
   }
 })(
-  window,
-  {},
+  typeof window != "undefined" && window,
   "<!--# echo var="http_host" default="" -->",
   "",
-  "custom_latest_dev_11",
+  "custom_latest_dev_12",
   "sa"
 );

@@ -3,12 +3,13 @@ const UglifyJS = require("uglify-js");
 const fs = require("fs");
 const esprima = require("esprima");
 const path = require("path");
+const acorn = require("acorn");
 
 const GREEN = "\x1b[32m%s\x1b[0m";
 const YELLOW = "\x1b[33m%s\x1b[0m";
 const RED = "\x1b[31m%s\x1b[0m";
 
-const VERSION = 11;
+const VERSION = 12;
 
 Handlebars.registerHelper("or", function (param1, param2) {
   return param1 || param2;
@@ -24,7 +25,7 @@ const MINIFY_OPTIONS = {
   nameCache: null,
 };
 
-const fillTemplate = (template, { overwriteOptions = null } = {}) => {
+const fillTemplate = (template) => {
   if (!template)
     throw new Error("Parsing of the JavaScript failed, please use ES5 only.");
   return template
@@ -35,16 +36,6 @@ const fillTemplate = (template, { overwriteOptions = null } = {}) => {
     .replace(
       /\{\{\s?nginxProxyHost\s?\}\}/gi,
       '<!--# echo var="proxy_hostname" default="" --><!--# echo var="proxy_path" default="/simple" -->'
-    )
-    .replace(
-      /\\?"\{\{\s?overwriteOptions\s?\}\}\\?"/gi,
-      overwriteOptions
-        ? JSON.stringify(overwriteOptions).replace(/:"([^"]+)"/gi, ":$1")
-        : "{}"
-    )
-    .replace(
-      /"\{\{\s?cloudFlareCustomDomain\s?\}\}"/gi,
-      'INSTALL_OPTIONS.custom_domain || "queue.simpleanalyticscdn.com"'
     );
 };
 
@@ -77,7 +68,6 @@ const DEFAULTS = {
   nonuniquehostnames: true,
   ignoremetrics: true,
   dev: false,
-  skipnonwindow: false,
 };
 
 const LIGHT = {
@@ -154,36 +144,6 @@ const templates = [
       scriptName: `cdn_latest_${VERSION}`,
       baseUrl: "simpleanalyticscdn.com",
       apiUrlPrefix: "queue.",
-    },
-  },
-  {
-    type: "js",
-    input: `${__dirname}/src/default.js`,
-    output: `cloudflare.js`,
-    variables: {
-      ...DEFAULTS,
-      skipnonwindow: true,
-      minify: false,
-      version: VERSION,
-      scriptName: `cloudflare_${VERSION}`,
-      sri: false,
-      baseUrl: "{{cloudFlareCustomDomain}}",
-      overwriteOptions: {
-        hostname: "INSTALL_OPTIONS.hostname",
-        collectDnt:
-          "typeof INSTALL_OPTIONS.collect_dnt === 'boolean' ? INSTALL_OPTIONS.collect_dnt : null",
-        mode: "INSTALL_OPTIONS.hash_mode ? 'hash' : 'normal'",
-        strictUtm:
-          "INSTALL_OPTIONS.advanced_settings_toggle && INSTALL_OPTIONS.strict_utm",
-        allowParams:
-          "INSTALL_OPTIONS.advanced_settings_toggle && INSTALL_OPTIONS.allow_url_parameters",
-        nonUniqueHostnames:
-          "INSTALL_OPTIONS.advanced_settings_toggle && INSTALL_OPTIONS.non_unique_hostnames",
-        ignorePages:
-          "INSTALL_OPTIONS.advanced_settings_toggle && INSTALL_OPTIONS.ignore_pages",
-        namespace:
-          "INSTALL_OPTIONS.overwrite_namespace && INSTALL_OPTIONS.namespace",
-      },
     },
   },
   {
@@ -308,10 +268,7 @@ for (const file of files) {
   const finalFileName = output.split("/").pop();
 
   const template = Handlebars.compile(contents);
-  const rawCode = template({
-    ...variables,
-    overwriteOptions: "{{overwriteOptions}}",
-  });
+  const rawCode = template(variables);
 
   const date = new Date().toISOString().slice(0, 10);
   const hash = require("crypto")
@@ -320,7 +277,7 @@ for (const file of files) {
     .digest("hex")
     .slice(0, 4);
 
-  const prepend = `/* Simple Analytics - Privacy friendly analytics (docs.simpleanalytics.com/script; ${date}; ${hash}${
+  const prepend = `/* Simple Analytics - Privacy-first analytics (docs.simpleanalytics.com/script; ${date}; ${hash}${
     variables.sri ? `; SRI-version` : ""
   }${variables.version ? `; v${variables.version}` : ""}) */\n`;
 
@@ -358,7 +315,32 @@ for (const file of files) {
   for (const warning of warnings || [])
     console.warn(YELLOW, `[${name}] ${warning}`);
 
-  const code = fillTemplate(codeTemplate, variables);
+  try {
+    acorn.parse(rawCode, { ecmaVersion: 5 });
+  } catch (error) {
+    // console.log("acorn", error);
+
+    // error object:
+    // pos: 147,
+    // loc: Position { line: 12, column: 0 },
+    // raisedAt: 148
+
+    // Find part of the code that is causing the error
+    const lines = rawCode.split("\n");
+    const line = error.loc.line;
+    const column = error.loc.column;
+    const start = Math.max(0, line - 3);
+    const end = Math.min(lines.length, line + 3);
+    const codeSnippet = lines.slice(start, end).join("\n");
+    const sentence = lines[error.loc.line - 1];
+
+    // console.log({ codeSnippet, line: lines[error.loc.line - 1] });
+
+    throw new Error(
+      `${error.message} at line ${sentence} position ${column}: ${codeSnippet}`
+    );
+  }
+  const code = fillTemplate(codeTemplate);
 
   const validate = template({
     ...variables,
@@ -385,7 +367,7 @@ for (const file of files) {
     fs.mkdirSync(path.dirname(latestFile), { recursive: true });
   }
 
-  const compiledMap = map ? fillTemplate(map, variables) : null;
+  const compiledMap = map ? fillTemplate(map) : null;
   const isCustom = /^custom\//.test(output);
 
   if (variables.version && variables.sri) {

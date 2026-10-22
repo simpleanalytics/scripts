@@ -98,8 +98,8 @@ const CDN_PUBLIC_ROOT = "https://scripts.simpleanalyticscdn.com";
 const CDN_STORAGE_ROOT = "https://storage.bunnycdn.com/sa-cdn";
 const CDN_PURGE_URL =
   "https://api.bunny.net/purge?url=https://simpleanalyticscdn.b-cdn.net/*";
-const HEADER_PATTERN =
-  /^\/\* Simple Analytics - Privacy friendly analytics \(docs\.simpleanalytics\.com\/[^;]+; \d{4}-\d{2}-\d{2}; [0-9a-f]{4}(?:; SRI-version)?(?:; v\d+)?\) \*\/$/;
+export const HEADER_PATTERN =
+  /^\/\* Simple Analytics - Privacy(?: friendly|-first) analytics \(docs\.simpleanalytics\.com\/[^;]+; \d{4}-\d{2}-\d{2}; [0-9a-f]{4}(?:; SRI-version)?(?:; v\d+)?\) \*\/$/;
 
 const ansi = {
   bold: (value: string) => color("1", value),
