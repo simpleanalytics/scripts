@@ -17,6 +17,8 @@ concurrency:
 
 jobs:
   version:
+    # workflow_dispatch can run on any branch, but only main is released
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     outputs:
       tag: ${{ steps.version.outputs.tag }}

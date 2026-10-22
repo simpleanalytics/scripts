@@ -790,26 +790,43 @@ async function renderRelease(
   ];
   for (const destination of destinations) {
     const environment = ENVIRONMENTS[destination].name;
-    const [deployment] = await readGitHub<
-      Array<{ created_at: string; id: number; ref: string }>
-    >(`deployments?environment=${environment}&per_page=1`);
-    if (!deployment) {
-      lines.push(`${environment}: no recorded deployment → ${release.tag}`);
+    const deployments = (
+      await readGitHub<Array<{ created_at: string; id: number; ref: string }>>(
+        `deployments?environment=${environment}&per_page=10`,
+      )
+    ).sort((a, b) => b.created_at.localeCompare(a.created_at));
+
+    // A failed attempt doesn't change what runs, so the newest success does
+    let current: (typeof deployments)[number] | undefined;
+    for (const deployment of deployments) {
+      const [status] = await readGitHub<Array<{ state: string }>>(
+        `deployments/${deployment.id}/statuses?per_page=1`,
+      );
+      if (status?.state === "success") {
+        current = deployment;
+        break;
+      }
+      lines.push(
+        `${environment}: ${deployment.ref} ${status?.state ?? "without status"} on ${deployment.created_at.slice(
+          0,
+          10,
+        )}`,
+      );
+    }
+    if (!current) {
+      lines.push(`${environment}: no successful deployment → ${release.tag}`);
       continue;
     }
 
-    const [status] = await readGitHub<Array<{ state: string }>>(
-      `deployments/${deployment.id}/statuses?per_page=1`,
-    );
     lines.push(
-      `${environment}: ${deployment.ref} (${status?.state ?? "no status"}, ${deployment.created_at.slice(
+      `${environment}: ${current.ref} (deployed ${current.created_at.slice(
         0,
         10,
       )}) → ${release.tag}`,
     );
-    if (deployment.ref !== release.tag) {
+    if (current.ref !== release.tag) {
       lines.push(
-        `  https://github.com/${GITHUB_REPOSITORY}/compare/${deployment.ref}...${release.tag}`,
+        `  https://github.com/${GITHUB_REPOSITORY}/compare/${current.ref}...${release.tag}`,
       );
     }
   }
@@ -1000,9 +1017,9 @@ class DeploymentFailure extends Error {
 
 async function deployFiles(
   previews: PreviewFile[],
-  credentials?: CdnCredentials,
+  credentials: CdnCredentials | undefined,
+  result: DeploymentResult,
 ): Promise<DeploymentResult> {
-  const result: DeploymentResult = { completed: [], failed: [], skipped: [] };
   const filesToWrite: PreparedFile[] = [];
 
   try {
@@ -1247,13 +1264,36 @@ async function main(): Promise<void> {
     return;
   }
 
-  let state: "success" | "failure" = "failure";
-  try {
-    const result = await deployFiles(previews, credentials);
-    state = "success";
-    renderDeploymentResult(result);
-  } finally {
-    await recordDeployments(release, selections, state);
+  // Deploy and record one destination at a time, so a failure on one doesn't
+  // mark the other as failed. Only deployments with latest.js change the
+  // release a destination runs.
+  const result: DeploymentResult = { completed: [], failed: [], skipped: [] };
+  const recordRelease =
+    scripts.includes("default") && variants.includes("latest");
+  for (const destination of destinations) {
+    let state: "success" | "failure" = "failure";
+    try {
+      await deployFiles(
+        previews.filter((file) => file.destination === destination),
+        credentials,
+        result,
+      );
+      state = "success";
+    } finally {
+      if (recordRelease) {
+        await recordDeployments(
+          release,
+          { ...selections, destinations: [destination] },
+          state,
+        );
+      }
+    }
+  }
+  renderDeploymentResult(result);
+  if (!recordRelease) {
+    log.info(
+      "Not recorded in GitHub: without latest.js the destinations keep running their recorded release.",
+    );
   }
   if (variants.includes("sri")) {
     log.warn(

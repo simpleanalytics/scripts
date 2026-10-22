@@ -61,7 +61,7 @@ jobs:
         run: pnpm run test:matrix
 
       - name: Run unit tests
-        run: pnpm run build && pnpm run test:unit && pnpm run test:deploy
+        run: pnpm run test:unit && pnpm run test:deploy
 
       - name: Prettier check (report only, no writes or commits)
         if: always()
