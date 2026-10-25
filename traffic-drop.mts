@@ -163,7 +163,11 @@ function followUpRequests(hostnames: string[], ws: Window[]): Request[] {
               example: {
                 top_hits: {
                   size: 1,
-                  _source: ["metadata.message", "meta.script_id"],
+                  _source: [
+                    "metadata_flattened.message",
+                    "metadata.message",
+                    "meta.script_id",
+                  ],
                 },
               },
             },
@@ -173,6 +177,14 @@ function followUpRequests(hostnames: string[], ws: Window[]): Request[] {
     },
   ];
 }
+
+const variance = (list: number[]) => {
+  const mean = list.reduce((sum, value) => sum + value, 0) / list.length;
+  return (
+    list.reduce((sum, value) => sum + (value - mean) ** 2, 0) /
+    Math.max(list.length - 1, 1)
+  );
+};
 
 const median = (list: number[]) => {
   const sorted = [...list].sort((a, b) => a - b);
@@ -209,7 +221,7 @@ if (command === "query") {
   );
   console.log(devTools(pageviewsRequest(ws, minWindow)));
   console.log(
-    `# Then: pnpm run traffic-drop analyze response.json --from ${values.from} --to ${ws[0].lt}`
+    `# Then: pnpm run traffic-drop analyze response.json --from ${values.from} --to ${ws[0].lt} --weeks ${values.weeks} --min-daily ${values["min-daily"]}`
   );
 } else if (command === "analyze") {
   if (!file) throw new Error("Pass the file with the Kibana response");
@@ -219,15 +231,23 @@ if (command === "query") {
     );
   const { ws, minWindow } = settings();
   const response = JSON.parse(readFileSync(file, "utf8"));
-  if (response.timed_out || response._shards?.failed)
-    console.error(
-      "Warning: the response is incomplete (timeout or failed shards)"
+  // An incomplete response would make broken websites look healthy
+  if (response.error || response.timed_out || response._shards?.failed)
+    throw new Error(
+      `Elasticsearch didn't answer completely: ${JSON.stringify(response.error ?? response._shards ?? "timed out")}`
     );
-  const buckets: Array<Record<string, any>> =
-    response.aggregations?.sites?.buckets ?? [];
+  const buckets: Array<Record<string, any>> | undefined =
+    response.aggregations?.sites?.buckets;
+  if (!buckets?.length)
+    throw new Error("The response has no websites; paste the whole response");
   const baselineNames = ws
     .filter((w) => w.name !== "current")
     .map((w) => w.name);
+  const missing = ws.filter((w) => !(w.name in buckets[0]));
+  if (missing.length)
+    throw new Error(
+      `The response has no ${missing.map((w) => w.name).join(", ")}; use the same --weeks as the query`
+    );
   const minDrop = Number(values["min-drop"]) / 100;
   const minZ = Number(values["min-z"]);
 
@@ -236,8 +256,10 @@ if (command === "query") {
       const weeks = baselineNames.map((name) => b[name]?.doc_count ?? 0);
       const baseline = median(weeks);
       const current = b.current?.doc_count ?? 0;
-      // Pageview counts are roughly Poisson, so the noise is about √baseline
-      const z = (current - baseline) / Math.sqrt(Math.max(baseline, 1));
+      // Pageview counts are roughly Poisson, so the noise is at least
+      // √baseline; websites that vary more from week to week get that instead
+      const noise = Math.sqrt(Math.max(baseline, variance(weeks), 1));
+      const z = (current - baseline) / noise;
       return {
         hostname: b.key as string,
         baseline,
