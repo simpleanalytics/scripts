@@ -1,15 +1,16 @@
 // Finds websites whose pageviews dropped after a script deploy.
 //
-//   pnpm run traffic-drop query --from 2026-10-28T08:00:00Z [--to <iso>]
-//     Prints a request to paste into Kibana Dev Tools. Copy the whole
-//     response into a file, for example response.json.
-//   pnpm run traffic-drop analyze response.json --from <iso> --to <iso>
+//   pnpm run traffic-drop query --deploy "2026-10-28 08:00" [--weeks 4]
+//     Prints a request to paste into Kibana Dev Tools. Save the whole
+//     response to a file, for example response.json.
+//   pnpm run traffic-drop analyze response.json
 //     Lists the websites with a significant drop, and prints follow-up
 //     requests for their script versions and script errors.
 //
-// The current window (--from until --to) is compared with the same window
-// 1-4 weeks earlier, so weekdays and hours line up. Websites with fewer than
-// --min-daily pageviews per day in the baseline are ignored.
+// The time since the deploy (until 10 minutes ago) is compared with the same
+// hours 1 to --weeks weeks earlier, so weekdays line up. Websites with fewer
+// than --min-daily pageviews per day are ignored. The request stores these
+// settings, so analyze reads them from the response.
 import { readFileSync } from "node:fs";
 import { parseArgs } from "node:util";
 
@@ -20,7 +21,7 @@ const DAY = 24 * 60 * 60 * 1000;
 const { positionals, values } = parseArgs({
   allowPositionals: true,
   options: {
-    from: { type: "string" },
+    deploy: { type: "string" },
     to: { type: "string" },
     weeks: { type: "string", default: "4" },
     "min-daily": { type: "string", default: "50" },
@@ -32,15 +33,16 @@ const { positionals, values } = parseArgs({
 const [command, file] = positionals;
 
 type Window = { name: string; gte: string; lt: string };
+type Settings = { deploy: string; to: string; weeks: number; minDaily: number };
 type Request = { path: string; body: unknown };
 
 const devTools = ({ path, body }: Request) =>
   `GET ${path}\n${JSON.stringify(body, null, 2)}\n`;
 
-function windows(from: string, to: string, weeks: number): Window[] {
-  const start = Date.parse(from);
+function windows({ deploy, to, weeks }: Settings): Window[] {
+  const start = Date.parse(deploy);
   const end = Date.parse(to);
-  if (!(start < end)) throw new Error("--from must be before --to");
+  if (!(start < end)) throw new Error("The deploy time must be in the past");
   return [0, ...Array.from({ length: weeks }, (_, i) => i + 1)].map((w) => ({
     name: w ? `w${w}` : "current",
     gte: new Date(start - w * 7 * DAY).toISOString(),
@@ -52,11 +54,13 @@ const range = ({ gte, lt }: Window) => ({
   range: { "@timestamp": { gte, lt } },
 });
 
-function pageviewsRequest(ws: Window[], minWindow: number): Request {
+function pageviewsRequest(settings: Settings): Request {
+  const ws = windows(settings);
+  const minWindow = minPerWindow(settings);
   const baselines = ws.filter((w) => w.name !== "current");
   return {
     // filter_path keeps the response small enough to copy from Kibana
-    path: `${INDEX}/_search?request_cache=true&filter_path=took,timed_out,_shards.failed,aggregations.sites.buckets.key,aggregations.sites.buckets.*.doc_count`,
+    path: `${INDEX}/_search?request_cache=true&filter_path=took,timed_out,_shards.failed,aggregations.sites.meta,aggregations.sites.buckets.key,aggregations.sites.buckets.*.doc_count`,
     body: {
       size: 0,
       track_total_hits: false,
@@ -70,6 +74,8 @@ function pageviewsRequest(ws: Window[], minWindow: number): Request {
       },
       aggs: {
         sites: {
+          // Elasticsearch returns meta as is, so analyze knows the settings
+          meta: settings,
           terms: {
             field: FIELD,
             size: 65000,
@@ -194,59 +200,59 @@ const median = (list: number[]) => {
     : (sorted[middle - 1] + sorted[middle]) / 2;
 };
 
-function settings() {
-  const from = values.from;
-  if (!from) throw new Error("--from is required, for example the deploy time");
-  // Leave a few minutes for ingestion when --to is omitted
-  const to =
-    values.to ??
-    new Date(
-      Math.floor((Date.now() - 10 * 60 * 1000) / 60000) * 60000
-    ).toISOString();
-  const weeks = Number(values.weeks);
-  const ws = windows(from, to, weeks);
-  const days = (Date.parse(to) - Date.parse(from)) / DAY;
-  const minWindow = Number(values["min-daily"]) * days;
-  return { from, to, weeks, ws, days, minWindow };
-}
+const days = ({ deploy, to }: Settings) =>
+  (Date.parse(to) - Date.parse(deploy)) / DAY;
+
+const minPerWindow = (settings: Settings) =>
+  Math.ceil(settings.minDaily * days(settings));
 
 if (command === "query") {
-  const { ws, days, minWindow } = settings();
-  if (days < 1 / 24) console.error("Warning: windows under an hour are noisy");
+  if (!values.deploy)
+    throw new Error(
+      'Pass the deploy time, for example --deploy "2026-10-28 08:00"'
+    );
+  const settings: Settings = {
+    deploy: new Date(values.deploy).toISOString(),
+    // Leave a few minutes for ingestion
+    to: new Date(
+      values.to ?? Math.floor((Date.now() - 10 * 60 * 1000) / 60000) * 60000
+    ).toISOString(),
+    weeks: Number(values.weeks),
+    minDaily: Number(values["min-daily"]),
+  };
+  if (days(settings) < 1 / 24)
+    console.error("Warning: less than an hour since the deploy is noisy");
   console.log(
-    `# Paste into Kibana Dev Tools. Windows: ${ws.map((w) => `${w.name} ${w.gte} → ${w.lt}`).join(", ")}`
+    `# Pageviews from ${settings.deploy} to ${settings.to}, compared with the same hours ${settings.weeks} weeks before.`
   );
   console.log(
-    `# Websites need ${Math.ceil(minWindow)}+ pageviews in a baseline window (${values["min-daily"]}/day)\n`
+    `# Paste this into Kibana Dev Tools and save the response, then run: pnpm run traffic-drop analyze response.json\n`
   );
-  console.log(devTools(pageviewsRequest(ws, minWindow)));
-  console.log(
-    `# Then: pnpm run traffic-drop analyze response.json --from ${values.from} --to ${ws[0].lt} --weeks ${values.weeks} --min-daily ${values["min-daily"]}`
-  );
+  console.log(devTools(pageviewsRequest(settings)));
 } else if (command === "analyze") {
   if (!file) throw new Error("Pass the file with the Kibana response");
-  if (!values.to)
-    throw new Error(
-      "Pass the same --to as the query, printed at the end of `query`"
-    );
-  const { ws, minWindow } = settings();
   const response = JSON.parse(readFileSync(file, "utf8"));
   // An incomplete response would make broken websites look healthy
   if (response.error || response.timed_out || response._shards?.failed)
     throw new Error(
       `Elasticsearch didn't answer completely: ${JSON.stringify(response.error ?? response._shards ?? "timed out")}`
     );
+  const settings: Settings | undefined = response.aggregations?.sites?.meta;
   const buckets: Array<Record<string, any>> | undefined =
     response.aggregations?.sites?.buckets;
-  if (!buckets?.length)
-    throw new Error("The response has no websites; paste the whole response");
+  if (!settings || !buckets?.length)
+    throw new Error(
+      "The response has no websites; save the whole response of the query"
+    );
+  const ws = windows(settings);
+  const minWindow = minPerWindow(settings);
   const baselineNames = ws
     .filter((w) => w.name !== "current")
     .map((w) => w.name);
   const missing = ws.filter((w) => !(w.name in buckets[0]));
   if (missing.length)
     throw new Error(
-      `The response has no ${missing.map((w) => w.name).join(", ")}; use the same --weeks as the query`
+      `The response has no ${missing.map((w) => w.name).join(", ")}; run the query again`
     );
   const minDrop = Number(values["min-drop"]) / 100;
   const minZ = Number(values["min-z"]);
@@ -278,7 +284,10 @@ if (command === "query") {
     .sort((a, b) => b.baseline - b.current - (a.baseline - a.current));
 
   console.log(
-    `${sites.length} websites above ${values["min-daily"]} pageviews/day, ${response.took ?? "?"} ms in Elasticsearch`
+    `Pageviews from ${settings.deploy} to ${settings.to}, compared with the same hours ${settings.weeks} weeks before`
+  );
+  console.log(
+    `${sites.length} websites above ${settings.minDaily} pageviews/day, ${response.took ?? "?"} ms in Elasticsearch`
   );
   console.log(
     `All of them together: ${total} pageviews vs ${Math.round(totalBaseline)} baseline (${((total / totalBaseline - 1) * 100).toFixed(1)}%)`
