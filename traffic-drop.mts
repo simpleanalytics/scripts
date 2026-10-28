@@ -3,7 +3,7 @@
 //   pnpm run traffic-drop query [--weeks 4] [--deploy "2026-10-28 08:00"]
 //     Prints a request to paste into Kibana Dev Tools. Save the whole
 //     response to a file, for example response.json. Without --deploy, it
-//     uses the last deploy recorded in GitHub Deployments.
+//     uses the newest deploy recorded in GitHub Deployments.
 //   pnpm run traffic-drop analyze response.json
 //     Lists the websites with a significant drop, and prints follow-up
 //     requests for their script versions and script errors.
@@ -236,37 +236,39 @@ async function lastDeployments(): Promise<Deployment[]> {
   for (const environment of ENVIRONMENTS) {
     const deployments = await readGitHub<
       Array<{ id: number; ref: string; created_at: string }>
-    >(`${GITHUB_DEPLOYMENTS}?environment=${environment}&per_page=10`);
+    >(`${GITHUB_DEPLOYMENTS}?environment=${environment}&per_page=100`);
     deployments.sort((a, b) => b.created_at.localeCompare(a.created_at));
+    let success = false;
     for (const { id, ref } of deployments) {
       const [status] = await readGitHub<
         Array<{ state: string; created_at: string }>
       >(`${GITHUB_DEPLOYMENTS}/${id}/statuses?per_page=1`);
       if (status?.state !== "success") continue;
       found.push({ environment, ref, at: status.created_at });
+      success = true;
       break;
     }
+    if (deployments.length && !success)
+      console.error(
+        `Warning: no successful deployment found for ${environment}`
+      );
   }
   return found;
 }
 
-// The release deployed last, from the first destination that got it
+// The newest successful deployment on any destination. Comparing from the
+// newest one also covers rollbacks and destinations deployed days apart.
 async function deployTime(): Promise<string> {
   const deployments = await lastDeployments();
-  const newest = deployments.reduce<Deployment | undefined>(
-    (latest, d) => (!latest || d.at > latest.at ? d : latest),
-    undefined
-  );
-  if (!newest)
+  if (!deployments.length)
     throw new Error(
       'No deployment is recorded in GitHub, pass --deploy "2026-10-28 08:00"'
     );
-  const sameRelease = deployments.filter((d) => d.ref === newest.ref);
-  const first = sameRelease.reduce((a, b) => (a.at < b.at ? a : b));
+  const newest = deployments.reduce((a, b) => (a.at > b.at ? a : b));
   console.log(
-    `# Last deploy: ${newest.ref}, ${sameRelease.map((d) => `${d.environment} at ${d.at}`).join(", ")}`
+    `# Last deploys: ${deployments.map((d) => `${d.environment} ${d.ref} at ${d.at}`).join(", ")}. Using ${newest.environment}.`
   );
-  return first.at;
+  return newest.at;
 }
 
 if (command === "query") {
