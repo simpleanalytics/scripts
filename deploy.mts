@@ -524,9 +524,15 @@ async function readCdnFile(
   return Buffer.from(await response.arrayBuffer());
 }
 
+// Public data, but a token avoids the 60 requests per hour limit
+const githubToken = process.env.GH_TOKEN || process.env.GITHUB_TOKEN;
+
 async function readGitHub<T>(path: string): Promise<T> {
   const response = await fetch(`${GITHUB_API_ROOT}/${path}`, {
-    headers: { Accept: "application/vnd.github+json" },
+    headers: {
+      Accept: "application/vnd.github+json",
+      ...(githubToken ? { Authorization: `Bearer ${githubToken}` } : {}),
+    },
     signal: AbortSignal.timeout(30_000),
   });
   if (!response.ok) {
@@ -1219,7 +1225,14 @@ async function main(): Promise<void> {
     inspection.error("Unable to inspect deployed files");
     throw error;
   }
-  await renderRelease(release, selections);
+  // The deploy history is informational, a rollback shouldn't depend on it
+  try {
+    await renderRelease(release, selections);
+  } catch (error) {
+    log.warn(
+      `Unable to show what runs now: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
   renderPreview(previews, selections, dryRun, version);
 
   const counts = summarize(previews);
@@ -1250,24 +1263,32 @@ async function main(): Promise<void> {
     return;
   }
 
-  // Deploy and record one destination at a time, so a failure on one doesn't
-  // mark the other as failed
+  // Deploy and record one destination and script at a time, so a failure
+  // only marks what actually failed. The default script goes first.
   const result: DeploymentResult = { completed: [], failed: [], skipped: [] };
+  const ordered = (["default", "auto-events"] as const).filter((script) =>
+    scripts.includes(script),
+  );
   for (const destination of destinations) {
-    let state: "success" | "failure" = "failure";
-    try {
-      await deployFiles(
-        previews.filter((file) => file.destination === destination),
-        credentials,
-        result,
+    for (const script of ordered) {
+      const single = { destinations: [destination], scripts: [script] };
+      const paths = new Set(
+        createManifest(single, version).map((file) => file.remotePath),
       );
-      state = "success";
-    } finally {
-      await recordDeployments(
-        release,
-        { ...selections, destinations: [destination] },
-        state,
-      );
+      let state: "success" | "failure" = "failure";
+      try {
+        await deployFiles(
+          previews.filter(
+            (file) =>
+              file.destination === destination && paths.has(file.remotePath),
+          ),
+          credentials,
+          result,
+        );
+        state = "success";
+      } finally {
+        await recordDeployments(release, single, state);
+      }
     }
   }
   renderDeploymentResult(result);
