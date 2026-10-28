@@ -1,8 +1,9 @@
 // Finds websites whose pageviews dropped after a script deploy.
 //
-//   pnpm run traffic-drop query --deploy "2026-10-28 08:00" [--weeks 4]
+//   pnpm run traffic-drop query [--weeks 4] [--deploy "2026-10-28 08:00"]
 //     Prints a request to paste into Kibana Dev Tools. Save the whole
-//     response to a file, for example response.json.
+//     response to a file, for example response.json. Without --deploy, it
+//     uses the last deploy recorded in GitHub Deployments.
 //   pnpm run traffic-drop analyze response.json
 //     Lists the websites with a significant drop, and prints follow-up
 //     requests for their script versions and script errors.
@@ -17,6 +18,10 @@ import { parseArgs } from "node:util";
 const INDEX = "live-datapoints-*";
 const FIELD = "hostname_non_robot_pageview"; // only set on non-robot pageviews
 const DAY = 24 * 60 * 60 * 1000;
+// GitHub deployment environments that deploy.mts records for latest.js
+const GITHUB_DEPLOYMENTS =
+  "https://api.github.com/repos/simpleanalytics/scripts/deployments";
+const ENVIRONMENTS = ["cdn", "custom-domains"];
 
 const { positionals, values } = parseArgs({
   allowPositionals: true,
@@ -206,13 +211,67 @@ const days = ({ deploy, to }: Settings) =>
 const minPerWindow = (settings: Settings) =>
   Math.ceil(settings.minDaily * days(settings));
 
-if (command === "query") {
-  if (!values.deploy)
+type Deployment = { environment: string; ref: string; at: string };
+
+// Public data, but a token avoids the 60 requests per hour limit
+const token = process.env.GH_TOKEN || process.env.GITHUB_TOKEN;
+
+const readGitHub = async <T,>(url: string): Promise<T> => {
+  const response = await fetch(url, {
+    headers: {
+      Accept: "application/vnd.github+json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+  if (!response.ok)
     throw new Error(
-      'Pass the deploy time, for example --deploy "2026-10-28 08:00"'
+      `GitHub answered HTTP ${response.status} for ${url}. Set GH_TOKEN or pass --deploy.`
     );
+  return (await response.json()) as T;
+};
+
+// The newest successful deployment per environment
+async function lastDeployments(): Promise<Deployment[]> {
+  const found: Deployment[] = [];
+  for (const environment of ENVIRONMENTS) {
+    const deployments = await readGitHub<
+      Array<{ id: number; ref: string; created_at: string }>
+    >(`${GITHUB_DEPLOYMENTS}?environment=${environment}&per_page=10`);
+    deployments.sort((a, b) => b.created_at.localeCompare(a.created_at));
+    for (const { id, ref } of deployments) {
+      const [status] = await readGitHub<
+        Array<{ state: string; created_at: string }>
+      >(`${GITHUB_DEPLOYMENTS}/${id}/statuses?per_page=1`);
+      if (status?.state !== "success") continue;
+      found.push({ environment, ref, at: status.created_at });
+      break;
+    }
+  }
+  return found;
+}
+
+// The release deployed last, from the first destination that got it
+async function deployTime(): Promise<string> {
+  const deployments = await lastDeployments();
+  const newest = deployments.reduce<Deployment | undefined>(
+    (latest, d) => (!latest || d.at > latest.at ? d : latest),
+    undefined
+  );
+  if (!newest)
+    throw new Error(
+      'No deployment is recorded in GitHub, pass --deploy "2026-10-28 08:00"'
+    );
+  const sameRelease = deployments.filter((d) => d.ref === newest.ref);
+  const first = sameRelease.reduce((a, b) => (a.at < b.at ? a : b));
+  console.log(
+    `# Last deploy: ${newest.ref}, ${sameRelease.map((d) => `${d.environment} at ${d.at}`).join(", ")}`
+  );
+  return first.at;
+}
+
+if (command === "query") {
   const settings: Settings = {
-    deploy: new Date(values.deploy).toISOString(),
+    deploy: new Date(values.deploy ?? (await deployTime())).toISOString(),
     // Leave a few minutes for ingestion
     to: new Date(
       values.to ?? Math.floor((Date.now() - 10 * 60 * 1000) / 60000) * 60000
