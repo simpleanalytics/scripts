@@ -19,7 +19,6 @@ import { fileURLToPath } from "node:url";
 
 export type ScriptChoice = "default" | "auto-events";
 export type Destination = "cdn" | "caddy";
-export type EmbedVariant = "latest" | "sri" | "light" | "proxy";
 export type FileStatus = "create" | "replace" | "unchanged" | "blocked";
 type FileKind = "javascript" | "source-map";
 type ContentTransform =
@@ -28,10 +27,11 @@ type ContentTransform =
   | "cdn-sri-map"
   | "caddy-ssi";
 
+// Every script is deployed with all of its files (latest, SRI, light, proxy),
+// so a destination never runs a mix of releases for one script
 export interface DeploySelections {
   scripts: ScriptChoice[];
   destinations: Destination[];
-  variants: EmbedVariant[];
 }
 
 export interface DeployFile {
@@ -110,11 +110,23 @@ const CDN_PURGE_URL =
   "https://api.bunny.net/purge?url=https://simpleanalyticscdn.b-cdn.net/*";
 const GITHUB_REPOSITORY = "simpleanalytics/scripts";
 const GITHUB_API_ROOT = `https://api.github.com/repos/${GITHUB_REPOSITORY}`;
-// GitHub deployment environments that record which release each destination
-// runs, shown at github.com/simpleanalytics/scripts/deployments.
-const ENVIRONMENTS: Record<Destination, { name: string; url?: string }> = {
-  caddy: { name: "custom-domains" },
-  cdn: { name: "cdn", url: `${CDN_PUBLIC_ROOT}/latest.js` },
+// GitHub deployment environments that record which release each script runs
+// per destination, shown at github.com/simpleanalytics/scripts/deployments.
+const ENVIRONMENTS: Record<
+  Destination,
+  Record<ScriptChoice, { name: string; url?: string }>
+> = {
+  caddy: {
+    default: { name: "custom-domains" },
+    "auto-events": { name: "custom-domains-auto-events" },
+  },
+  cdn: {
+    default: { name: "cdn", url: `${CDN_PUBLIC_ROOT}/latest.js` },
+    "auto-events": {
+      name: "cdn-auto-events",
+      url: `${CDN_PUBLIC_ROOT}/auto-events.js`,
+    },
+  },
 };
 export const HEADER_PATTERN =
   /^\/\* Simple Analytics - Privacy(?: friendly|-first) analytics \(docs\.simpleanalytics\.com\/[^;]+; \d{4}-\d{2}-\d{2}; [0-9a-f]{4}(?:; SRI-version)?(?:; v\d+)?\) \*\/$/;
@@ -185,15 +197,13 @@ function addScriptPair(
 
 export function createManifest(
   selections: DeploySelections,
-  version?: number,
+  version: number,
 ): DeployFile[] {
   const files: DeployFile[] = [];
   const hasScript = (choice: ScriptChoice) => selections.scripts.includes(choice);
   const hasDestination = (destination: Destination) =>
     selections.destinations.includes(destination);
-  const hasVariant = (variant: EmbedVariant) =>
-    selections.variants.includes(variant);
-  const needsSri = hasScript("default") && hasVariant("sri");
+  const hasDefault = hasScript("default");
 
   const addCaddyPair = (
     input: Omit<Parameters<typeof addScriptPair>[1], "destination">,
@@ -206,11 +216,7 @@ export function createManifest(
     });
   };
 
-  if (needsSri && version === undefined) {
-    throw new Error("An SRI version is required when SRI is selected.");
-  }
-
-  if (hasScript("default") && hasVariant("latest")) {
+  if (hasDefault) {
     if (hasDestination("cdn")) {
       addScriptPair(files, {
         destination: "cdn",
@@ -245,7 +251,7 @@ export function createManifest(
     });
   }
 
-  if (needsSri) {
+  if (hasDefault) {
     if (hasDestination("cdn")) {
       addScriptPair(files, {
         destination: "cdn",
@@ -265,7 +271,7 @@ export function createManifest(
     });
   }
 
-  if (hasScript("default") && hasVariant("light")) {
+  if (hasDefault) {
     if (hasDestination("cdn")) {
       addScriptPair(files, {
         destination: "cdn",
@@ -279,34 +285,26 @@ export function createManifest(
       remotePath: "light.js",
     });
 
-    if (needsSri) {
-      addCaddyPair({
-        immutable: true,
-        localPath: `dist/v${version}/custom/light.js`,
-        remotePath: `v${version}/light.js`,
-        version,
-      });
-    }
+    addCaddyPair({
+      immutable: true,
+      localPath: `dist/v${version}/custom/light.js`,
+      remotePath: `v${version}/light.js`,
+      version,
+    });
   }
 
-  if (
-    hasScript("default") &&
-    hasVariant("proxy") &&
-    hasDestination("caddy")
-  ) {
+  if (hasDefault && hasDestination("caddy")) {
     addCaddyPair({
       localPath: "dist/latest/custom/proxy.js",
       remotePath: "proxy.js",
     });
 
-    if (needsSri) {
-      addCaddyPair({
-        immutable: true,
-        localPath: `dist/v${version}/custom/proxy.js`,
-        remotePath: `v${version}/proxy.js`,
-        version,
-      });
-    }
+    addCaddyPair({
+      immutable: true,
+      localPath: `dist/v${version}/custom/proxy.js`,
+      remotePath: `v${version}/proxy.js`,
+      version,
+    });
   }
 
   if (hasScript("auto-events")) {
@@ -323,14 +321,12 @@ export function createManifest(
       remotePath: "auto-events.js",
     });
 
-    if (needsSri) {
-      addCaddyPair({
-        immutable: true,
-        localPath: `dist/v${version}/custom/auto-events.js`,
-        remotePath: `v${version}/auto-events.js`,
-        version,
-      });
-    }
+    addCaddyPair({
+      immutable: true,
+      localPath: `dist/v${version}/custom/auto-events.js`,
+      remotePath: `v${version}/auto-events.js`,
+      version,
+    });
   }
 
   return files;
@@ -729,9 +725,6 @@ function renderPreview(
       `Mode: ${dryRun ? "Dry run" : "Deploy"}`,
       `Scripts: ${selections.scripts.join(", ")}`,
       `Destinations: ${selections.destinations.join(", ")}`,
-      selections.variants.length > 0
-        ? `Default variants: ${selections.variants.join(", ")}`
-        : null,
       version === undefined ? null : `SRI version: v${version}`,
     ]
       .filter((line): line is string => line !== null)
@@ -783,14 +776,16 @@ function renderPreview(
 
 async function renderRelease(
   release: Release,
-  destinations: Destination[],
+  selections: DeploySelections,
 ): Promise<void> {
   const lines = [
     `${release.tag}, published ${release.publishedAt.slice(0, 10)}`,
     release.url,
   ];
-  for (const destination of destinations) {
-    const environment = ENVIRONMENTS[destination].name;
+  const environments = selections.destinations.flatMap((destination) =>
+    selections.scripts.map((script) => ENVIRONMENTS[destination][script].name),
+  );
+  for (const environment of environments) {
     const deployments = (
       await readGitHub<Array<{ created_at: string; id: number; ref: string }>>(
         `deployments?environment=${environment}&per_page=10`,
@@ -850,10 +845,14 @@ async function recordDeployments(
   const [command, ...prefix] = (process.env.DEPLOY_GH_COMMAND || "gh")
     .trim()
     .split(/\s+/);
-  const description = [...selections.scripts, ...selections.variants].join(", ");
+  const environments = selections.destinations.flatMap((destination) =>
+    selections.scripts.map((script) => ({
+      script,
+      ...ENVIRONMENTS[destination][script],
+    })),
+  );
 
-  for (const destination of selections.destinations) {
-    const environment = ENVIRONMENTS[destination];
+  for (const environment of environments) {
     const progress = spinner();
     progress.start(`Recording ${release.tag} on ${environment.name} in GitHub`);
     try {
@@ -868,7 +867,7 @@ async function recordDeployments(
           "-f",
           `environment=${environment.name}`,
           "-f",
-          `description=${description}`,
+          `description=${environment.script}`,
           "-F",
           "auto_merge=false",
           "-F",
@@ -1169,7 +1168,7 @@ async function main(): Promise<void> {
       initialValues: ["default", "auto-events"],
       message: "Scripts to deploy",
       options: [
-        { label: "Default embed", value: "default" },
+        { label: "Default embed (latest, SRI, light, proxy)", value: "default" },
         { label: "Auto-events", value: "auto-events" },
       ],
       required: true,
@@ -1189,27 +1188,7 @@ async function main(): Promise<void> {
         }),
       );
 
-  let variants: EmbedVariant[] = [];
-  if (scripts.includes("default")) {
-    const options: Array<{ label: string; value: EmbedVariant }> = [
-      { label: "Latest", value: "latest" },
-      { label: "SRI", value: "sri" },
-      { label: "Light", value: "light" },
-    ];
-    if (destinations.includes("caddy")) {
-      options.push({ label: "Proxy", value: "proxy" });
-    }
-    variants = selectedValue(
-      await multiselect<EmbedVariant>({
-        initialValues: options.map((option) => option.value),
-        message: "What default embed scripts do you want to deploy?",
-        options,
-        required: true,
-      }),
-    );
-  }
-
-  const selections = { destinations, scripts, variants };
+  const selections = { destinations, scripts };
   const download = spinner();
   download.start(`Downloading ${release.tag}`);
   let directory: string;
@@ -1221,10 +1200,10 @@ async function main(): Promise<void> {
     throw error;
   }
 
-  let version: number | undefined;
+  let version: number;
   let preparedFiles: PreparedFile[];
   try {
-    version = variants.includes("sri") ? await discoverSriVersion(directory) : undefined;
+    version = await discoverSriVersion(directory);
     preparedFiles = await prepareFiles(createManifest(selections, version), directory);
   } finally {
     await rm(directory, { force: true, recursive: true });
@@ -1240,7 +1219,7 @@ async function main(): Promise<void> {
     inspection.error("Unable to inspect deployed files");
     throw error;
   }
-  await renderRelease(release, destinations);
+  await renderRelease(release, selections);
   renderPreview(previews, selections, dryRun, version);
 
   const counts = summarize(previews);
@@ -1272,11 +1251,8 @@ async function main(): Promise<void> {
   }
 
   // Deploy and record one destination at a time, so a failure on one doesn't
-  // mark the other as failed. Only deployments with latest.js change the
-  // release a destination runs.
+  // mark the other as failed
   const result: DeploymentResult = { completed: [], failed: [], skipped: [] };
-  const recordRelease =
-    scripts.includes("default") && variants.includes("latest");
   for (const destination of destinations) {
     let state: "success" | "failure" = "failure";
     try {
@@ -1287,22 +1263,15 @@ async function main(): Promise<void> {
       );
       state = "success";
     } finally {
-      if (recordRelease) {
-        await recordDeployments(
-          release,
-          { ...selections, destinations: [destination] },
-          state,
-        );
-      }
+      await recordDeployments(
+        release,
+        { ...selections, destinations: [destination] },
+        state,
+      );
     }
   }
   renderDeploymentResult(result);
-  if (!recordRelease) {
-    log.info(
-      "Not recorded in GitHub: without latest.js the destinations keep running their recorded release.",
-    );
-  }
-  if (variants.includes("sri")) {
+  if (scripts.includes("default")) {
     log.warn(
       "Update https://docs.simpleanalytics.com/sri with the SRI version.",
     );
