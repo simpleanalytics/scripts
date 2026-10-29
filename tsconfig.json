@@ -11,5 +11,5 @@
     "types": ["node"],
     "verbatimModuleSyntax": true
   },
-  "include": ["deploy.mts", "test/deploy.test.mts"]
+  "include": ["deploy.mts", "traffic-drop.mts", "test/deploy.test.mts"]
 }
