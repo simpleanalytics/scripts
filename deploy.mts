@@ -555,6 +555,7 @@ async function listReleases(): Promise<Release[]> {
         digest: string | null;
         name: string;
       }>;
+      draft: boolean;
       html_url: string;
       published_at: string;
       tag_name: string;
@@ -562,6 +563,8 @@ async function listReleases(): Promise<Release[]> {
   >("releases?per_page=100");
 
   return releases.flatMap((release) => {
+    // Tokens with push access also list drafts, which aren't released yet
+    if (release.draft) return [];
     const archive = release.assets.find(
       (asset) => asset.name === `scripts-${release.tag_name}.tar.gz`,
     );
