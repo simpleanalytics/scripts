@@ -15,6 +15,7 @@
     "build": "node compile.js",
     "build:testing": "node compile.js testing",
     "deploy": "node --env-file-if-exists=.env deploy.mts",
+    "traffic-drop": "node traffic-drop.mts",
     "pretest": "pnpm run build:testing",
     "test": "node -r dotenv/config ./test/index.js",
     "test:unit": "pnpm run build && mocha \"test/unit/*.test.js\" --exit",
