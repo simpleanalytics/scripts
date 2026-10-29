@@ -10,8 +10,10 @@
 //
 // The time since the deploy (until 10 minutes ago) is compared with the same
 // hours 1 to --weeks weeks earlier, so weekdays line up. Websites with fewer
-// than --min-daily pageviews per day are ignored. The request stores these
-// settings, so analyze reads them from the response.
+// than --min-daily pageviews per day are ignored. The same length right before
+// the deploy is checked too, so a drop that started earlier isn't blamed on
+// the deploy. The request stores these settings, so analyze reads them from
+// the response.
 import { readFileSync } from "node:fs";
 import { parseArgs } from "node:util";
 
@@ -51,11 +53,23 @@ function windows({ deploy, to, weeks }: Settings): Window[] {
     throw new Error(
       `The deploy at ${deploy} is newer than ${to}; wait a few minutes after a deploy so there is a window to measure`
     );
-  return [0, ...Array.from({ length: weeks }, (_, i) => i + 1)].map((w) => ({
-    name: w ? `w${w}` : "current",
-    gte: new Date(start - w * 7 * DAY).toISOString(),
-    lt: new Date(end - w * 7 * DAY).toISOString(),
-  }));
+  const shifts = [0, ...Array.from({ length: weeks }, (_, i) => i + 1)];
+  const at = (time: number, w: number) =>
+    new Date(time - w * 7 * DAY).toISOString();
+  // current/w1..wN cover the time since the deploy, before/bw1..bwN the same
+  // length right before it
+  return [
+    ...shifts.map((w) => ({
+      name: w ? `w${w}` : "current",
+      gte: at(start, w),
+      lt: at(end, w),
+    })),
+    ...shifts.map((w) => ({
+      name: w ? `bw${w}` : "before",
+      gte: at(start - (end - start), w),
+      lt: at(start, w),
+    })),
+  ];
 }
 
 const range = ({ gte, lt }: Window) => ({
@@ -65,7 +79,7 @@ const range = ({ gte, lt }: Window) => ({
 function pageviewsRequest(settings: Settings): Request {
   const ws = windows(settings);
   const minWindow = minPerWindow(settings);
-  const baselines = ws.filter((w) => w.name !== "current");
+  const baselines = ws.filter((w) => /^w\d+$/.test(w.name));
   return {
     // filter_path keeps the response small enough to copy from Kibana
     path: `${INDEX}/_search?request_cache=true&filter_path=took,timed_out,_shards.failed,aggregations.sites.meta,aggregations.sites.buckets.key,aggregations.sites.buckets.*.doc_count`,
@@ -291,7 +305,7 @@ if (command === "query") {
   if (days(settings) < 1 / 24)
     console.error("Warning: less than an hour since the deploy is noisy");
   console.log(
-    `# Pageviews from ${settings.deploy} to ${settings.to}, compared with the same hours ${settings.weeks} weeks before.`
+    `# Pageviews from ${settings.deploy} to ${settings.to} and the same length before the deploy, compared with the same hours ${settings.weeks} weeks before.`
   );
   console.log(
     `# Paste this into Kibana Dev Tools and save the response, then run: pnpm run traffic-drop analyze response.json\n`
@@ -314,9 +328,10 @@ if (command === "query") {
     );
   const ws = windows(settings);
   const minWindow = minPerWindow(settings);
-  const baselineNames = ws
-    .filter((w) => w.name !== "current")
-    .map((w) => w.name);
+  const names = (pattern: RegExp) =>
+    ws.filter((w) => pattern.test(w.name)).map((w) => w.name);
+  const afterWeeks = names(/^w\d+$/);
+  const beforeWeeks = names(/^bw\d+$/);
   // A missing count would read as zero and look like a drop
   const incomplete = buckets.find((b) =>
     ws.some((w) => typeof b[w.name]?.doc_count !== "number")
@@ -328,34 +343,45 @@ if (command === "query") {
   const minDrop = Number(values["min-drop"]) / 100;
   const minZ = Number(values["min-z"]);
 
-  const sites = buckets
-    .map((b) => {
-      const weeks = baselineNames.map((name) => b[name]?.doc_count ?? 0);
-      const baseline = median(weeks);
-      const current = b.current?.doc_count ?? 0;
-      // Pageview counts are roughly Poisson, so the noise is at least
-      // √baseline; websites that vary more from week to week get that instead
-      const noise = Math.sqrt(Math.max(baseline, variance(weeks), 1));
-      const z = (current - baseline) / noise;
-      return {
-        hostname: b.key as string,
-        baseline,
-        current,
-        weeks,
-        drop: 1 - current / baseline,
-        z,
-      };
-    })
-    .filter((s) => s.baseline >= minWindow);
+  // Compares a window with the median of the same window in earlier weeks
+  const compare = (
+    b: Record<string, any>,
+    name: string,
+    weekNames: string[]
+  ) => {
+    const weeks = weekNames.map((week) => b[week].doc_count as number);
+    const baseline = median(weeks);
+    const count = b[name].doc_count as number;
+    // Pageview counts are roughly Poisson, so the noise is at least
+    // √baseline; websites that vary more from week to week get that instead
+    const noise = Math.sqrt(Math.max(baseline, variance(weeks), 1));
+    const z = (count - baseline) / noise;
+    const dropped = 1 - count / baseline >= minDrop && z <= -minZ;
+    return { count, baseline, weeks, drop: 1 - count / baseline, z, dropped };
+  };
 
-  const total = sites.reduce((sum, s) => sum + s.current, 0);
-  const totalBaseline = sites.reduce((sum, s) => sum + s.baseline, 0);
-  const flagged = sites
-    .filter((s) => s.drop >= minDrop && s.z <= -minZ)
-    .sort((a, b) => b.baseline - b.current - (a.baseline - a.current));
+  const sites = buckets
+    .map((b) => ({
+      hostname: b.key as string,
+      after: compare(b, "current", afterWeeks),
+      before: compare(b, "before", beforeWeeks),
+    }))
+    .filter((s) => s.after.baseline >= minWindow);
+
+  const total = sites.reduce((sum, s) => sum + s.after.count, 0);
+  const totalBaseline = sites.reduce((sum, s) => sum + s.after.baseline, 0);
+  const missing = (s: (typeof sites)[number]) =>
+    s.after.baseline - s.after.count;
+  const dropped = sites
+    .filter((s) => s.after.dropped)
+    .sort((a, b) => missing(b) - missing(a));
+  // Only drops that weren't there before the deploy can be caused by it
+  const flagged = dropped.filter((s) => !s.before.dropped);
+  const alreadyDown = dropped.filter((s) => s.before.dropped);
+  const percent = (drop: number) => `${Math.round(drop * 100)}%`;
 
   console.log(
-    `Pageviews from ${settings.deploy} to ${settings.to}, compared with the same hours ${settings.weeks} weeks before`
+    `Pageviews from ${settings.deploy} to ${settings.to} and the same length before the deploy, compared with the same hours ${settings.weeks} weeks before`
   );
   console.log(
     `${sites.length} websites above ${settings.minDaily} pageviews/day, ${response.took ?? "?"} ms in Elasticsearch`
@@ -364,19 +390,33 @@ if (command === "query") {
     `All of them together: ${total} pageviews vs ${Math.round(totalBaseline)} baseline (${((total / totalBaseline - 1) * 100).toFixed(1)}%)`
   );
   console.log(
-    `${flagged.length} dropped at least ${values["min-drop"]}% with z ≤ -${values["min-z"]}\n`
+    `${flagged.length} dropped after the deploy (at least ${values["min-drop"]}% with z ≤ -${values["min-z"]}, normal before it)\n`
   );
-  if (flagged.length) {
+  if (flagged.length)
     console.table(
       flagged.slice(0, Number(values.limit)).map((s) => ({
         hostname: s.hostname,
-        current: s.current,
-        baseline: s.baseline,
-        drop: `${Math.round(s.drop * 100)}%`,
-        z: Number(s.z.toFixed(1)),
-        weeks: s.weeks.join(" "),
+        current: s.after.count,
+        baseline: s.after.baseline,
+        drop: percent(s.after.drop),
+        z: Number(s.after.z.toFixed(1)),
+        weeks: s.after.weeks.join(" "),
+        before: `${s.before.count} vs ${s.before.baseline}`,
       }))
     );
+  if (alreadyDown.length) {
+    console.log(
+      `\n${alreadyDown.length} were already down before the deploy, so it didn't cause them:\n`
+    );
+    console.table(
+      alreadyDown.slice(0, 10).map((s) => ({
+        hostname: s.hostname,
+        before: `${s.before.count} vs ${s.before.baseline} (-${percent(s.before.drop)})`,
+        after: `${s.after.count} vs ${s.after.baseline} (-${percent(s.after.drop)})`,
+      }))
+    );
+  }
+  if (flagged.length) {
     const [versions, errors] = followUpRequests(
       flagged.slice(0, Number(values.limit)).map((s) => s.hostname),
       ws
