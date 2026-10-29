@@ -7,6 +7,7 @@ on:
 jobs:
   pull-request:
     uses: simpleanalytics/github-actions/.github/workflows/pull-request.yml@main
-    secrets: inherit
+    secrets:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
     with:
       internal_app: false
