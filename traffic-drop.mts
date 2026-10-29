@@ -47,7 +47,10 @@ const devTools = ({ path, body }: Request) =>
 function windows({ deploy, to, weeks }: Settings): Window[] {
   const start = Date.parse(deploy);
   const end = Date.parse(to);
-  if (!(start < end)) throw new Error("The deploy time must be in the past");
+  if (!(start < end))
+    throw new Error(
+      `The deploy at ${deploy} is newer than ${to}; wait a few minutes after a deploy so there is a window to measure`
+    );
   return [0, ...Array.from({ length: weeks }, (_, i) => i + 1)].map((w) => ({
     name: w ? `w${w}` : "current",
     gte: new Date(start - w * 7 * DAY).toISOString(),
@@ -217,12 +220,16 @@ type Deployment = { environment: string; ref: string; at: string };
 const token = process.env.GH_TOKEN || process.env.GITHUB_TOKEN;
 
 const readGitHub = async <T,>(url: string): Promise<T> => {
-  const response = await fetch(url, {
-    headers: {
-      Accept: "application/vnd.github+json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-  });
+  const read = (withToken: boolean) =>
+    fetch(url, {
+      headers: {
+        Accept: "application/vnd.github+json",
+        ...(withToken && token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+  let response = await read(true);
+  // A stale token must not block reading public data
+  if (token && response.status === 401) response = await read(false);
   if (!response.ok)
     throw new Error(
       `GitHub answered HTTP ${response.status} for ${url}. Set GH_TOKEN or pass --deploy.`
@@ -296,7 +303,7 @@ if (command === "query") {
   // An incomplete response would make broken websites look healthy
   if (response.error || response.timed_out || response._shards?.failed)
     throw new Error(
-      `Elasticsearch didn't answer completely: ${JSON.stringify(response.error ?? response._shards ?? "timed out")}`
+      `Elasticsearch didn't answer completely: ${JSON.stringify(response.error ?? (response.timed_out ? "timed out" : response._shards))}`
     );
   const settings: Settings | undefined = response.aggregations?.sites?.meta;
   const buckets: Array<Record<string, any>> | undefined =
@@ -310,10 +317,13 @@ if (command === "query") {
   const baselineNames = ws
     .filter((w) => w.name !== "current")
     .map((w) => w.name);
-  const missing = ws.filter((w) => !(w.name in buckets[0]));
-  if (missing.length)
+  // A missing count would read as zero and look like a drop
+  const incomplete = buckets.find((b) =>
+    ws.some((w) => typeof b[w.name]?.doc_count !== "number")
+  );
+  if (incomplete)
     throw new Error(
-      `The response has no ${missing.map((w) => w.name).join(", ")}; run the query again`
+      `The response has no counts for every window (${incomplete.key}); run the query again`
     );
   const minDrop = Number(values["min-drop"]) / 100;
   const minZ = Number(values["min-z"]);
@@ -381,9 +391,7 @@ if (command === "query") {
 } else {
   console.log(
     readFileSync(new URL(import.meta.url), "utf8")
-      .split("\n")
-      .slice(0, 12)
-      .join("\n")
+      .split("\nimport ")[0]
       .replace(/^\/\/ ?/gm, "")
   );
 }
