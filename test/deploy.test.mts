@@ -32,7 +32,6 @@ describe("deployment headers", () => {
       {
         destinations: ["cdn", "caddy"],
         scripts: ["default", "auto-events"],
-        variants: ["latest", "sri", "light", "proxy"],
       },
       version
     );
@@ -62,12 +61,11 @@ describe("deployment headers", () => {
 });
 
 describe("deployment manifest", () => {
-  it("maps latest and its legacy companions to both destinations", () => {
-    const files = createManifest({
-      destinations: ["cdn", "caddy"],
-      scripts: ["default"],
-      variants: ["latest"],
-    });
+  it("deploys every file of the default script to both destinations", () => {
+    const files = createManifest(
+      { destinations: ["cdn", "caddy"], scripts: ["default"] },
+      12,
+    );
 
     assert.deepEqual(
       files.map((file) => `${file.destination}:${file.remotePath}`),
@@ -82,6 +80,20 @@ describe("deployment manifest", () => {
         "caddy:events.js",
         "caddy:events.js.map",
         "caddy:latest.dev.js",
+        "cdn:sri/v12.js",
+        "cdn:sri/v12.js.map",
+        "caddy:v12/app.js",
+        "caddy:v12/app.js.map",
+        "cdn:light.js",
+        "cdn:light.js.map",
+        "caddy:light.js",
+        "caddy:light.js.map",
+        "caddy:v12/light.js",
+        "caddy:v12/light.js.map",
+        "caddy:proxy.js",
+        "caddy:proxy.js.map",
+        "caddy:v12/proxy.js",
+        "caddy:v12/proxy.js.map",
       ],
     );
   });
@@ -91,7 +103,6 @@ describe("deployment manifest", () => {
       {
         destinations: ["cdn", "caddy"],
         scripts: ["default", "auto-events"],
-        variants: ["latest", "sri", "light", "proxy"],
       },
       12,
     );
@@ -122,12 +133,11 @@ describe("deployment manifest", () => {
     );
   });
 
-  it("deploys standalone auto-events without implicit SRI files", () => {
-    const files = createManifest({
-      destinations: ["cdn", "caddy"],
-      scripts: ["auto-events"],
-      variants: [],
-    });
+  it("deploys auto-events with its pinned Caddy file and nothing else", () => {
+    const files = createManifest(
+      { destinations: ["cdn", "caddy"], scripts: ["auto-events"] },
+      12,
+    );
 
     assert.deepEqual(
       files.map((file) => `${file.destination}:${file.remotePath}`),
@@ -136,46 +146,27 @@ describe("deployment manifest", () => {
         "cdn:auto-events.js.map",
         "caddy:auto-events.js",
         "caddy:auto-events.js.map",
+        "caddy:v12/auto-events.js",
+        "caddy:v12/auto-events.js.map",
       ],
     );
-    assert.equal(files.some((file) => file.immutable), false);
   });
 
   it("never emits proxy files for a CDN-only selection", () => {
     const files = createManifest(
-      {
-        destinations: ["cdn"],
-        scripts: ["default"],
-        variants: ["proxy", "sri"],
-      },
+      { destinations: ["cdn"], scripts: ["default"] },
       12,
     );
 
     assert.equal(files.some((file) => file.remotePath.includes("proxy")), false);
-    assert.deepEqual(
-      files.map((file) => file.remotePath),
-      ["sri/v12.js", "sri/v12.js.map"],
-    );
-  });
-
-  it("requires a version when SRI is selected", () => {
-    assert.throws(
-      () =>
-        createManifest({
-          destinations: ["cdn"],
-          scripts: ["default"],
-          variants: ["sri"],
-        }),
-      /SRI version is required/,
-    );
+    assert.equal(files.some((file) => file.destination === "caddy"), false);
   });
 
   it("never invents a source map for latest.dev.js", () => {
-    const files = createManifest({
-      destinations: ["cdn", "caddy"],
-      scripts: ["default"],
-      variants: ["latest"],
-    });
+    const files = createManifest(
+      { destinations: ["cdn", "caddy"], scripts: ["default"] },
+      12,
+    );
 
     assert.equal(
       files.some((file) => file.remotePath === "latest.dev.js.map"),
@@ -264,11 +255,7 @@ describe("preview helpers", () => {
 describe("Caddy custom-domains destination", () => {
   it("maps Caddy-only files with the caddy-ssi transform", () => {
     const files = createManifest(
-      {
-        destinations: ["caddy"],
-        scripts: ["default"],
-        variants: ["latest", "sri"],
-      },
+      { destinations: ["caddy"], scripts: ["default"] },
       12,
     );
 
@@ -282,6 +269,14 @@ describe("Caddy custom-domains destination", () => {
         "caddy:latest.dev.js",
         "caddy:v12/app.js",
         "caddy:v12/app.js.map",
+        "caddy:light.js",
+        "caddy:light.js.map",
+        "caddy:v12/light.js",
+        "caddy:v12/light.js.map",
+        "caddy:proxy.js",
+        "caddy:proxy.js.map",
+        "caddy:v12/proxy.js",
+        "caddy:v12/proxy.js.map",
       ],
     );
     assert.equal(
