@@ -10,16 +10,16 @@
 //
 // The time since the deploy (until 10 minutes ago) is compared with the same
 // hours 1 to --weeks weeks earlier, so weekdays line up. Websites with fewer
-// than --min-daily pageviews per day are ignored. The same length right before
-// the deploy is checked too, so a drop that started earlier isn't blamed on
-// the deploy. The request stores these settings, so analyze reads them from
+// than --min-daily pageviews per day are ignored. The hour before the deploy is
+// checked too, so a drop that started earlier isn't blamed on the deploy. The request stores these settings, so analyze reads them from
 // the response.
 import { readFileSync } from "node:fs";
 import { parseArgs } from "node:util";
 
 const INDEX = "live-datapoints-*";
 const FIELD = "hostname_non_robot_pageview"; // only set on non-robot pageviews
-const DAY = 24 * 60 * 60 * 1000;
+const HOUR = 60 * 60 * 1000;
+const DAY = 24 * HOUR;
 // GitHub deployment environments that deploy.mts records for latest.js
 const GITHUB_DEPLOYMENTS =
   "https://api.github.com/repos/simpleanalytics/scripts/deployments";
@@ -56,8 +56,9 @@ function windows({ deploy, to, weeks }: Settings): Window[] {
   const shifts = [0, ...Array.from({ length: weeks }, (_, i) => i + 1)];
   const at = (time: number, w: number) =>
     new Date(time - w * 7 * DAY).toISOString();
-  // current/w1..wN cover the time since the deploy, before/bw1..bwN the same
-  // length right before it
+  // current/w1..wN cover the time since the deploy, before/bw1..bwN the hour
+  // before it (shorter windows only see when a drop started more sharply)
+  const beforeStart = start - Math.min(end - start, HOUR);
   return [
     ...shifts.map((w) => ({
       name: w ? `w${w}` : "current",
@@ -66,7 +67,7 @@ function windows({ deploy, to, weeks }: Settings): Window[] {
     })),
     ...shifts.map((w) => ({
       name: w ? `bw${w}` : "before",
-      gte: at(start - (end - start), w),
+      gte: at(beforeStart, w),
       lt: at(start, w),
     })),
   ];
@@ -305,7 +306,7 @@ if (command === "query") {
   if (days(settings) < 1 / 24)
     console.error("Warning: less than an hour since the deploy is noisy");
   console.log(
-    `# Pageviews from ${settings.deploy} to ${settings.to} and the same length before the deploy, compared with the same hours ${settings.weeks} weeks before.`
+    `# Pageviews from ${settings.deploy} to ${settings.to} and the hour before the deploy, compared with the same hours ${settings.weeks} weeks before.`
   );
   console.log(
     `# Paste this into Kibana Dev Tools and save the response, then run: pnpm run traffic-drop analyze response.json\n`
@@ -375,13 +376,31 @@ if (command === "query") {
   const dropped = sites
     .filter((s) => s.after.dropped)
     .sort((a, b) => missing(b) - missing(a));
-  // Only drops that weren't there before the deploy can be caused by it
-  const flagged = dropped.filter((s) => !s.before.dropped);
-  const alreadyDown = dropped.filter((s) => s.before.dropped);
+  // When did the drop start? Only one that started or got worse after the
+  // deploy can be caused by it
+  const when = (s: (typeof sites)[number]) => {
+    if (s.before.dropped) {
+      // Already down before: if after kept the same share of the two windows,
+      // its count is binomial, so a much smaller count means it got worse
+      const total = s.after.count + s.before.count;
+      const share = s.after.baseline / (s.after.baseline + s.before.baseline);
+      const spread = Math.sqrt(total * share * (1 - share));
+      return spread > 0 && (s.after.count - total * share) / spread <= -minZ
+        ? "worse after the deploy"
+        : "already down";
+    }
+    return s.before.baseline > 0 && s.before.drop < minDrop
+      ? "after the deploy"
+      : "unclear, little data before";
+  };
+  const flagged = dropped
+    .map((s) => ({ ...s, when: when(s) }))
+    .filter((s) => s.when !== "already down");
+  const alreadyDown = dropped.filter((s) => when(s) === "already down");
   const percent = (drop: number) => `${Math.round(drop * 100)}%`;
 
   console.log(
-    `Pageviews from ${settings.deploy} to ${settings.to} and the same length before the deploy, compared with the same hours ${settings.weeks} weeks before`
+    `Pageviews from ${settings.deploy} to ${settings.to} and the hour before the deploy, compared with the same hours ${settings.weeks} weeks before`
   );
   console.log(
     `${sites.length} websites above ${settings.minDaily} pageviews/day, ${response.took ?? "?"} ms in Elasticsearch`
@@ -390,7 +409,7 @@ if (command === "query") {
     `All of them together: ${total} pageviews vs ${Math.round(totalBaseline)} baseline (${((total / totalBaseline - 1) * 100).toFixed(1)}%)`
   );
   console.log(
-    `${flagged.length} dropped after the deploy (at least ${values["min-drop"]}% with z ≤ -${values["min-z"]}, normal before it)\n`
+    `${flagged.length} dropped after the deploy or can't be ruled out (at least ${values["min-drop"]}% with z ≤ -${values["min-z"]})\n`
   );
   if (flagged.length)
     console.table(
@@ -401,12 +420,13 @@ if (command === "query") {
         drop: percent(s.after.drop),
         z: Number(s.after.z.toFixed(1)),
         weeks: s.after.weeks.join(" "),
-        before: `${s.before.count} vs ${s.before.baseline}`,
+        "hour before": `${s.before.count} vs ${s.before.baseline}`,
+        when: s.when,
       }))
     );
   if (alreadyDown.length) {
     console.log(
-      `\n${alreadyDown.length} were already down before the deploy, so it didn't cause them:\n`
+      `\n${alreadyDown.length} were already down in the hour before the deploy and didn't get clearly worse:\n`
     );
     console.table(
       alreadyDown.slice(0, 10).map((s) => ({
