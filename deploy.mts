@@ -528,13 +528,19 @@ async function readCdnFile(
 const githubToken = process.env.GH_TOKEN || process.env.GITHUB_TOKEN;
 
 async function readGitHub<T>(path: string): Promise<T> {
-  const response = await fetch(`${GITHUB_API_ROOT}/${path}`, {
-    headers: {
-      Accept: "application/vnd.github+json",
-      ...(githubToken ? { Authorization: `Bearer ${githubToken}` } : {}),
-    },
-    signal: AbortSignal.timeout(30_000),
-  });
+  const read = (withToken: boolean) =>
+    fetch(`${GITHUB_API_ROOT}/${path}`, {
+      headers: {
+        Accept: "application/vnd.github+json",
+        ...(withToken && githubToken
+          ? { Authorization: `Bearer ${githubToken}` }
+          : {}),
+      },
+      signal: AbortSignal.timeout(30_000),
+    });
+  let response = await read(true);
+  // A stale token must not block reading public release data
+  if (githubToken && response.status === 401) response = await read(false);
   if (!response.ok) {
     throw new Error(`Unable to read GitHub ${path}: HTTP ${response.status}`);
   }
