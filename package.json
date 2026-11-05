@@ -22,6 +22,7 @@
     "test:matrix": "mocha test/helpers/get-browsers.test.js",
     "test:deploy": "pnpm run build && node --test test/deploy.test.mts",
     "posttest": "pnpm run build",
+    "postinstall": "node scripts/ci-install-report.js",
     "typecheck": "tsc --noEmit"
   },
   "repository": {
