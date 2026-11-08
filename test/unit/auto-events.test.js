@@ -12,6 +12,7 @@ describe("auto-events", function () {
     const listeners = [];
     const { hostname, pathname } = new URL(href);
     const link = {
+      tagName: "A",
       href,
       hostname,
       pathname,
@@ -24,14 +25,12 @@ describe("auto-events", function () {
       setAttribute(name) {
         attributes.push(name);
       },
-      addEventListener(type, listener) {
-        listeners.push({ type, listener });
-      },
     };
     const document = {
-      readyState: "complete",
       currentScript: { dataset: {} },
-      getElementsByTagName: () => [link],
+      addEventListener(type, listener, capture) {
+        listeners.push({ type, listener, capture });
+      },
       set location(value) {
         navigations.push(value);
       },
@@ -49,7 +48,8 @@ describe("auto-events", function () {
       document,
       console,
     });
-    for (const { listener } of listeners) listener.call(link, event);
+    for (const { listener } of listeners)
+      listener.call(document, { target: link, ...event });
     return { calls, navigations, attributes, listeners };
   }
 
@@ -119,7 +119,9 @@ describe("auto-events", function () {
       }
     );
     expect(attributes).to.deep.equal([]);
-    expect(listeners.map(({ type }) => type)).to.deep.equal(["click"]);
+    expect(listeners.map(({ type, capture }) => [type, capture])).to.deep.equal(
+      [["click", true]]
+    );
     expect(calls).to.have.length(1);
     expect(calls[0][0]).to.equal("outbound_example_org");
     expect(calls[0][3]).to.equal(true);
@@ -131,7 +133,7 @@ describe("auto-events", function () {
     [{ namespace: "ba" }, "ba_event"],
     [{ saGlobal: "my_event" }, "my_event"],
   ]) {
-    it(`sends events through the ${saGlobal} tracker function`, async function () {
+    it(`sends events through the ${saGlobal} tracker function`, function () {
       const dom = createTrackerDOM({
         settings: { autoCollect: false, ...settings },
       });
@@ -147,8 +149,6 @@ describe("auto-events", function () {
         readFileSync("dist/latest/auto-events.js", "utf8"),
         dom.getInternalVMContext()
       );
-      // auto-events.js binds links once the document is complete
-      await new Promise((resolve) => setTimeout(resolve));
       // jsdom doesn't implement navigation
       document.addEventListener("click", (event) => event.preventDefault());
 
@@ -164,4 +164,33 @@ describe("auto-events", function () {
       dom.window.close();
     });
   }
+
+  it("collects links added after it loaded, also when a child is clicked", function () {
+    const dom = createTrackerDOM({ settings: { autoCollect: false } });
+    const { document } = dom.window;
+    runInContext(
+      readFileSync("dist/latest/auto-events.js", "utf8"),
+      dom.getInternalVMContext()
+    );
+    // jsdom doesn't implement navigation
+    document.addEventListener("click", (event) => event.preventDefault());
+
+    const link = document.createElement("a");
+    link.href = "https://example.org/path";
+    link.innerHTML = "<span>Example</span>";
+    document.body.appendChild(link);
+    link.firstChild.click();
+
+    // A link with an inline event only sends that event
+    const inline = document.createElement("a");
+    inline.href = "https://example.org/other";
+    inline.setAttribute("data-simple-event", "partner_click");
+    document.body.appendChild(inline);
+    inline.click();
+
+    expect(
+      dom.sent.map((request) => new URL(request.url).searchParams.get("event"))
+    ).to.deep.equal(["outbound_example_org", "partner_click"]);
+    dom.window.close();
+  });
 });
