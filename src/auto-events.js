@@ -174,37 +174,26 @@
       collect = "phone";
     }
 
-    if (!collect) return;
-
-    link.addEventListener("click", function () {
-      saAutomatedLink(this, collect);
-    });
+    return collect;
   }
 
-  function onDOMContentLoaded() {
-    try {
-      var a = document.getElementsByTagName("a");
-
-      // Loop over all links on the page
-      for (var i = 0; i < a.length; i++) {
-        var link = a[i];
-        var href = link.getAttribute("href");
+  // One listener on the document also sees links added after the page loaded.
+  // Capture runs before the website's own handlers, so a handler that stops
+  // the click doesn't stop collecting it.
+  doc.addEventListener(
+    "click",
+    function (event) {
+      try {
+        var link = event.target;
+        while (link && link.tagName !== "A") link = link.parentNode;
 
         // Skip links that don't have an href
-        if (!href) continue;
-
-        collectLink(link);
+        var collect = link && link.getAttribute("href") && collectLink(link);
+        if (collect) saAutomatedLink(link, collect);
+      } catch (error) {
+        log(error.message, "warn");
       }
-    } catch (error) {
-      log(error.message, "warn");
-    }
-  }
-
-  if (doc.readyState === "ready" || doc.readyState === "complete") {
-    onDOMContentLoaded();
-  } else {
-    document.addEventListener("readystatechange", function (event) {
-      if (event.target.readyState === "complete") onDOMContentLoaded();
-    });
-  }
+    },
+    true
+  );
 })(typeof window < "u" && window);
