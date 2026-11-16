@@ -854,6 +854,8 @@
             scriptElement &&
             scriptElement.src &&
             scriptElement.src.split("?")[0],
+          // Integration that embeds the script, e.g. data-platform="wordpress"
+          platform: attr(scriptElement, platformText),
           /** if ignoremetrics **/
           k: k,
           /** endif **/
